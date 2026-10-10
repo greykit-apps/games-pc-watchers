@@ -1,0 +1,140 @@
+/* PumaCity: Watchers. The palette is the greykit.games Tactical canon
+ * (gk-tokens.css, loaded first); the names below are this game's own. */
+:root{--hud:232px;--amber:#ffb000;--font:ui-monospace,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.5 var(--font);overflow:hidden;-webkit-text-size-adjust:100%}
+button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:2px;padding:4px 10px;cursor:pointer;min-height:30px}
+button:hover:not(:disabled){border-color:var(--lit)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button:disabled{opacity:.45;cursor:default}
+button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
+button.primary{border-color:var(--accent);color:var(--bg);background:var(--accent);font-weight:600}
+button.primary:hover:not(:disabled){background:#8af6ff;border-color:#8af6ff}
+button.danger{border-color:var(--danger);color:var(--danger)}
+kbd{font:inherit;font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:2px;padding:0 4px;margin-right:6px;display:inline-block;min-width:16px;text-align:center}
+button.primary kbd{color:var(--bg);border-color:rgba(5,7,15,.35)}
+h1,h2,h3{font-weight:600;margin:0}
+[hidden]{display:none!important}
+.gk-credit{color:var(--dim)}
+.gk-credit a{color:var(--steel)}
+
+/* ---- the mission screen ---- */
+#game{position:fixed;inset:0;display:flex}
+#hud{width:var(--hud);flex:none;height:100%;overflow-y:auto;background:var(--panel);border-right:1px solid var(--line);
+  padding:8px 8px 10px;display:flex;flex-direction:column;gap:6px;user-select:none}
+#view{position:relative;flex:1;min-width:0;overflow:hidden;touch-action:none}
+#view canvas{position:absolute;left:0;top:0;display:block}
+#cv{image-rendering:pixelated;image-rendering:crisp-edges}
+#ov{pointer-events:none}
+
+.hud-head{display:flex;align-items:baseline;justify-content:space-between;padding:0 2px}
+.hud-title{color:var(--accent);letter-spacing:.24em;font-weight:600;font-size:12px}
+.hud-clock{color:var(--dim);font-size:12px}
+.hud-sub{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:4px;padding:0 2px}
+.hud-sub span{color:var(--steel);letter-spacing:.06em}
+.hud-cards{display:grid;grid-template-columns:1fr;gap:4px}
+.card{display:flex;gap:6px;padding:4px;border:1px solid var(--line);background:var(--panel2);border-radius:2px;cursor:pointer}
+.card:hover{border-color:var(--lit)}
+.card.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1px rgba(84,242,255,.25)}
+.card.dead{opacity:.55}
+.card .port{width:48px;height:48px;flex:none;image-rendering:pixelated;border:1px solid var(--line)}
+.card-r{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.card-name{font-size:11px;color:var(--text);letter-spacing:.1em;line-height:1.2}
+.card-name kbd{margin-right:4px;padding:0 3px;min-width:0}
+.hp{height:4px;background:#1a0d12;border-radius:1px;overflow:hidden}
+.hp i{display:block;height:100%;background:var(--good);transition:width .15s}
+.hp i.low{background:var(--danger)}
+.stim{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--dim);letter-spacing:.05em;line-height:1}
+.stim span{width:28px;flex:none}
+.stim b{position:relative;flex:1;height:7px;background:#070a13;border:1px solid var(--line);cursor:ew-resize}
+.stim b i{position:absolute;top:0;bottom:0;left:0;display:block}
+.stim .eff{background:linear-gradient(90deg,#2b7f92,var(--accent));opacity:.85}
+.stim[data-stim=zoom] .eff{background:linear-gradient(90deg,#7a5500,var(--amber))}
+.stim[data-stim=dot] .eff{background:linear-gradient(90deg,#7a1f2c,var(--danger))}
+.stim[data-stim=vine] .eff{background:linear-gradient(90deg,#3f5a2a,var(--good))}
+.stim .dep{left:auto;right:0;background:repeating-linear-gradient(135deg,rgba(255,82,102,.35) 0 2px,transparent 2px 4px);z-index:1}
+.stim .lvl{width:2px;margin-left:-1px;background:#fff;z-index:2}
+.hud-team,.hud-foot{display:flex;gap:4px}
+.hud-team button,.hud-foot button{flex:1;font-size:11px;padding:2px 6px;min-height:26px}
+.hud-foot{margin-top:auto;padding-top:4px}
+.hud-weapons{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
+.wslot{position:relative;height:44px;padding:2px;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0}
+.wslot canvas{width:44px;height:22px}
+.wslot span{font-size:9px;letter-spacing:.06em;color:var(--dim);line-height:1}
+.wslot em{position:absolute;right:3px;top:1px;font-style:normal;font-size:9px;color:var(--steel)}
+.wslot.on{background:var(--accent);border-color:var(--accent)}
+.wslot.on span,.wslot.on em{color:var(--bg)}
+.wslot.dry em{color:var(--danger)}
+.wslot.empty{background:transparent;border-style:dashed;opacity:.35}
+.hud-obj{list-style:none;margin:0;padding:0 2px;font-size:11px;line-height:1.35}
+.hud-obj li{padding-left:14px;position:relative;margin:2px 0;color:var(--text)}
+.hud-obj li::before{content:"\25C6";position:absolute;left:0;color:var(--amber);font-size:9px;top:1px}
+.hud-obj li.opt{color:var(--ink)}
+.hud-obj li.opt::before{content:"\25C7";color:var(--dim)}
+.hud-obj li.done{color:var(--good)}
+.hud-obj li.done::before{content:"\2713";color:var(--good)}
+.hud-obj li.failed{color:var(--dim);text-decoration:line-through}
+.hud-obj li.failed::before{content:"\2715";color:var(--danger);text-decoration:none}
+.hud-obj .n{color:var(--dim)}
+.hud-mini{width:216px;height:112px;align-self:center;border:1px solid var(--line);background:#03050b;cursor:crosshair;image-rendering:pixelated}
+
+#ticker{position:absolute;left:12px;right:12px;top:10px;pointer-events:none;display:flex;flex-direction:column;align-items:flex-start;gap:3px}
+#ticker div{background:rgba(5,7,15,.82);border-left:2px solid currentColor;padding:2px 8px;font-size:12px;transition:opacity .4s}
+#banner{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);pointer-events:none;text-align:center;
+  font-size:clamp(20px,3.4vw,34px);letter-spacing:.3em;font-weight:600;text-shadow:0 0 24px currentColor;animation:bn .6s ease-out both}
+#banner small{display:block;font-size:12px;letter-spacing:.14em;color:var(--ink);text-shadow:none;margin-top:8px}
+@keyframes bn{from{opacity:0;letter-spacing:.6em}to{opacity:1}}
+#hint{position:absolute;right:12px;bottom:10px;pointer-events:none;font-size:11px;color:var(--dim);background:rgba(5,7,15,.7);padding:3px 8px;max-width:60%}
+#hint b{color:var(--steel);font-weight:400}
+
+/* ---- sheets over the game: pause, briefing, debrief ---- */
+.sheet{position:fixed;inset:0;z-index:40;display:grid;place-items:center;background:rgba(3,5,10,.86);padding:16px}
+.sheet .box{width:min(560px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;background:var(--panel);border:1px solid var(--lit);border-radius:2px;padding:18px 20px}
+.sheet h2{font-size:14px;letter-spacing:.22em;color:var(--accent);margin:0 0 12px;text-transform:uppercase}
+.sheet h3{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:14px 0 6px}
+.sheet .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.sheet .col{display:flex;flex-direction:column;gap:6px}
+.sheet .col button{text-align:left}
+.sheet p{margin:0 0 10px}
+.sheet table{border-collapse:collapse;width:100%}
+.sheet td{padding:3px 10px 3px 0;vertical-align:top}
+.sheet td:first-child{color:var(--dim);white-space:nowrap}
+.sheet .note{color:var(--dim);font-size:12px}
+
+/* the briefing: a dossier */
+.brief{position:fixed;inset:0;z-index:30;overflow-y:auto;background:radial-gradient(ellipse at 70% 0%,#0d1424 0%,var(--bg) 60%);padding:28px 20px 40px}
+.brief .wrap{max-width:1040px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:22px}
+.brief .tag{font-size:11px;letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
+.brief h1{font-size:clamp(22px,3.4vw,32px);letter-spacing:.2em;color:var(--accent);text-transform:uppercase;margin:4px 0 2px}
+.brief .code{color:var(--amber);letter-spacing:.2em;font-size:12px}
+.brief .from{color:var(--dim);font-size:12px;margin:14px 0 6px}
+.brief .text p{color:var(--text);margin:0 0 10px;line-height:1.6}
+.brief .panel{background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:12px 14px;margin-bottom:12px}
+.brief .panel h3{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:0 0 8px}
+.brief table{border-collapse:collapse;width:100%;font-size:12px}
+.brief td{padding:3px 8px 3px 0;vertical-align:top;color:var(--ink)}
+.brief td:first-child{color:var(--steel);white-space:nowrap}
+.brief .map{display:block;width:100%;image-rendering:pixelated;border:1px solid var(--line);background:#03050b}
+.brief .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--dim);margin-top:6px}
+.brief .legend i{display:inline-block;width:8px;height:8px;margin-right:5px;vertical-align:0}
+.brief .squad{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.brief .agent{display:flex;gap:8px;align-items:center;font-size:11px}
+.brief .agent canvas{width:40px;height:40px;border:1px solid var(--line);image-rendering:pixelated}
+.brief .agent b{color:var(--text);letter-spacing:.1em;font-weight:600;display:block}
+.brief .acts{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap}
+@media (max-width:760px){.brief .wrap{grid-template-columns:1fr}}
+
+/* the debrief */
+.debrief .box{width:min(620px,100%)}
+.debrief .result{font-size:clamp(20px,3vw,28px);letter-spacing:.24em;margin:0 0 4px;text-transform:uppercase}
+.debrief .won{color:var(--good)} .debrief .lost{color:var(--danger)}
+.debrief .grade{float:right;font-size:44px;line-height:1;color:var(--amber);font-weight:600;text-shadow:0 0 20px rgba(255,176,0,.4)}
+.debrief ul{list-style:none;padding:0;margin:0}
+.debrief li{padding:2px 0}
+.debrief li.done{color:var(--good)} .debrief li.failed{color:var(--dim)}
+.debrief .quote{border-left:2px solid var(--amber);padding:4px 0 4px 12px;color:var(--text);font-style:italic;margin:14px 0 0}
+
+/* the title's backdrop canvas */
+.gk-title>.scene canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
+.gk-title .gk-tag{margin-top:8px;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--dim)}

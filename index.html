@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PumaCity: Watchers</title>
+<meta name="description" content="Four cyber-cats in long coats, and Casey Benton's orders. A squad tactics game in the spirit of Syndicate, set in PumaCity.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#05070f">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="stylesheet" href="css/gk-tokens.css">
+<link rel="stylesheet" href="css/watchers.css">
+</head>
+<body>
+<div id="title-host"></div>
+<div id="game" hidden>
+  <aside id="hud" aria-label="Squad"></aside>
+  <main id="view" tabindex="-1" aria-label="Market Plaza">
+    <canvas id="cv"></canvas>
+    <canvas id="ov"></canvas>
+    <div id="ticker" aria-live="polite"></div>
+    <div id="banner" hidden></div>
+    <div id="hint" hidden></div>
+  </main>
+</div>
+<script src="js/gk-title.js"></script>
+<script src="js/core/util.js"></script>
+<script src="js/core/audio.js"></script>
+<script src="js/core/map.js"></script>
+<script src="js/core/weapons.js"></script>
+<script src="js/core/sprites.js"></script>
+<script src="js/core/render.js"></script>
+<script src="js/core/units.js"></script>
+<script src="js/core/world.js"></script>
+<script src="js/levels/plaza.js"></script>
+<script src="js/ui/hud.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

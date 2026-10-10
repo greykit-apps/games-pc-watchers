@@ -172,8 +172,10 @@ W.Map = class {
   /* A railway: two tracks side by side (at..at+1 one way, at+2..at+3 the
    * other), with trains that stop at each of `stops` (positions along the
    * track) and run off the map at the ends. */
-  rail(axis, at, from, to, stops = [], trains = 1) {
+  rail(axis, at, from, to, stops = [], trains = 1, open = false) {
     const len = to - from;
+    // an open line has no fences: every sleeper is a crossing, and the trams do not stop for anyone
+    if (open) for (let t = from; t < to; t++) for (let k = 0; k < 4; k++) { const [cx, cy] = axis === "x" ? [t, at + k] : [at + k, t]; if (this.inb(cx, cy)) this.crossing[this.i(cx, cy)] = 1; }
     // where a street already crosses, it stays a crossing
     for (let t = from; t < to; t++) for (let k = 0; k < 4; k++) {
       const [cx, cy] = axis === "x" ? [t, at + k] : [at + k, t];
@@ -264,6 +266,8 @@ W.Map = class {
     (this.bridges || (this.bridges = [])).push({ tracks, x, y, span, stair, h });
   }
   crowd(x, y, r, n) { this.crowds.push({ x, y, r, n }); }
+  /* a post for a member of a standing garrison: { x, y, dir, who } */
+  garrison(x, y, dir, who = "benton") { (this.garrisons || (this.garrisons = [])).push({ x, y, dir, who }); }
   /* an inside wall of structure s, with doorways: gaps [offset, width] along its length */
   partition(s, x, y, w, d, gaps = []) {
     const horiz = w >= d, len = horiz ? w : d;

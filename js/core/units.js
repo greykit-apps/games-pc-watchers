@@ -449,10 +449,10 @@ W.secCall = (world, u, who) => {
   if (u.angryAt[who]) return;
   u.angryAt[who] = true; u.calmT = 20;
   if (!W.armed(u)) W.drawBest(u);
-  W.say(u, W.pick(W.LINES.secAngry), "#7aa8ff");
+  W.say(u, u.elite ? W.pick(["Contact! All posts!", "Protect the tower!", "Lock it down!"]) : W.pick(W.LINES.secAngry), u.elite ? "#d8b048" : "#7aa8ff");
   W.audio.at("whistle", u.x, u.y);
   // the radio: nearby officers join in
-  for (const o of world.units) if (o.alive && o.kind === "sec" && !o.follower && o !== u && W.dist(u.x, u.y, o.x, o.y) < 16 && !o.angryAt[who]) {
+  for (const o of world.units) if (o.alive && o.kind === "sec" && !o.follower && o !== u && (W.dist(u.x, u.y, o.x, o.y) < 16 || (u.elite && o.elite)) && !o.angryAt[who]) {
     o.angryAt[who] = true; o.calmT = 20; W.drawBest(o);
   }
   if (who === "player") world.msg(`${world.names.sec.toUpperCase()}: Officer needs backup!`, "#7aa8ff");
@@ -478,7 +478,7 @@ W.thinkSec = (world, u) => {
   if (armed) {
     u.dir = Math.atan2(armed.y - u.y, armed.x - u.x);
     if (u.warnT <= 0 && !u.warned) {
-      u.warned = true; u.warnT = 3.2; W.stop(u);
+      u.warned = true; u.warnT = u.elite ? 1.4 : 3.2; W.stop(u);
       W.say(u, W.pick(W.LINES.warn), "#ffb000", 3);
       W.audio.at("whistle", u.x, u.y);
     } else if (u.warned && u.warnT <= 0) {
@@ -487,6 +487,12 @@ W.thinkSec = (world, u) => {
     return;
   }
   if (u.warned && u.warnT <= -2) u.warned = false;
+  // a garrison holds its post
+  if (u.elite) {
+    if (!u.path && W.dist(u.x, u.y, u.post[0], u.post[1]) > 0.6) W.goTo(world, u, u.post[0], u.post[1]);
+    else if (!u.path) u.dir = u.post[2];
+    return;
+  }
   // patrol
   if (!u.path && u.stateT <= 0) {
     const route = u.patrol;
@@ -647,6 +653,21 @@ W.updateUnit = (world, u, dt) => {
 /* ---- the squad ----
  * A roster entry is { id, name, fur, patch, mods, weapons: [{ type, ammo }] };
  * the campaign builds them, and W.defaultRoster stands in without one. */
+/* Casey Benton's own guard: hardened, heavily armed, and they hold their
+ * posts. They warn once, briefly; fire near them and every one of them comes. */
+W.GARRISONS = {
+  benton: { title: "Benton Guard", hp: 22, armor: 0.8, acc: 0.95, react: 0.35, sight: 11, guns: [["uzi", 120], ["shotgun", 40]],
+    look: () => ({ coat: "#16161c", trim: "#d8b048", legs: "#0e0e12", fur: W.pick(["#3a3330", "#7c7c84", "#5a4a40", "#b08a5a"]), visor: "#d8b048", hat: "#16161c", hatKind: "cap", long: true }) },
+};
+W.spawnGarrisons = (world) => {
+  for (const g of world.map.garrisons || []) {
+    const G = W.GARRISONS[g.who];
+    const p = world.map.nearestWalkable(g.x, g.y, 3);
+    if (!p) continue;
+    const u = world.add(W.makeUnit("sec", p[0], p[1], { elite: true, title: G.title, look: G.look(), post: [p[0], p[1], g.dir], home: p, dir: g.dir, hp: G.hp, maxHp: G.hp, armor: G.armor, acc: G.acc, react: G.react, sight: G.sight }));
+    for (const [t, a] of G.guns) W.giveWeapon(u, t, a);
+  }
+};
 W.agentLook = a => ({ coat: "#1b2130", trim: "#54f2ff", legs: "#10131c", fur: a.fur, patch: a.patch || null, visor: "#54f2ff", long: true });
 W.spawnSquad = (world, roster, spots) => {
   roster.slice(0, spots.length).forEach((a, i) => {

@@ -373,7 +373,7 @@ const Game = W.game = {
     if (u.kind === "target") return [N.target, "#ffb000"];
     if (u.follower) return ["Follower", "#54f2ff"];
     if (u.kind === "crew") return [u.guard ? N.guard : N.henchman, "#ff5266"];
-    if (u.kind === "sec") return [u.angryAt.player ? `${N.sec} (hostile)` : N.sec, "#7aa8ff"];
+    if (u.kind === "sec") { const t = u.title || N.sec; return [u.angryAt.player ? `${t} (hostile)` : t, u.elite ? "#d8b048" : "#7aa8ff"]; }
     return [N.civ, "#94a0c4"];
   },
   updateHover() {

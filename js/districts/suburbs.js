@@ -229,8 +229,8 @@ W.district({
       for (let t = 2; t < 74; t++) { if (t < 34 || t > 39) m.prop("fence", x + t + 0.5, y + 2.5, { axis: "x" }); m.prop("fence", x + t + 0.5, y + 67.5, { axis: "x" }); }
       for (let t = 3; t < 67; t++) { m.prop("fence", x + 2.5, y + t + 0.5, { axis: "y" }); if (t < 30 || t > 34) m.prop("fence", x + 73.5, y + t + 0.5, { axis: "y" }); }
       m.fill(x + 34, y + 3, 6, 64, G.DIRT); m.fill(x + 3, y + 30, 70, 5, G.DIRT);
-      const ch = m.structure({ x: x + 30, y: y + 44, w: 14, d: 14, floors: 3, style: "church", floor: G.WOOD, name: "Cemetery chapel", doors: [["n", 5, 3], ["e", 3, 2]] });
-      for (let r = 0; r < 4; r++) for (const a of [33.5, 40.5]) m.prop("box", x + a, y + 49 + r * 2, { w: 4, d: 0.6, h: 4, side: "#5a3a24" });
+      const ch = m.structure({ x: x + 31, y: y + 42, w: 12, d: 16, floors: 2, style: "church", pitch: "y", ridge: 18, roof: "#3a3442", floor: G.WOOD, name: "Cemetery chapel", doors: [["n", 4, 3], ["s", 4, 3], ["e", 3, 2]] });
+      for (let r = 0; r < 4; r++) for (const a of [34.5, 39.5]) m.prop("box", x + a, y + 47 + r * 2, { w: 3, d: 0.6, h: 4, side: "#5a3a24" });
       m.prop("box", x + 37, y + 55.5, { w: 3, d: 1, h: 7, side: "#e8e4dc", glow: "#ffcf6b" });
       for (const [a, b] of [[10, 10], [56, 10], [10, 52], [56, 52]]) m.building({ x: x + a, y: y + b, w: 4, d: 4, floors: 1, style: "concrete", name: "Mausoleum" });
       m.building({ x: x + 64, y: y + 58, w: 5, d: 4, floors: 1, style: "metal", name: "Groundskeeper's shed" });

@@ -99,7 +99,7 @@ W.World = class {
     for (const u of this.units) {
       if (!u.alive || u.follower || u === src || u.inCar) continue;
       const d = W.dist(x, y, u.x, u.y);
-      if (d > r) continue;
+      if (d > r && !(u.elite && d <= r * 2)) continue;
       if (u.kind === "civ") this.panic(u, x, y);
       else if (u.kind === "sec" && src && src.faction && src.faction !== "sec" && src.faction !== "civ" && src.alive) {
         if (d < 4 || W.canSee(this, u, src, 11)) W.secCall(this, u, src.faction === "player" ? "player" : "crew");

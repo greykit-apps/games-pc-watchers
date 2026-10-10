@@ -138,6 +138,10 @@ W.district({
       m.prop("box", x + 8, y + 32.5, { w: 2, d: 0.6, h: 8, side: "#3a2418", glow: "#ffb000" });   // the box office
       for (const [a, b] of [[32, 24], [36, 24], [32, 30], [36, 30]]) m.prop("planter", x + a + 0.5, y + b + 0.5);
       m.prop("spout", x + 34, y + 34); m.light(x + 34, y + 34, 3, "#54f2ff", 0.15);
+      // Casey Benton's own guard: posts all round the tower, and at the theater doors
+      for (const [a, b, d] of [[15, 3, -1.6], [30, 3, -1.6], [14.5, 6, 3.1], [14.5, 15, 3.1], [31, 6, 0], [31, 15, 0], [15, 19, 1.6], [22.5, 19.5, 1.6], [30, 19, 1.6],
+        [10, 2.5, -2.4], [37, 2.5, -0.8], [37, 19, 0.8], [2.5, 19, 2.4], [13, 37, 1.6], [17, 37, 1.6], [36.5, 28, 0]]) m.garrison(x + a, y + b, d, "benton");
+      for (const [a, b] of [[14, 2], [31, 2], [14, 19], [31, 19]]) { m.prop("flood", x + a, y + b); m.light(x + a, y + b + 0.5, 5, "#fffbe8", 0.2); }
       m.fill(x + 32, y + 32, 4, 4, G.WATER);
       K.dress(m, rng, x, y, 40, 40, 8, "#ffcf6b");
     }
@@ -154,7 +158,18 @@ W.district({
     // St. Whiskers Hospital, with its ambulance bay
     {
       const x = BX[4], y = BX[1];
-      m.building({ x: x + 3, y: y + 3, w: 28, d: 22, floors: 7, style: "office", name: "St. Whiskers Hospital", signs: [{ face: "s", text: "ST. WHISKERS", at: 8, z: 92, color: "#ff5266", size: 11 }] });
+      const h = m.structure({ x: x + 3, y: y + 3, w: 28, d: 22, floors: 7, style: "office", name: "St. Whiskers Hospital", doors: [["s", 12, 3], ["w", 8, 2], ["n", 6, 2]],
+        signs: [{ face: "s", text: "ST. WHISKERS", at: 8, z: 92, color: "#ff5266", size: 11 }, { face: "s", text: "EMERGENCY", at: 11, z: 22, color: "#ff5266" }] });
+      m.partition(h, x + 4, y + 17, 26, 1, [[5, 2], [18, 2]]);              // the ER and waiting room | the rest
+      m.partition(h, x + 17, y + 4, 1, 13, [[6, 2]]);                       // the wards | theatre and pharmacy
+      m.partition(h, x + 18, y + 10, 12, 1, [[3, 2]]);                      // theatre | pharmacy
+      for (let i = 0; i < 4; i++) m.prop("bench", x + 6.5 + i * 3, y + 22.5);
+      m.prop("box", x + 21, y + 19, { w: 4, d: 0.8, h: 8, side: "#c8ccd4", top: "#e8e4dc", screen: "#4ade6a" });   // reception
+      for (let r = 0; r < 3; r++) for (let i = 0; i < 4; i++) m.prop("box", x + 5.5 + i * 3, y + 5.5 + r * 4, { w: 1, d: 1.8, h: 5, side: "#c8ccd4", top: "#f2eefa" });   // the beds
+      m.prop("box", x + 23.5, y + 7, { w: 2, d: 1, h: 6, side: "#8a90a0", top: "#c8ccd4" }); m.light(x + 23.5, y + 7, 3, "#e8fbff", 0.3);   // the operating table
+      for (let i = 0; i < 4; i++) m.prop("box", x + 19.5 + i * 2.5, y + 15.4, { w: 1.6, d: 0.5, h: 14, side: "#3a3f4e", screen: "#ff5266" });   // pharmacy shelves
+      m.loot.push({ type: "medikit", ammo: 1, x: x + 21.5, y: y + 13.5 }, { type: "medikit", ammo: 1, x: x + 25.5, y: y + 13.5 });
+      m.floorIn(x + 18, y + 4, 12, 6, G.INDOOR);
       m.fill(x + 3, y + 27, 32, 10, G.TARMAC);
       for (let i = 0; i < 4; i++) m.park(x + 6 + i * 4, y + 29.5, "y", "#e8e4dc", 1);
       m.driveway(x + 14, y + 36, 4, 1, "s");                                  // out to Market Street
@@ -169,14 +184,16 @@ W.district({
       const x = BX[0], y = BX[2];
       m.fill(x + 2, y + 2, 36, 36, G.GRASS);
       m.fill(x + 6, y + 30, 28, 8, G.PLAZA);
-      const c = m.structure({ x: x + 6, y: y + 4, w: 26, d: 26, floors: 5, style: "church", floor: G.WOOD, name: "St. Felis Cathedral", doors: [["s", 11, 4], ["w", 10, 2], ["e", 10, 2]],
-        signs: [{ face: "s", text: "ST. FELIS", at: 9, z: 60, color: "#ffcf6b" }] });
-      m.floorIn(x + 7, y + 5, 24, 4, G.CARPET);                                        // the chancel
-      m.partition(c, x + 7, y + 9, 5, 1, [[3, 2]]); m.partition(c, x + 26, y + 9, 5, 1, [[0, 2]]);   // side chapels
-      m.prop("box", x + 19, y + 6, { w: 4, d: 1, h: 7, side: "#e8e4dc", top: "#f2eefa", glow: "#ffcf6b", glowR: 14 });   // the altar
-      for (const a of [16, 22]) m.prop("box", x + a, y + 6, { w: 0.3, d: 0.3, h: 10, side: "#c8a050", glow: "#ffcf6b" });
-      for (let r = 0; r < 8; r++) for (const [a, w] of [[11, 7], [23, 7]]) m.prop("box", x + a, y + 12 + r * 2, { w, d: 0.6, h: 4, side: "#5a3a24" });
-      m.building({ x: x + 34, y: y + 3, w: 4, d: 4, floors: 11, style: "church", name: "The bell tower" });
+      // the nave runs north to south under a steep roof, its gabled front on the plaza
+      m.structure({ x: x + 12, y: y + 3, w: 16, d: 28, floors: 4, style: "church", pitch: "y", ridge: 26, roof: "#3a3442", floor: G.WOOD, name: "St. Felis Cathedral",
+        doors: [["s", 6, 4], ["w", 12, 2], ["e", 12, 2]] });
+      m.floorIn(x + 13, y + 4, 14, 4, G.CARPET);                                       // the chancel
+      m.prop("box", x + 20, y + 5.5, { w: 4, d: 1, h: 7, side: "#e8e4dc", top: "#f2eefa", glow: "#ffcf6b", glowR: 14 });   // the altar
+      for (const a of [17.5, 22.5]) m.prop("box", x + a, y + 5.5, { w: 0.3, d: 0.3, h: 10, side: "#c8a050", glow: "#ffcf6b" });
+      for (let r = 0; r < 8; r++) for (const a of [15.5, 24.5]) m.prop("box", x + a, y + 11 + r * 2, { w: 5, d: 0.6, h: 4, side: "#5a3a24" });
+      m.light(x + 20, y + 16, 7, "#ffcf6b", 0.12);
+      // the bell tower, beside the front
+      m.building({ x: x + 29, y: y + 25, w: 3, d: 3, floors: 8, style: "church", roofKit: "spire", name: "The bell tower" });
       for (let i = 0; i < 14; i++) m.prop("grave", x + 3 + (i % 2) * 1.5 + 0.5, y + 6 + (i >> 1) * 3 + 0.5, { cross: i % 3 === 0 });
       for (let i = 0; i < 8; i++) m.prop("grave", x + 34 + (i % 2) * 1.5 + 0.5, y + 12 + (i >> 1) * 3 + 0.5, { cross: i % 2 === 0 });
       for (const [a, b] of [[3, 3], [3, 34], [36, 34], [36, 26]]) m.prop("tree", x + a + 0.5, y + b + 0.5);
@@ -225,7 +242,20 @@ W.district({
     {
       const x = BX[4], y = BX[2];
       m.fill(x + 2, y + 2, 34, 36, G.GRASS);
-      m.building({ x: x + 6, y: y + 6, w: 24, d: 16, floors: 4, style: "concrete", name: "City Hall", signs: [{ face: "s", text: "CITY HALL", at: 9, z: 46, color: "#ffcf6b", size: 11 }] });
+      const ch = m.structure({ x: x + 6, y: y + 6, w: 24, d: 16, floors: 4, style: "concrete", name: "City Hall", doors: [["s", 10, 4], ["w", 6, 2], ["e", 6, 2]],
+        signs: [{ face: "s", text: "CITY HALL", at: 2.5, z: 46, color: "#ffcf6b", size: 11 }] });
+      m.partition(ch, x + 7, y + 15, 22, 1, [[4, 2], [15, 2]]);             // the rotunda | the chamber and offices
+      m.partition(ch, x + 18, y + 7, 1, 8, [[3, 2]]);                       // the council chamber | the mayor and the records
+      m.partition(ch, x + 19, y + 11, 10, 1, [[2, 2]]);                     // the mayor's office | the records room
+      m.prop("statue", x + 18, y + 18);                                     // a puma, in the rotunda
+      m.floorIn(x + 7, y + 7, 11, 8, G.CARPET);
+      for (let r = 0; r < 3; r++) m.prop("box", x + 12.5, y + 10 + r * 1.5, { w: 8, d: 0.6, h: 4, side: "#5a3a24" });   // the council's benches
+      m.prop("box", x + 12.5, y + 7.6, { w: 4, d: 0.8, h: 7, side: "#3a2418", top: "#8a5a3a" });   // the dais
+      m.floorIn(x + 19, y + 7, 10, 4, G.CARPET);
+      m.prop("box", x + 24, y + 8.5, { w: 3, d: 1, h: 6, side: "#3a2418", top: "#8a5a3a", screen: "#ffcf6b" });   // the mayor's desk
+      m.prop("banner", x + 27.5, y + 7.5, { color: "#ffb000" });
+      for (let i = 0; i < 4; i++) m.prop("box", x + 20.5 + i * 2.2, y + 13, { w: 0.5, d: 1.6, h: 14, side: "#5a3a24", top: "#7a5a3a" });   // the records
+      m.light(x + 18, y + 18, 5, "#ffcf6b", 0.15);
       m.fill(x + 6, y + 22, 24, 10, G.PLAZA);
       for (let i = 0; i < 8; i++) m.prop("box", x + 7.5 + i * 3, y + 22.6, { w: 0.7, d: 0.7, h: 40, side: "#c8c4bc", top: "#e8e4dc" });
       for (const [a, c] of [[8, "#54f2ff"], [18, "#ffb000"], [28, "#ff5266"]]) m.prop("banner", x + a + 0.5, y + 33.5, { color: c });
@@ -261,8 +291,8 @@ W.district({
       m.prop("shelter", sx + 6.5, 156.5); m.prop("shelter", sx + 15.5, 163);
       m.light(sx + 11, 157, 5, "#9ff7ff", 0.15); m.light(sx + 11, 163, 5, "#9ff7ff", 0.15);
     }
-    m.rail("x", 158, 0, 224, [BX[0] + 19, BX[2] + 20, BX[4] + 19], 1);
-    K.railFence(m, "x", 158, 0, 224);
+    // the tram line is open: no fences, crossable anywhere, and the trams do not stop for anyone
+    m.rail("x", 158, 0, 224, [BX[0] + 19, BX[2] + 20, BX[4] + 19], 2, true);
 
     // ================= row 4 =================
     // Pounce Park: two blocks of it, a lake and a bandstand
@@ -300,13 +330,13 @@ W.district({
     const T = (area, list) => { for (const [x, y, n] of list) m.point("target", x, y, n, area); };
     T("Club Nine Lives", [[BX[1] + 11, BX[1] + 12, "the dance floor at Nine Lives"], [BX[1] + 21.5, BX[1] + 10.5, "the VIP room at Nine Lives"], [BX[1] + 21.5, BX[1] + 14.2, "the bar at Nine Lives"], [BX[1] + 14.5, BX[1] + 30.5, "the queue outside Nine Lives"]]);
     T("PVN Theater", [[BX[2] + 15, BX[1] + 22.8, "the stage of the PVN Theater"], [BX[2] + 15, BX[1] + 33, "the theater lobby"], [BX[2] + 22.5, BX[1] + 19.5, "the foot of PVN Tower"]]);
-    T("St. Felis Cathedral", [[BX[0] + 19, BX[2] + 7.8, "the altar of St. Felis"], [BX[0] + 18.5, BX[2] + 20.5, "the nave of St. Felis"], [BX[0] + 4, BX[2] + 33, "the churchyard"]]);
+    T("St. Felis Cathedral", [[BX[0] + 20, BX[2] + 7.5, "the altar of St. Felis"], [BX[0] + 20, BX[2] + 20.5, "the nave of St. Felis"], [BX[0] + 4, BX[2] + 33, "the churchyard"]]);
     T("Downtown Precinct", [[BX[3] + 18.5, BX[2] + 24, "the front desk at the precinct"], [BX[3] + 26.5, BX[2] + 18, "outside the holding cells"], [BX[3] + 20.5, BX[2] + 9.5, "the precinct armory"], [BX[3] + 20, BX[2] + 34, "the precinct motor pool"]]);
     T("Central Station", [[BX[2] + 20, BX[3] + 9.5, "the station concourse"], [BX[2] + 20, BX[3] + 23, "the south concourse"], [BX[2] + 20, BX[3] + 29.5, "the station shops"]]);
     T("Market Plaza", [[BX[1] + 28.2, BX[2] + 12, "Cafe Miao's terrace"], [BX[1] + 20, BX[2] + 25, "the plaza fountain"], [BX[1] + 20, BX[2] + 34, "the south arcade"]]);
     T("The Towers", [[BX[2] + 20, BX[2] + 20, "the financial plaza"], [BX[2] + 28, BX[2] + 34, "the fountain by Meridian Tower"]]);
-    T("City Hall", [[BX[4] + 18, BX[2] + 25, "the steps of City Hall"]]);
-    T("St. Whiskers Hospital", [[BX[4] + 15, BX[1] + 32, "the ambulance bay"]]);
+    T("City Hall", [[BX[4] + 18, BX[2] + 25, "the steps of City Hall"], [BX[4] + 18, BX[2] + 19.5, "the City Hall rotunda"], [BX[4] + 10, BX[2] + 9, "the council chamber"], [BX[4] + 21, BX[2] + 9.5, "the mayor's office"]]);
+    T("St. Whiskers Hospital", [[BX[4] + 15, BX[1] + 32, "the ambulance bay"], [BX[4] + 12, BX[1] + 22, "the hospital waiting room"], [BX[4] + 10, BX[1] + 12, "the wards"], [BX[4] + 23, BX[1] + 13, "the hospital pharmacy"]]);
     T("Pounce Park", [[BX[1] + 27, BX[4] + 15, "the bandstand"], [BX[0] + 19, BX[4] + 19, "the park crossroads"], [BX[0] + 10, BX[4] + 17, "the lakeside"]]);
     T("Lantern Row", [[BX[2] + 20, BX[4] + 19, "the stalls of Lantern Row"]]);
     T("The Garage", [[BX[4] + 18, BX[0] + 18, "level one of the Fifth Street garage"]]);

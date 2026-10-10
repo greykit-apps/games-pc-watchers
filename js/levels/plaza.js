@@ -139,6 +139,7 @@ W.LEVELS.plaza = {
       { at: [44.5, 30.5], patrol: [[44.5, 30.5], [41, 30.5], [41, 35], [38, 30.5]] },
     ];
     for (const s of secPosts) W.giveWeapon(unit("sec", s.at[0], s.at[1], { home: s.at, patrol: s.patrol }), "pistol");
+    W.spawnGarrisons(world);
     if (opts.attract) return;
 
     // Vesper Sly and his bodyguards, on the cafe terrace

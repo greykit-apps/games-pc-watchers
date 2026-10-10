@@ -368,6 +368,8 @@ W.populateMission = (world, L, d, opts) => {
     const p = m.nearestWalkable(cr.x + Math.cos(a) * d2, cr.y + Math.sin(a) * d2, 3);
     if (p) world.add(W.makeUnit("civ", p[0] + W.rand(-0.3, 0.3), p[1] + W.rand(-0.3, 0.3), { look: T.civLook ? T.civLook() : undefined, home: p, crowd: true }));
   }
+  // standing garrisons
+  W.spawnGarrisons(world);
   // local security
   for (let i = 0; i < T.sec; i++) {
     const base = m.randomCell(stroll) || [L.picks.target.x, L.picks.target.y];

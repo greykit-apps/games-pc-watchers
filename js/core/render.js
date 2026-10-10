@@ -666,7 +666,7 @@ W.Renderer = class {
       else if (u.kind === "target") { target = u; col = blink ? "#ffb000" : "#7a5500"; sz = 4; }
       else if (u.faction === "player") col = "#2fb8c4";
       else if (u.faction === "crew") col = u.hostile ? "#ff5266" : "#b8424f";
-      else if (u.faction === "sec") col = u.angryAt.player ? "#9ab8ff" : "#4c6fd0";
+      else if (u.faction === "sec") col = u.elite ? (u.angryAt.player ? "#ffe08a" : "#b8902a") : u.angryAt.player ? "#9ab8ff" : "#4c6fd0";
       else { if (opts.noCiv) continue; col = "#56607a"; sz = 1; }
       blip(u.x, u.y, col, sz);
     }

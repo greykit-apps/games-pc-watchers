@@ -24,7 +24,7 @@ W.STYLES = {
   parkade:   { wall: "#4a4e58", roof: "#3e424c", trim: "#ffb000", scan: "#3e424c", paint: "parkade" },
   hedge:     { wall: "#1d4a2a", roof: "#235a30", trim: "#3a7d45", scan: "#1f4a2a", paint: "crop", plain: true },
   house:     { wall: "#6a6458", roof: "#3a2e2a", trim: "#e8e4dc", scan: "#5a4a40", paint: "house" },
-  church:    { wall: "#4a4a52", roof: "#2a2a34", trim: "#ffcf6b", win: ["#ffb35c", "#ff8fd8", "#7ff3ff"], lit: 0.7, wins: 1, dark: "#15121c" },
+  church:    { wall: "#6a6672", roof: "#2e2c38", trim: "#ffcf6b", scan: "#4a4656", paint: "church" },
   canopy:    { wall: "#3a4458", roof: "#3a4458", trim: "#9fd8ff", scan: "#2a3448" },
   interior:  { wall: "#3a3f4e", roof: "#3a3f4e", trim: "#5a6070", win: ["#3a3f4e"], lit: 0, wins: 0, dark: "#3a3f4e", scan: "#3a3f4e" },
 };
@@ -43,7 +43,9 @@ W.cellSprite = (m, cx, cy) => {
   const signHere = (H.signs || []).some(s => s.face === "s" ? (cy === H.y + H.d - 1) : (cx === H.x + H.w - 1));
   // some looks depend on where in the building the cell is: a house's roof slope, a barn's door
   const st0 = W.STYLES[b.style];
-  const where = st0 && (st0.paint === "house" || st0.paint === "barn") ? `|${cx - b.x},${cy - b.y},${b.w},${b.d},${b.roofColor || ""},${b.garage ? "g" : ""},${b.door ?? ""}` : "";
+  const H1 = W.signHost(m, b);
+  const where = st0 && (st0.paint === "house" || st0.paint === "barn") ? `|${cx - b.x},${cy - b.y},${b.w},${b.d},${b.roofColor || ""},${b.garage ? "g" : ""},${b.door ?? ""}`
+    : st0 && st0.paint === "church" ? `|${cx - H1.x},${cy - H1.y},${H1.w},${H1.d},${H1.ridge || 0},${b.roofKit || ""},${b.floors}` : "";
   const key = signHere ? `u${cx},${cy}` : `${b.style}|${b.floors}|${edges}|${variant}|${b.awning || ""}|${b.color || ""}|${b.door || ""}${where}|${b.roofKit || ""}|${(edges & 15) === 0 ? W.hash2(cx, cy, 7) < 0.12 ? "ac" : "" : ""}`;
   let s = W.cellSprites.get(key);
   if (!s) { s = W.drawCell(m, b, cx, cy, edges, variant); W.cellSprites.set(key, s); }
@@ -52,7 +54,8 @@ W.cellSprite = (m, cx, cy) => {
 
 W.drawCell = (m, b, cx, cy, edges, variant) => {
   const st = W.STYLES[b.style] || W.STYLES.office;
-  const ZH = W.ZH, hpx = b.floors * ZH, pad = 26;
+  const host0 = b.struct !== undefined ? m.structures[b.struct] : null;
+  const ZH = W.ZH, hpx = b.floors * ZH, pad = 26 + (host0 && host0.ridge ? host0.ridge : 0) + (b.roofKit === "spire" ? 60 : 0);
   const H0 = pad + hpx, MX = 8;
   const cv = W.canvas(W.TW + MX * 2, H0 + W.TH + 4);
   const c = cv.getContext("2d");
@@ -60,7 +63,7 @@ W.drawCell = (m, b, cx, cy, edges, variant) => {
   const quad = (pts, fill) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fillStyle = fill; c.fill(); };
   const rnd = W.rng((cx * 73856093) ^ (cy * 19349663) ^ (b.id * 83492791));
   if (st.paint) {
-    W.PAINTERS[st.paint]({ c, P, quad, b, st, cx, cy, edges, variant, hpx, rnd, ZH });
+    W.PAINTERS[st.paint]({ c, P, quad, b, st, cx, cy, edges, variant, hpx, rnd, ZH, m, H0, MX });
     W.drawSigns(c, W.signHost(m, b), cx, cy, H0, MX, hpx, P);
     return { cv, ox: W.HTW + MX, oy: H0 };
   }
@@ -342,6 +345,48 @@ W.PAINTERS = (() => {
       c.strokeStyle = "rgba(255,255,255,.08)"; c.lineWidth = 1; c.beginPath();
       const a = P(0.5, 0, hpx), e = P(0.5, 1, hpx); c.moveTo(a[0], a[1]); c.lineTo(e[0], e[1]); c.stroke();
     },
+    /* A church: pale stone, buttresses between tall pointed windows of
+     * stained glass, and on an enterable church the gabled front with its
+     * rose window and the roof's slopes over the end walls. A bell tower
+     * (roofKit "spire") has open belfry arches and a spire. */
+    church(o) {
+      const { c, P, quad, b, cx, cy, hpx, ZH, m, H0, MX } = o;
+      const S = b.struct !== undefined && m ? m.structures[b.struct] : null;
+      const stone = "#6a6672", shadow = W.shade(stone, 0.66);
+      const front = S && S.pitch && cy === S.y + S.d - 1, back = S && S.pitch && cy === S.y;
+      const glass = ["#c83a4a", "#3a6ac8", "#d8a01a", "#7a3ac8"];
+      // the east face, and the south face (gabled if this is the front)
+      quad([P(1, 0, 0), P(1, 1, 0), P(1, 1, hpx), P(1, 0, hpx)], shadow);
+      if (front) W.churchFront(c, P, S, cx, cy, H0, MX, 0);
+      else quad([P(0, 1, 0), P(1, 1, 0), P(1, 1, hpx), P(0, 1, hpx)], stone);
+      // tall pointed windows, and a buttress at each cell's corner
+      const lancet = (face, u0, u1, z0, z1, col) => {
+        const pt = (u, z) => face === "s" ? P(u, 1, z) : P(1, 1 - u, z);
+        quad([pt(u0 - 0.04, z0 - 1), pt(u1 + 0.04, z0 - 1), pt(u1 + 0.04, z1), pt((u0 + u1) / 2, z1 + 5), pt(u0 - 0.04, z1)], "#2a2430");
+        quad([pt(u0, z0), pt(u1, z0), pt(u1, z1), pt((u0 + u1) / 2, z1 + 4), pt(u0, z1)], col);
+      };
+      // a tower's windows stop well below its belfry; a nave's run nearly to the eaves
+      const top = !S ? Math.min(hpx * 0.45, 40) : hpx - (hpx > ZH * 2 ? 12 : 6), bot = !S ? 14 : 8;
+      if (!front && (!S || cy === S.y + S.d - 1)) lancet("s", 0.38, 0.62, bot, top, glass[(cx + cy) % 4]);
+      if (!S || cx === S.x + S.w - 1) lancet("e", 0.38, 0.62, bot, top, W.shade(glass[(cx * 3 + cy) % 4], 0.8));
+      quad([P(0, 1, 0), P(0.1, 1, 0), P(0.1, 1, hpx), P(0, 1, hpx)], W.shade(stone, 0.8));
+      quad([P(1, 0.9, 0), P(1, 1, 0), P(1, 1, hpx), P(1, 0.9, hpx)], W.shade(stone, 0.55));
+      // the top: the roof's slopes over the end walls, or a parapet
+      if (front || back) W.drawPitch(c, P, S, cx, cy);
+      else roof(o, S ? (S.roof || "#2e2c38") : "#4a4656", W.shade(stone, 1.1));
+      // a bell tower: a belfry of open arches, and a spire over the middle
+      if (b.roofKit === "spire") {
+        const bz = hpx - ZH + 2;
+        quad([P(0.3, 1, bz), P(0.7, 1, bz), P(0.7, 1, hpx - 4), P(0.5, 1, hpx - 1), P(0.3, 1, hpx - 4)], "#141018");
+        quad([P(1, 0.7, bz), P(1, 0.3, bz), P(1, 0.3, hpx - 4), P(1, 0.5, hpx - 1), P(1, 0.7, hpx - 4)], "#100c14");
+        if (cx === b.x + (b.w >> 1) && cy === b.y + (b.d >> 1)) {
+          const t = hpx + 56;
+          quad([P(-0.4, 1.4, hpx), P(1.4, 1.4, hpx), P(0.5, 0.5, t)], "#3a3644");
+          quad([P(1.4, -0.4, hpx), P(1.4, 1.4, hpx), P(0.5, 0.5, t)], "#2a2634");
+          const [sx, sy] = P(0.5, 0.5, t); c.fillStyle = "#c8a050"; c.fillRect(sx - 0.5, sy - 7, 1, 7); c.fillRect(sx - 2.5, sy - 5, 5, 1);
+        }
+      }
+    },
     /* the arena: concrete tiers and a lit ring at the top */
     arena(o) {
       const { c, P, hpx, rnd, ZH } = o;
@@ -389,11 +434,18 @@ W.lintelSprite = (m, cx, cy, S) => {
   let s = W.cellSprites.get(key);
   if (!s) {
     const st = W.STYLES[S.style] || W.STYLES.office;
-    const hpx = S.floors * W.ZH, DOOR = 17, H0 = 26 + hpx, MX = 8;
+    const hpx = S.floors * W.ZH, DOOR = 17, H0 = 26 + hpx + (S.ridge || 0), MX = 8;
     const cv = W.canvas(W.TW + MX * 2, H0 + W.TH + 4), c = cv.getContext("2d");
     const P = (u, v, z) => [MX + W.HTW + (u - v) * W.HTW, H0 + (u + v) * W.HTH - z];
     const q = (pts, f) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fillStyle = f; c.fill(); };
     const wall = st.wall || "#3a3f4e";
+    if (S.pitch && cy === S.y + S.d - 1) {
+      W.churchFront(c, P, S, cx, cy, H0, MX, DOOR);
+      W.drawPitch(c, P, S, cx, cy);
+      s = { cv, ox: W.HTW + MX, oy: H0 };
+      W.cellSprites.set(key, s);
+      return s;
+    }
     q([P(0, 1, DOOR), P(1, 1, DOOR), P(1, 1, hpx), P(0, 1, hpx)], wall);
     q([P(1, 0, DOOR), P(1, 1, DOOR), P(1, 1, hpx), P(1, 0, hpx)], W.shade(wall, 0.68));
     // the head of the doorway
@@ -406,11 +458,88 @@ W.lintelSprite = (m, cx, cy, S) => {
   return s;
 };
 
+/* ---- pitched roofs and church fronts ----
+ * A structure with pitch "y" has a ridge running along y down its middle
+ * (slopes facing west and east), ridge px above its eaves; pitch "x" turns
+ * it. W.roofZ gives the roof's height at a point (u, v) of cell (cx, cy). */
+W.roofZ = (S, cx, cy, u, v) => {
+  const hp = S.floors * W.ZH;
+  if (!S.pitch) return hp;
+  const t = S.pitch === "y" ? (cx - S.x + u) / S.w : (cy - S.y + v) / S.d;
+  return hp + (S.ridge || 16) * (1 - Math.abs(2 * t - 1));
+};
+W.pitchedRoofSprite = (m, cx, cy, S) => {
+  const key = `proof|${S.id}|${cx - S.x},${cy - S.y}|${m.district || ""}`;
+  let s = W.cellSprites.get(key);
+  if (!s) {
+    const hp = S.floors * W.ZH, top = hp + (S.ridge || 16), H0 = 26 + top, MX = 8;
+    const cv = W.canvas(W.TW + MX * 2, H0 + W.TH + 4), c = cv.getContext("2d");
+    const P = (u, v, z) => [MX + W.HTW + (u - v) * W.HTW, H0 + (u + v) * W.HTH - z];
+    W.drawPitch(c, P, S, cx, cy);
+    s = { cv, ox: W.HTW + MX, oy: H0 };
+    W.cellSprites.set(key, s);
+  }
+  return s;
+};
+/* the roof slopes over one cell, split at the ridge if it crosses the cell */
+W.drawPitch = (c, P, S, cx, cy) => {
+  const q = (pts, f) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fillStyle = f; c.fill(); };
+  const Z = (u, v) => W.roofZ(S, cx, cy, u, v);
+  const col = S.roof || "#2e2c38";
+  if (S.pitch === "y") {
+    const r = W.clamp(S.x + S.w / 2 - cx, 0, 1);
+    if (r > 0) q([P(0, 0, Z(0, 0)), P(r, 0, Z(r, 0)), P(r, 1, Z(r, 1)), P(0, 1, Z(0, 1))], W.shade(col, 1.25));   // facing west, catching the light
+    if (r < 1) q([P(r, 0, Z(r, 0)), P(1, 0, Z(1, 0)), P(1, 1, Z(1, 1)), P(r, 1, Z(r, 1))], W.shade(col, 0.85));
+    c.strokeStyle = "rgba(0,0,0,.18)"; c.lineWidth = 1; c.beginPath();
+    for (const v of [0.33, 0.66]) { const a = P(0, v, Z(0, v)), b = P(1, v, Z(1, v)); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); }
+    c.stroke();
+    if (r > 0 && r < 1) { c.strokeStyle = W.shade(col, 1.6); c.beginPath(); const a = P(r, 0, Z(r, 0)), b = P(r, 1, Z(r, 1)); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.stroke(); }
+  } else {
+    const r = W.clamp(S.y + S.d / 2 - cy, 0, 1);
+    if (r > 0) q([P(0, 0, Z(0, 0)), P(1, 0, Z(1, 0)), P(1, r, Z(1, r)), P(0, r, Z(0, r))], W.shade(col, 0.85));
+    if (r < 1) q([P(0, r, Z(0, r)), P(1, r, Z(1, r)), P(1, 1, Z(1, 1)), P(0, 1, Z(0, 1))], W.shade(col, 1.25));
+  }
+};
+/* A church's front (its south face) over one cell, from zFrom up to the
+ * roof line: stone, a pointed window, and the rose window centred in the
+ * gable, drawn in the face's own plane so it runs on across cells. */
+W.churchFront = (c, P, S, cx, cy, H0, MX, zFrom) => {
+  const q = (pts, f) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fillStyle = f; c.fill(); };
+  const Z = u => W.roofZ(S, cx, cy, u, 1);
+  const r = S.pitch === "y" ? W.clamp(S.x + S.w / 2 - cx, 0, 1) : -1;
+  const pts = [P(0, 1, zFrom), P(1, 1, zFrom), P(1, 1, Z(1))];
+  if (r > 0 && r < 1) pts.push(P(r, 1, Z(r)));
+  pts.push(P(0, 1, Z(0)));
+  q(pts, "#6a6672");
+  c.save();
+  c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.clip();
+  // the face's plane: x along the front from the building's west corner, y down
+  c.setTransform(1, 0.5, 0, 1, MX - (cx - S.x) * W.HTW, H0 + W.HTH - (cx - S.x) * W.HTH);
+  const hp = S.floors * W.ZH, mid = S.w / 2 * W.HTW;
+  // the rose window
+  const rz = hp + (S.ridge || 16) * 0.15, R = Math.min(22, S.w * 1.6);
+  c.fillStyle = "#2a2430"; c.beginPath(); c.arc(mid, -rz, R + 2, 0, Math.PI * 2); c.fill();
+  const glass = ["#c83a4a", "#3a6ac8", "#d8a01a", "#7a3ac8", "#3ac88a"];
+  for (let k = 0; k < 12; k++) { c.fillStyle = glass[k % glass.length]; c.beginPath(); c.moveTo(mid, -rz); c.arc(mid, -rz, R, k / 12 * Math.PI * 2, (k + 1) / 12 * Math.PI * 2); c.closePath(); c.fill(); }
+  c.strokeStyle = "#2a2430"; c.lineWidth = 1.2; c.beginPath(); c.arc(mid, -rz, R * 0.45, 0, Math.PI * 2); c.stroke();
+  for (let k = 0; k < 12; k++) { c.beginPath(); c.moveTo(mid, -rz); c.lineTo(mid + Math.cos(k / 12 * Math.PI * 2) * R, -rz + Math.sin(k / 12 * Math.PI * 2) * R); c.stroke(); }
+  c.fillStyle = "#ffcf6b"; c.beginPath(); c.arc(mid, -rz, R * 0.18, 0, Math.PI * 2); c.fill();
+  // pointed windows either side, and the great door's arch
+  const lancet = (x0, x1, z0, z1, col) => {
+    c.fillStyle = "#2a2430"; c.beginPath(); c.moveTo(x0 - 1, -z0); c.lineTo(x0 - 1, -z1); c.quadraticCurveTo((x0 + x1) / 2, -z1 - (x1 - x0) * 1.2, x1 + 1, -z1); c.lineTo(x1 + 1, -z0); c.closePath(); c.fill();
+    c.fillStyle = col; c.beginPath(); c.moveTo(x0, -z0); c.lineTo(x0, -z1); c.quadraticCurveTo((x0 + x1) / 2, -z1 - (x1 - x0), x1, -z1); c.lineTo(x1, -z0); c.closePath(); c.fill();
+  };
+  for (const k of [-3, -2, 2, 3]) { const cxp = mid + k * W.HTW * 1.3; lancet(cxp - 3, cxp + 3, 10, hp - 10, glass[(k + 3) % glass.length]); }
+  c.fillStyle = "#3a2418"; c.beginPath(); c.moveTo(mid - 14, 0); c.lineTo(mid - 14, -14); c.quadraticCurveTo(mid, -26, mid + 14, -14); c.lineTo(mid + 14, 0); c.closePath(); c.fill();
+  c.restore();
+};
+
 /* ---- enterable buildings: the roof, and the walls cut down ---- */
 W.roofSprite = (m, cx, cy, S) => {
   const st = W.STYLES[S.style] || W.STYLES.office;
   const same = (x, y) => m.inb(x, y) && (m.roofOf[m.i(x, y)] === S.id || (m.bid[m.i(x, y)] >= 0 && m.buildings[m.bid[m.i(x, y)]].inner && m.buildings[m.bid[m.i(x, y)]].struct === S.id));
   const edges = (same(cx, cy - 1) ? 0 : 1) | (same(cx + 1, cy) ? 0 : 2) | (same(cx, cy + 1) ? 0 : 4) | (same(cx - 1, cy) ? 0 : 8);
+  if (S.pitch) return W.pitchedRoofSprite(m, cx, cy, S);
   const kit = W.hash2(cx, cy, 11) < 0.04 ? "ac" : "";
   // a big roof can carry skylights in rows, and plant between them
   const sky = S.skylights && (cy - S.y) % 7 >= 2 && (cy - S.y) % 7 <= 3 && (cx - S.x) % 9 >= 2 && (cx - S.x) % 9 <= 6 ? "sky" : "";

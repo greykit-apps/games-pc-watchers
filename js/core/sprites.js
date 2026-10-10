@@ -26,7 +26,10 @@ W.STYLES = {
   house:     { wall: "#6a6458", roof: "#3a2e2a", trim: "#e8e4dc", scan: "#5a4a40", paint: "house" },
   church:    { wall: "#6a6672", roof: "#2e2c38", trim: "#ffcf6b", scan: "#4a4656", paint: "church" },
   clad:      { wall: "#c8c0b0", roof: "#4a3a34", trim: "#e8e4dc", scan: "#8a8478", paint: "clad" },
+  ship:      { wall: "#bcb8b0", roof: "#bcb8b0", trim: "#a8323e", scan: "#8a8680", paint: "ship" },
+  shipPorts: { wall: "#bcb8b0", roof: "#bcb8b0", trim: "#a8323e", scan: "#8a8680", paint: "ship", ports: true },
   canopy:    { wall: "#3a4458", roof: "#3a4458", trim: "#9fd8ff", scan: "#2a3448" },
+  machine:   { wall: "#2e323c", roof: "#2e323c", trim: "#5a6070", win: ["#2e323c"], lit: 0, wins: 0, dark: "#2e323c", scan: "#2e323c", cut: 22 },
   interior:  { wall: "#3a3f4e", roof: "#3a3f4e", trim: "#5a6070", win: ["#3a3f4e"], lit: 0, wins: 0, dark: "#3a3f4e", scan: "#3a3f4e" },
 };
 
@@ -46,6 +49,7 @@ W.cellSprite = (m, cx, cy) => {
   const st0 = W.STYLES[b.style];
   const H1 = W.signHost(m, b);
   const where = st0 && (st0.paint === "barn" || st0.paint === "clad") ? `|${cx - H1.x},${cy - H1.y},${H1.w},${H1.d},${H1.ridge || 0},${H1.pitch || ""},${H1.gambrel ? "g" : ""},${H1.color || b.color || ""},${H1.loft ? "l" : ""},${b.door ?? ""},${b.floors},${b.inner ? "i" : ""}`
+    : st0 && st0.paint === "ship" && H1.roofs ? `|${cy - H1.y},${H1.d},${H1.floors},${H1.roofs[0].rise},${cx === H1.x ? "w" : cx === H1.x + H1.w - 1 ? "e" : ""},${H1.roof || ""}`
     : st0 && st0.paint === "house" ? `|${cx - b.x},${cy - b.y},${b.w},${b.d},${b.roofColor || ""},${b.garage ? "g" : ""},${b.door ?? ""}`
     : st0 && st0.paint === "church" ? `|${cx - H1.x},${cy - H1.y},${H1.w},${H1.d},${H1.ridge || 0},${b.roofKit || ""},${b.floors}` : "";
   const key = signHere ? `u${cx},${cy}` : `${b.style}|${b.floors}|${edges}|${variant}|${b.awning || ""}|${b.color || ""}|${b.door || ""}${where}|${b.roofKit || ""}|${(edges & 15) === 0 ? W.hash2(cx, cy, 7) < 0.12 ? "ac" : "" : ""}`;
@@ -57,7 +61,7 @@ W.cellSprite = (m, cx, cy) => {
 W.drawCell = (m, b, cx, cy, edges, variant) => {
   const st = W.STYLES[b.style] || W.STYLES.office;
   const host0 = b.struct !== undefined ? m.structures[b.struct] : null;
-  const ZH = W.ZH, hpx = b.floors * ZH, pad = 26 + (host0 && host0.ridge ? host0.ridge : 0) + (b.roofKit === "spire" ? 60 : 0);
+  const ZH = W.ZH, hpx = b.floors * ZH, pad = 26 + (host0 && host0.ridge ? host0.ridge : 0) + (host0 && host0.roofs ? Math.max(...host0.roofs.map(r => r.rise || 0)) : 0) + (b.roofKit === "spire" ? 60 : 0);
   const H0 = pad + hpx, MX = 8;
   const cv = W.canvas(W.TW + MX * 2, H0 + W.TH + 4);
   const c = cv.getContext("2d");
@@ -408,6 +412,41 @@ W.PAINTERS = (() => {
       onFace(o, "s", 0, 1, hpx - 4, hpx - 1, "rgba(84,242,255,.75)"); onFace(o, "e", 0, 1, hpx - 4, hpx - 1, "rgba(84,242,255,.45)");
       roof(o, "#2e3340", "#454c5c");
     },
+    /* a ship's hull: plating shaded as the hull rounds under, a highlight
+     * where it is widest, a stripe in the line's colours, portholes on the
+     * crew's decks, and panel seams; no storeys */
+    ship(o) {
+      const { c, P, hpx, variant, st, b } = o;
+      const col = st.wall;
+      for (const face of ["s", "e"]) {
+        const f0 = face === "s" ? 1 : 0.72;
+        const N = 8;
+        for (let k = 0; k < N; k++) {
+          const z0 = hpx * k / N, z1 = hpx * (k + 1) / N + 0.5, t = (k + 0.5) / N;
+          const sh = f0 * (t < 0.7 ? 0.5 + 0.75 * t / 0.7 : 1.25 - 0.5 * (t - 0.7) / 0.3);
+          onFace(o, face, 0, 1, z0, z1, W.shade(col, sh));
+        }
+        onFace(o, face, 0, 1, hpx * 0.7, hpx * 0.7 + 1, `rgba(255,255,255,${face === "s" ? 0.25 : 0.12})`);
+        onFace(o, face, 0, 1, hpx * 0.42, hpx * 0.42 + 3, W.shade(st.trim, f0 * 0.9));
+        if (st.ports && !b.inner) for (const u of [0.25, 0.75]) {
+          const [x, y] = face === "s" ? P(u, 1, hpx * 0.58) : P(1, 1 - u, hpx * 0.58);
+          o.c.fillStyle = "#1a2030"; o.c.beginPath(); o.c.ellipse(x, y, 2, 2, 0, 0, Math.PI * 2); o.c.fill();
+          o.c.fillStyle = face === "s" ? "#9ff7ff" : "#6ab8c8"; o.c.beginPath(); o.c.ellipse(x, y, 1.2, 1.2, 0, 0, Math.PI * 2); o.c.fill();
+        }
+        if (variant === 0) { const [a0, a1] = face === "s" ? [P(0.5, 1, 2), P(0.5, 1, hpx - 1)] : [P(1, 0.5, 2), P(1, 0.5, hpx - 1)]; c.strokeStyle = "rgba(0,0,0,.25)"; c.lineWidth = 1; c.beginPath(); c.moveTo(a0[0], a0[1]); c.lineTo(a1[0], a1[1]); c.stroke(); }
+      }
+      // the end walls of a section carry the hull's curve over them, so the fuselage runs on unbroken
+      const S = b.struct !== undefined && o.m ? o.m.structures[b.struct] : null, Z = S && S.roofs && S.roofs[0];
+      const { cx, cy } = o;
+      if (Z && Z.kind === "vault" && !b.inner && (cx === S.x || cx === S.x + S.w - 1) && cy >= Z.y && cy < Z.y + Z.d) {
+        const zv = W.vaultTop(c, P, hpx, Z, -1, cy - Z.y, S.roof || col);
+        if (cx === S.x + S.w - 1) {
+          const pts = [P(1, 0, hpx), P(1, 1, hpx)];
+          for (let k = 4; k >= 0; k--) pts.push(P(1, k / 4, zv(k / 4)));
+          o.quad(pts, W.shade(S.roof || col, 0.62));
+        }
+      } else roof(o, W.shade(col, 1.2));
+    },
     /* clapboard: painted siding, shuttered windows; gabled if it is pitched */
     clad(o) {
       const { c, P, hpx, b, cx, cy, ZH, m, rnd } = o;
@@ -507,7 +546,7 @@ W.lintelSprite = (m, cx, cy, S) => {
   let s = W.cellSprites.get(key);
   if (!s) {
     const st = W.STYLES[S.style] || W.STYLES.office;
-    const hpx = S.floors * W.ZH, DOOR = 17, H0 = 26 + hpx + (S.ridge || 0), MX = 8;
+    const hpx = S.floors * W.ZH, DOOR = 17, H0 = 26 + hpx + (S.ridge || 0) + (S.roofs ? Math.max(...S.roofs.map(r => r.rise || 0)) : 0), MX = 8;
     const cv = W.canvas(W.TW + MX * 2, H0 + W.TH + 4), c = cv.getContext("2d");
     const P = (u, v, z) => [MX + W.HTW + (u - v) * W.HTW, H0 + (u + v) * W.HTH - z];
     const q = (pts, f) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fillStyle = f; c.fill(); };
@@ -523,7 +562,10 @@ W.lintelSprite = (m, cx, cy, S) => {
     q([P(1, 0, DOOR), P(1, 1, DOOR), P(1, 1, hpx), P(1, 0, hpx)], W.shade(wall, 0.68));
     // the head of the doorway
     q([P(0, 1, DOOR), P(1, 1, DOOR), P(1, 1, DOOR + 1.5), P(0, 1, DOOR + 1.5)], W.shade(wall, 0.5));
+    // over a doorway in a hull's end wall, the hull's curve runs on
+    const Z = S.roofs && S.roofs[0] && S.roofs[0].kind === "vault" && cy >= S.roofs[0].y && cy < S.roofs[0].y + S.roofs[0].d && (cx === S.x || cx === S.x + S.w - 1) ? S.roofs[0] : null;
     if (S.pitch) W.gableWall({ c, P, hpx, cx, cy }, S, S.color || wall);
+    else if (Z) W.vaultTop(c, P, hpx, Z, -1, cy - Z.y, S.roof || st.roof);
     else q([P(0, 0, hpx), P(1, 0, hpx), P(1, 1, hpx), P(0, 1, hpx)], S.roof || st.roof);
     W.drawSigns(c, S, cx, cy, H0, MX, hpx, P);
     s = { cv, ox: W.HTW + MX, oy: H0 };
@@ -672,13 +714,14 @@ W.zoneRoofSprite = (cx, cy, S, Z) => {
   const R = Z.rise || 0, u = cx - Z.x, v = cy - Z.y;
   const southEdge = v === Z.d - 1, eastEdge = u === Z.w - 1, northEdge = v === 0, westEdge = u === 0;
   const ext = Z.kind === "raise" ? `${+southEdge}${+eastEdge}${+northEdge}${+westEdge}|${v % 4 === 1 ? "s" : ""}`
-    : Z.kind === "vault" ? `${v}|${Z.d}|${u % 3 === 0 ? "r" : ""}|${+eastEdge}`
+    : Z.kind === "vault" ? `${(Z.details || []).filter(d => d.u === u && d.v === v).map(d => d.kind).join("")}|${W.greeble(Z, u, v)}|${v}|${Z.d}|${Z.metal ? (u % 8 === 0 ? "r" : "") : u % 3 === 0 ? "r" : ""}|${+eastEdge}|${Z.metal ? "m" : ""}${Z.cockpit ? "c" : ""}|${Z.glass !== undefined && u < Z.glass ? "g" : ""}|${Z.metal && Z.spine ? "s" : ""}`
     : Z.kind === "plant" ? `${W.hash2(cx, cy, 17) < 0.22 ? "a" : W.hash2(cx, cy, 19) < 0.04 && u % 6 === 2 && v % 6 === 2 ? "t" : ""}|${v % 6 === 4 ? "d" : ""}`
     : `${u % 2}`;
   const key = `zroof|${Z.kind}|${S.floors}|${R}|${base}|${ext}`;
   let s = W.cellSprites.get(key);
   if (s) return s;
-  const hpx = S.floors * W.ZH, H0 = 40 + hpx + R, MX = 8;
+  const big = (Z.details || []).some(d => d.u === u && d.v === v);
+  const hpx = S.floors * W.ZH, H0 = (big ? 80 : 40) + hpx + R, MX = big ? 40 : 8;
   const cv = W.canvas(W.TW + MX * 2, H0 + W.TH + 4), c = cv.getContext("2d");
   const P = (a, b, z) => [MX + W.HTW + (a - b) * W.HTW, H0 + (a + b) * W.HTH - z];
   const q = (pts, f) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fillStyle = f; c.fill(); };
@@ -706,25 +749,42 @@ W.zoneRoofSprite = (cx, cy, S, Z) => {
     // skylight strips across the top
     if (v % 4 === 1 && !northEdge && !southEdge) W.boxLocal(c, P, westEdge ? 0.2 : 0, 0.15, eastEdge ? 0.8 : 1, 0.85, top, top + 2, "rgba(120,220,240,.6)", "#2a4a5a", "#1a3444");
   } else if (Z.kind === "vault") {
-    const zt = t => hpx + R * Math.sin(Math.PI * W.clamp(t, 0, 1));
-    const zv = b => zt((v + b) / Z.d);
-    // four strips across the cell, so the curve reads smooth; the slope toward the street is lit
-    for (let k = 0; k < 4; k++) {
-      const b0 = k / 4, b1 = (k + 1) / 4, mid = (v + (b0 + b1) / 2) / Z.d;
-      q([P(0, b0, zv(b0)), P(1, b0, zv(b0)), P(1, b1, zv(b1)), P(0, b1, zv(b1))], mid > 0.5 ? "#4f6f92" : "#34506e");
-      q([P(0.12, b0, zv(b0) + 0.3), P(0.88, b0, zv(b0) + 0.3), P(0.88, b1, zv(b1) + 0.3), P(0.12, b1, zv(b1) + 0.3)], mid > 0.5 ? "rgba(159,216,255,.32)" : "rgba(120,180,230,.18)");
+    const zv = W.vaultTop(c, P, hpx, Z, u, v, base);
+    // a turret (a squat drum, twin barrels to the bow) or a radar dish, where the zone puts one
+    for (const D of (Z.details || []).filter(d => d.u === u && d.v === v)) {
+      const z = zv(0.5);
+      if (D.kind === "turret") {
+        // a twin-barrelled turret on a squat drum, the barrels laid toward the bow
+        const [x, y] = P(0.5, 0.5, z);
+        c.fillStyle = "rgba(0,0,0,.25)"; c.beginPath(); c.ellipse(x, y + 2, 22, 11, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = W.shade(base, 0.6); c.beginPath(); c.ellipse(x, y, 18, 9, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = W.shade(base, 0.95); c.fillRect(x - 18, y - 10, 36, 10);
+        c.fillStyle = W.shade(base, 1.2); c.beginPath(); c.ellipse(x, y - 10, 18, 9, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = W.shade(base, 0.8); c.beginPath(); c.ellipse(x - 2, y - 14, 10, 5, 0, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = "#2a2a30"; c.lineWidth = 3; c.beginPath(); c.moveTo(x - 6, y - 13); c.lineTo(x - 36, y - 28); c.moveTo(x - 1, y - 11); c.lineTo(x - 31, y - 26); c.stroke();
+        c.fillStyle = "#a8323e"; c.fillRect(x - 6, y - 17, 12, 3);
+      } else if (D.kind === "dish") {
+        // the radar dish, tilted up on its mast
+        const [x, y] = P(0.5, 0.5, z);
+        c.fillStyle = "#3a3a40"; c.fillRect(x - 2, y - 22, 4, 22);
+        c.fillStyle = W.shade(base, 0.6); c.beginPath(); c.ellipse(x, y - 30, 34, 17, -0.35, 0, Math.PI * 2); c.fill();
+        c.fillStyle = W.shade(base, 1.15); c.beginPath(); c.ellipse(x + 2, y - 32, 29, 13, -0.35, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = W.shade(base, 0.75); c.lineWidth = 1; c.beginPath(); c.ellipse(x + 2, y - 32, 18, 8, -0.35, 0, Math.PI * 2); c.stroke();
+        c.strokeStyle = "#5a5a60"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x + 2, y - 32); c.lineTo(x + 4, y - 52); c.stroke();
+        c.fillStyle = "#ff3048"; c.fillRect(x + 3, y - 55, 3, 3);
+      }
     }
-    // a steel rib every third cell
-    if (u % 3 === 0) { const pts = []; for (let k = 0; k <= 4; k++) pts.push(P(0, k / 4, zv(k / 4) + 0.5)); line(pts, "#8aa0b8"); }
-    // the east end: a glazed half-moon
-    if (eastEdge) {
+    // the east end: a glazed half-moon, a cockpit's canopy (a hull's own end walls cap it)
+    if (eastEdge && (!Z.metal || Z.cockpit)) {
       const pts = [P(1, 0, hpx), P(1, 1, hpx)];
       for (let k = 4; k >= 0; k--) pts.push(P(1, k / 4, zv(k / 4)));
-      q(pts, "#1a2a3a");
-      const inner = [P(1, 0.1, hpx + 2), P(1, 0.9, hpx + 2)];
-      for (let k = 4; k >= 0; k--) inner.push(P(1, 0.1 + 0.8 * k / 4, zv(0.1 + 0.8 * k / 4) - 2));
-      q(inner, "rgba(159,216,255,.4)");
-      line([P(1, 0.5, hpx), P(1, 0.5, zv(0.5))], "#2a3444");
+      q(pts, Z.metal ? W.shade(base, 0.7) : "#1a2a3a");
+      if (!Z.metal || Z.cockpit) {
+        const inner = [P(1, 0.1, hpx + 2), P(1, 0.9, hpx + 2)];
+        for (let k = 4; k >= 0; k--) inner.push(P(1, 0.1 + 0.8 * k / 4, zv(0.1 + 0.8 * k / 4) - 2));
+        q(inner, Z.cockpit ? "rgba(84,242,255,.55)" : "rgba(159,216,255,.4)");
+        line([P(1, 0.5, hpx), P(1, 0.5, zv(0.5))], "#2a3444");
+      }
     }
   } else if (Z.kind === "glass") {
     // one long sheet of glass, mullions every other cell, a lit glow from the lobby under it
@@ -746,6 +806,53 @@ W.zoneRoofSprite = (cx, cy, S, Z) => {
   s = { cv, ox: W.HTW + MX, oy: H0 };
   W.cellSprites.set(key, s);
   return s;
+};
+/* The top of a vault over one cell (u, v of the zone Z), from the eaves at
+ * hpx up to the ridge: strips so the curve reads smooth; a hull shades
+ * smoothly over its back, brightest just past the spine, with a panel seam
+ * every eighth cell, a dorsal spine and (Z.glass) a cockpit's glazing.
+ * Returns the height along the cell. Shared by roofs and a hull's end walls. */
+/* What small thing (if any) sits on cell (u, v) of a hull's top: the long
+ * panel lines run the length of it; vents, hatches, darker plates and the
+ * odd antenna are scattered. */
+W.greeble = (Z, u, v) => {
+  if (!Z.metal || !Z.greeble || u < 0) return "";
+  const lane = v % 6 === 2 ? "l" : "";
+  const h = W.hash2(u + Z.x * 7, v + Z.y * 13, 5);
+  return lane + (h < 0.035 ? "v" : h < 0.06 ? "h" : h < 0.12 ? "p" : h < 0.13 ? "a" : "");
+};
+W.vaultTop = (c, P, hpx, Z, u, v, base) => {
+  const q = (pts, f) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fillStyle = f; c.fill(); };
+  const line = (pts, col) => { c.strokeStyle = col; c.lineWidth = 1; c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); };
+  const R = Z.rise || 0;
+  const zv = b => hpx + R * Math.sin(Math.PI * W.clamp((v + b) / Z.d, 0, 1));
+  const NS = Z.metal ? 6 : 4, glazed = Z.glass !== undefined && u >= 0 && u < Z.glass;
+  for (let k = 0; k < NS; k++) {
+    const b0 = k / NS, b1 = (k + 1) / NS, mid = (v + (b0 + b1) / 2) / Z.d;
+    const metal = W.shade(base, 1.42 - 0.95 * Math.abs(mid - 0.42));
+    q([P(0, b0, zv(b0)), P(1, b0, zv(b0)), P(1, b1, zv(b1)), P(0, b1, zv(b1))], Z.metal ? metal : mid > 0.5 ? "#4f6f92" : "#34506e");
+    if (!Z.metal) q([P(0.12, b0, zv(b0) + 0.3), P(0.88, b0, zv(b0) + 0.3), P(0.88, b1, zv(b1) + 0.3), P(0.12, b1, zv(b1) + 0.3)], mid > 0.5 ? "rgba(159,216,255,.32)" : "rgba(120,180,230,.18)");
+    // the cockpit: tinted glass over the front of the bridge
+    if (glazed && mid > 0.18 && mid < 0.82) q([P(0, b0, zv(b0) + 0.4), P(1, b0, zv(b0) + 0.4), P(1, b1, zv(b1) + 0.4), P(0, b1, zv(b1) + 0.4)], `rgba(84,200,255,${0.35 + 0.25 * (1 - Math.abs(mid - 0.5) * 2)})`);
+  }
+  // ribs every third cell on a glazed vault; on a hull, a panel seam every eighth
+  if (Z.metal ? u % 8 === 0 : u % 3 === 0) { const pts = []; for (let k = 0; k <= 4; k++) pts.push(P(0, k / 4, zv(k / 4) + 0.5)); line(pts, Z.metal ? "rgba(0,0,0,.28)" : "#8aa0b8"); }
+  // the dorsal spine along the top of a hull
+  if (Z.metal && Z.spine) {
+    const r = Z.d / 2 - v;
+    if (r > -0.5 && r < 1.5) { const b0 = W.clamp(r - 0.35, 0, 1), b1 = W.clamp(r + 0.35, 0, 1); if (b1 > b0) W.boxLocal(c, P, 0, b0, 1, b1, zv((b0 + b1) / 2), zv((b0 + b1) / 2) + 3, W.shade(base, 1.5), W.shade(base, 1.1), W.shade(base, 0.8)); }
+  }
+  // the greebles
+  const g = W.greeble(Z, u, v);
+  if (g) {
+    const flat = (a0, b0, a1, b1, dz, col) => q([P(a0, b0, zv(b0) + dz), P(a1, b0, zv(b0) + dz), P(a1, b1, zv(b1) + dz), P(a0, b1, zv(b1) + dz)], col);
+    if (g.includes("l")) flat(0, 0.45, 1, 0.55, 0.3, "rgba(0,0,0,.22)");
+    if (g.includes("p")) flat(0.05, 0.1, 0.95, 0.9, 0.2, "rgba(0,0,0,.08)");
+    if (g.includes("v")) { flat(0.15, 0.25, 0.85, 0.75, 0.4, "rgba(20,22,28,.7)"); for (const t of [0.35, 0.5, 0.65]) flat(0.2, t - 0.03, 0.8, t + 0.03, 0.6, "rgba(160,160,160,.35)"); }
+    if (g.includes("h")) { flat(0.2, 0.2, 0.8, 0.8, 0.4, "rgba(0,0,0,.28)"); flat(0.27, 0.27, 0.73, 0.73, 0.5, W.shade(base, 1.1)); }
+    if (g.includes("a")) { const [x, y] = P(0.5, 0.5, zv(0.5)); c.fillStyle = "#4a4a50"; c.fillRect(x, y - 16, 1, 16); c.fillStyle = "#ff3048"; c.fillRect(x - 1, y - 18, 3, 2); }
+  }
+  return zv;
 };
 /* A stadium's roof cell at the edge of the open bowl: the roof, and under
  * its edge the shadowed back of the stand behind the top row of seats, the
@@ -783,7 +890,7 @@ W.standSprite = (S, south, east) => {
 W.deckSprite = (m, cx, cy) => {
   const k = m.i(cx, cy), ax = m.deckAxis[k], lo = m.deckLo[k], hi = m.deckHi[k], flat = m.deck[k];
   const zAt = (u, v) => ax === 1 ? lo + (hi - lo) * u : ax === 2 ? lo + (hi - lo) * v : flat;
-  const on = (x, y) => m.inb(x, y) && (m.deck[m.i(x, y)] > 0 || m.deckHi[m.i(x, y)] > 0);
+  const on = (x, y) => m.inb(x, y) && (m.deck[m.i(x, y)] > 0 || m.deckHi[m.i(x, y)] > 0 || m.height[m.i(x, y)] > 0);
   // an edge gets a railing when nothing walkable joins it and it is well off the ground
   const railN = !on(cx, cy - 1) && Math.max(zAt(0, 0), zAt(1, 0)) > 5;
   const railS = !on(cx, cy + 1) && Math.max(zAt(0, 1), zAt(1, 1)) > 5;
@@ -835,14 +942,25 @@ W.deckSprite = (m, cx, cy) => {
 W.cutSprite = (m, cx, cy) => {
   const b = m.buildings[m.bid[m.i(cx, cy)]];
   const st = W.STYLES[b.style] || W.STYLES.office;
-  const key = `cut|${b.style}|${b.color || ""}`;
+  // machinery stands tall even with the roof off: pipes along its top, vents and lights on its sides
+  const mv = st.cut ? Math.floor(W.hash2(cx, cy, 3) * 4) : 0;
+  const key = `cut|${b.style}|${b.color || ""}|${mv}|${b.glow || ""}`;
   let s = W.cellSprites.get(key);
   if (!s) {
-    const hpx = 9, H0 = 10 + hpx, MX = 8;
+    const hpx = st.cut || 9, H0 = 10 + hpx, MX = 8;
     const cv = W.canvas(W.TW + MX * 2, H0 + W.TH + 4), c = cv.getContext("2d");
     const P = (u, v, z) => [MX + W.HTW + (u - v) * W.HTW, H0 + (u + v) * W.HTH - z];
     const wall = b.color || st.wall;
     W.boxLocal(c, P, 0, 0, 1, 1, 0, hpx, W.shade(wall, 1.5), wall, W.shade(wall, 0.68));
+    if (st.cut) {
+      const q = (pts, f) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fillStyle = f; c.fill(); };
+      // pipes running along the top, a housing, a vent; a light or two on the sides
+      if (mv !== 3) for (const t of mv === 1 ? [0.3, 0.7] : [0.5]) W.boxLocal(c, P, 0, t - 0.1, 1, t + 0.1, hpx, hpx + 3, "#7a8090", "#5a6070", "#4a5060");
+      if (mv === 2) W.boxLocal(c, P, 0.2, 0.2, 0.8, 0.8, hpx, hpx + 9, W.shade(wall, 1.7), W.shade(wall, 1.2), W.shade(wall, 0.85));
+      if (mv === 3) q([P(0.2, 0.2, hpx + 0.2), P(0.8, 0.2, hpx + 0.2), P(0.8, 0.8, hpx + 0.2), P(0.2, 0.8, hpx + 0.2)], "#14161c");
+      for (const z of [6, 14]) q([P(0, 1, z), P(1, 1, z), P(1, 1, z + 1), P(0, 1, z + 1)], "rgba(0,0,0,.35)");
+      if (b.glow && mv < 2) { const [x, y] = P(0.3 + 0.4 * mv, 1, hpx - 6); c.fillStyle = b.glow; c.fillRect(x, y, 2, 2); const [x2, y2] = P(1, 0.6, hpx - 9); c.fillRect(x2, y2, 1, 2); }
+    }
     s = { cv, ox: W.HTW + MX, oy: H0 };
     W.cellSprites.set(key, s);
   }
@@ -1177,6 +1295,38 @@ W.drawProp = (c, p, sx, sy, t) => {
       break;
     }
     case "solid": break;
+    case "thrusters": {
+      // a bank of engine bells on the east face (x = p.fx) of a block, glowing: p.rows is
+      // [[z, [y, y, ...]], ...] in world units and px; each bell a circle in the face's own plane,
+      // standing out from it; drawn from past the block's last corner
+      const fu = p.fx - p.x, R = p.r || 20, k = Math.SQRT1_2 * 1.26;
+      const disc = (du, fv, z, r, fill, stroke) => {
+        const [x, y] = P(fu + du, fv, z);
+        c.save(); c.transform(-0.894, 0.447, 0, 1, x, y);
+        c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.restore();
+        c.fillStyle = fill; c.fill(); if (stroke) { c.strokeStyle = stroke; c.lineWidth = 1.5; c.stroke(); }
+      };
+      for (const [z, ys] of p.rows) for (const y of ys) {
+        const fv = y - p.y;
+        for (let i = 0; i <= 5; i++) disc(0.12 * i, fv, z, R * (0.8 + 0.04 * i), W.shade("#8a8680", 0.55 + 0.08 * i));
+        disc(0.62, fv, z, R, "#2a1a1a", "#d8d4cc");
+        disc(0.64, fv, z, R * 0.78, "rgba(255,90,60,.8)");
+        disc(0.66, fv, z, R * 0.45, "rgba(255,225,205,.92)");
+      }
+      void k;
+      break;
+    }
+    case "nozzle": {
+      // an engine bell lying along x, its mouth to the west, its axis p.z up; the glow inside it
+      // p.dir 1: the mouth to the east, toward the camera, glowing
+      const z = p.z || 30, R = p.r || 12, L = p.len || 2.5, dir = p.dir || -1;
+      const ring = (u, r, f, s) => { const [x, y] = P(u, 0, z); c.fillStyle = f; c.beginPath(); c.ellipse(x, y, r * 0.55, r, -0.46, 0, Math.PI * 2); c.fill(); if (s) { c.strokeStyle = s; c.lineWidth = 1; c.stroke(); } };
+      for (let k = 0; k <= 8; k++) { const u = dir * L * (k / 8); ring(u, R * (0.55 + 0.45 * (k / 8)), W.shade("#5a6070", 0.7 + 0.04 * k)); }
+      ring(dir * L, R, "#1a1d24", "#7a8090");
+      ring(dir * L, R * 0.75, "rgba(84,170,255,.55)");
+      ring(dir * L, R * 0.4, "rgba(200,240,255,.7)");
+      break;
+    }
     case "silo": {
       // a round silo: ribbed steel, a dome, a ladder up the side
       const H = p.h || 80, rx = 30, ry = 15, col = p.color || "#9aa0a8";

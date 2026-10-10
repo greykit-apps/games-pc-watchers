@@ -61,6 +61,8 @@ W.PROPS = {
   silo:    { walk: false, los: false, h: 90 },   // a round silo, three tiles across, drawn from its middle
   lorry:   { walk: false, los: false, h: 22 },   // a box lorry four tiles long, drawn from its back end
   solid:   { walk: false, los: false, h: 0 },    // nothing to see: the rest of a big prop's footprint
+  nozzle:  { walk: false, los: false, h: 40 },   // a ship's engine bell, pointing west, p.z up
+  thrusters: { walk: false, los: false, h: 60 }, // a bank of engine bells on the east face of a block
 };
 
 W.Map = class {
@@ -231,14 +233,24 @@ W.Map = class {
     run("w", d - 2, (a, l) => wall(x, y + 1 + a, 1, l));
     run("e", d - 2, (a, l) => wall(x + w - 1, y + 1 + a, 1, l));
     // door cells are floor too, with the wall carried on over them as a lintel
+    const doorCells = [];
     for (const [side, at, wd] of s.doors) {
       const n = wd || 2;
       for (let k = 0; k < n; k++) {
         const [cx, cy] = side === "n" ? [x + at + k, y] : side === "s" ? [x + at + k, y + d - 1] : side === "w" ? [x, y + 1 + at + k] : [x + w - 1, y + 1 + at + k];
         if (!this.inb(cx, cy)) continue;
         this.ground[this.i(cx, cy)] = s.floor;
+        doorCells.push([cx, cy]);
         if (!this.lintels.some(l => l.x === cx && l.y === cy)) this.lintels.push({ x: cx, y: cy, s: s.id });
       }
+    }
+    /* A raised structure (z0 px up: a ship in its cradle) stands on its
+     * walls; its floor is a deck at z0, its doors open onto thin air unless
+     * a ramp or a landing meets them; the ground under its walls is s.under. */
+    if (s.z0) {
+      this.deckArea(x + 1, y + 1, w - 2, d - 2, s.z0);
+      for (const [cx, cy] of doorCells) this.deckArea(cx, cy, 1, 1, s.z0);
+      for (let j = y; j < y + d; j++) for (let i = x; i < x + w; i++) if (this.inb(i, j) && this.height[this.i(i, j)] > 0) this.ground[this.i(i, j)] = s.under ?? W.G.PAD;
     }
     return s;
   }
@@ -251,6 +263,7 @@ W.Map = class {
     s.id = this.structures.length;
     this.structures.push(s);
     for (let j = s.y; j < s.y + s.d; j++) for (let i = s.x; i < s.x + s.w; i++) if (this.inb(i, j) && this.roofOf[this.i(i, j)] < 0) this.roofOf[this.i(i, j)] = s.id;
+    if (s.pillars === false) return s;
     const h = s.floors * W.ZH;
     for (let i = s.x; i < s.x + s.w; i += s.every) for (const j of [s.y, s.y + s.d - 1]) {
       if (!this.inb(i, j) || this.ground[this.i(i, j)] === W.G.RAIL || this.height[this.i(i, j)] > 0 || this.propAt[this.i(i, j)] >= 0) continue;
@@ -350,16 +363,17 @@ W.Map = class {
     for (let k = 0; k < this.w * this.h; k++) {
       const g = this.ground[k];
       let walk = this.height[k] === 0 && g !== W.G.WATER;
-      let los = this.height[k] > 0;
+      let los = this.height[k] > 0, propBlocks = false;
       const p = this.propAt[k];
       if (p >= 0 && !this.props[p].gone) {
         const P = this.props[p], def = W.PROPS[P.type];
-        if (def && !def.walk && P.walk !== true) walk = false;
+        if (def && !def.walk && P.walk !== true) { walk = false; propBlocks = true; }
         if ((def && !def.los) || P.blocks) los = true;
       }
       // nobody walks along or across the tracks, except at a level crossing
       if (g === W.G.RAIL && !this.crossing[k]) walk = false;
-      if ((this.deck[k] || this.deckHi[k]) && this.height[k] === 0) walk = true;
+      // a deck is walked on, over water or track alike, unless something stands on it
+      if ((this.deck[k] || this.deckHi[k]) && this.height[k] === 0) walk = !propBlocks;
       this.walk[k] = walk ? 1 : 0;
       this.losBlock[k] = los ? 1 : 0;
     }

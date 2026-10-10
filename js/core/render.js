@@ -82,7 +82,9 @@ W.Renderer = class {
     // footbridge decks, a slab per cell, drawn over whatever passes under
     for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
       const k = m.i(x, y);
-      if (m.deck[k] || m.deckHi[k]) st.push({ kind: "deck", x, y, d: x + y + 1.6 });
+      // a raised building's floor lies under all that stands on it; a walkway's deck over what passes beneath
+      const zs = m.roofOf[k] >= 0 && m.structures[m.roofOf[k]].z0;
+      if (m.deck[k] || m.deckHi[k]) st.push({ kind: "deck", x, y, d: x + y + (zs ? -0.9 : 1.6) });
     }
     // the wall over each doorway
     for (const l of m.lintels) st.push({ kind: "lintel", x: l.x, y: l.y, s: l.s, d: l.x + l.y + 1 });
@@ -238,6 +240,13 @@ W.Renderer = class {
         if (d.type === "disc") c.fill(); else c.stroke();
       } else if (d.type === "rect") {
         dia(d.x, d.y, d.x2 - d.x, d.y2 - d.y); if (d.fill) c.fill(); else c.stroke();
+      } else if (d.type === "rrect") {
+        // a rectangle with rounded corners (radius d.r), traced in world space
+        const pts = [], r = d.r || 2;
+        for (const [cx0, cy0, a0] of [[d.x2 - r, d.y + r, -Math.PI / 2], [d.x2 - r, d.y2 - r, 0], [d.x + r, d.y2 - r, Math.PI / 2], [d.x + r, d.y + r, Math.PI]])
+          for (let k = 0; k <= 6; k++) { const a = a0 + k / 6 * Math.PI / 2; pts.push(P(cx0 + Math.cos(a) * r, cy0 + Math.sin(a) * r)); }
+        c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath();
+        if (d.fill) c.fill(); else c.stroke();
       } else if (d.type === "line") {
         if (d.dash) c.setLineDash(d.dash);
         seg(d.x, d.y, d.x2, d.y2, d.color, d.w || 1);
@@ -368,7 +377,8 @@ W.Renderer = class {
     // everything that stands up, back to front
     const dyn = [];
     // people up on a walkway sort after its deck
-    for (const u of world.units) dyn.push({ kind: "unit", u, d: u.x + u.y + (u.alive ? 0 : -0.4) + ((u.z || 0) > 0.3 ? 1.7 : 0) });
+    const raisedAt = (x, y) => { const cx = Math.floor(x), cy = Math.floor(y); if (!m.inb(cx, cy)) return 0; const r = m.roofOf[m.i(cx, cy)]; return r >= 0 ? m.structures[r].z0 || 0 : 0; };
+    for (const u of world.units) dyn.push({ kind: "unit", u, d: u.x + u.y + (u.alive ? 0 : -0.4) + ((u.z || 0) > 0.3 && !raisedAt(u.x, u.y) ? 1.7 : 0) });
     for (const car of world.cars) dyn.push({ kind: "car", car, d: car.x + car.y + (car.z ? 1.7 : 0) });
     for (const it of world.items) dyn.push({ kind: "item", it, d: it.x + it.y - 0.3 });
     dyn.sort((a, b) => a.d - b.d);
@@ -384,7 +394,7 @@ W.Renderer = class {
         if (a.kind === "lintel") {
           if (open.has(a.s) || !vis(a.x + 0.5, a.y + 0.5)) continue;
           const s = W.lintelSprite(m, a.x, a.y, m.structures[a.s]);
-          const [px, py] = W.proj(a.x, a.y);
+          const [px, py] = W.proj(a.x, a.y, m.structures[a.s].z0 || 0);
           const f = fade.get("s" + a.s);
           if (f) c.globalAlpha = f;
           c.drawImage(s.cv, Math.round(px + ox - s.ox), Math.round(py + oy - s.oy));
@@ -397,7 +407,7 @@ W.Renderer = class {
         } else if (a.kind === "roof") {
           if (open.has(a.s) || !vis(a.x + 0.5, a.y + 0.5)) continue;
           const s = W.roofSprite(m, a.x, a.y, m.structures[a.s]);
-          const [px, py] = W.proj(a.x, a.y);
+          const [px, py] = W.proj(a.x, a.y, m.structures[a.s].z0 || 0);
           const f = fade.get("s" + a.s);
           if (f) c.globalAlpha = f;
           c.drawImage(s.cv, Math.round(px + ox - s.ox), Math.round(py + oy - s.oy));
@@ -408,7 +418,7 @@ W.Renderer = class {
           const cut = B && B.struct !== undefined && open.has(B.struct);
           // an inside wall of a closed building is just more roof
           const s = cut ? W.cutSprite(m, a.x, a.y) : B && B.inner ? W.roofSprite(m, a.x, a.y, m.structures[B.struct]) : W.cellSprite(m, a.x, a.y);
-          const [px, py] = W.proj(a.x, a.y);
+          const [px, py] = W.proj(a.x, a.y, B && B.struct !== undefined ? m.structures[B.struct].z0 || 0 : 0);
           const f = cut ? 0 : fade.get(B && B.struct !== undefined ? "s" + B.struct : m.bid[m.i(a.x, a.y)]);
           if (f) c.globalAlpha = f;
           c.drawImage(s.cv, Math.round(px + ox - s.ox), Math.round(py + oy - s.oy));
@@ -416,11 +426,12 @@ W.Renderer = class {
         } else {
           const p = a.p;
           if (!vis(p.x, p.y)) continue;
-          const [px, py] = W.proj(p.x, p.y);
-          W.drawProp(c, p, Math.round(px + ox), Math.round(py + oy), t);
-          // whatever glows inside a closed building stays inside it
+          // what is inside a closed building is under its roof: not drawn at all, so nothing
+          // big in there can show over the roof behind it, and nothing glows out of it
           const ro = m.roofOf[m.i(Math.floor(p.x), Math.floor(p.y))];
           if (ro >= 0 && !open.has(ro) && !m.structures[ro].canopy) continue;
+          const [px, py] = W.proj(p.x, p.y, raisedAt(p.x, p.y));
+          W.drawProp(c, p, Math.round(px + ox), Math.round(py + oy), t);
           if (p.type === "lamp") glows.push([px + ox + 4, py + oy - 28, "#ffd890", 22]);
           else if (p.type === "blade") glows.push([px + ox, py + oy - (p.z || 18) - 16, p.color || "#ff5266", 18]);
           else if (p.type === "vend" || p.type === "kiosk") glows.push([px + ox, py + oy - 9, p.color || "#54f2ff", 14]);
@@ -453,7 +464,7 @@ W.Renderer = class {
             glows.push([qx + ox, qy + oy - 2, "#fff0c0", 14]);
           }
         } else {
-          const it = b.it, [px, py] = W.proj(it.x, it.y);
+          const it = b.it, [px, py] = W.proj(it.x, it.y, raisedAt(it.x, it.y));
           c.save(); c.translate(Math.round(px + ox), Math.round(py + oy)); c.scale(0.45, 0.45);
           W.drawWeaponIcon(c, it.type, 0, 0, Math.sin(t * 5 + it.x) > 0.6 ? "#ffffff" : "#ffb000");
           c.restore();
@@ -533,7 +544,7 @@ W.Renderer = class {
     };
     // an enterable building fades as one, walls and roof together
     for (const S of m.structures) {
-      const L = (S.floors * W.ZH + 4) / W.TH;
+      const L = ((S.z0 || 0) + S.floors * W.ZH + 4) / W.TH;
       let hit = false;
       for (const u of who) {
         const cx = Math.floor(u.x), cy = Math.floor(u.y);

@@ -25,6 +25,7 @@ W.STYLES = {
   hedge:     { wall: "#1d4a2a", roof: "#235a30", trim: "#3a7d45", scan: "#1f4a2a", paint: "crop", plain: true },
   house:     { wall: "#6a6458", roof: "#3a2e2a", trim: "#e8e4dc", scan: "#5a4a40", paint: "house" },
   church:    { wall: "#6a6672", roof: "#2e2c38", trim: "#ffcf6b", scan: "#4a4656", paint: "church" },
+  clad:      { wall: "#c8c0b0", roof: "#4a3a34", trim: "#e8e4dc", scan: "#8a8478", paint: "clad" },
   canopy:    { wall: "#3a4458", roof: "#3a4458", trim: "#9fd8ff", scan: "#2a3448" },
   interior:  { wall: "#3a3f4e", roof: "#3a3f4e", trim: "#5a6070", win: ["#3a3f4e"], lit: 0, wins: 0, dark: "#3a3f4e", scan: "#3a3f4e" },
 };
@@ -44,7 +45,8 @@ W.cellSprite = (m, cx, cy) => {
   // some looks depend on where in the building the cell is: a house's roof slope, a barn's door
   const st0 = W.STYLES[b.style];
   const H1 = W.signHost(m, b);
-  const where = st0 && (st0.paint === "house" || st0.paint === "barn") ? `|${cx - b.x},${cy - b.y},${b.w},${b.d},${b.roofColor || ""},${b.garage ? "g" : ""},${b.door ?? ""}`
+  const where = st0 && (st0.paint === "barn" || st0.paint === "clad") ? `|${cx - H1.x},${cy - H1.y},${H1.w},${H1.d},${H1.ridge || 0},${H1.pitch || ""},${H1.gambrel ? "g" : ""},${H1.color || b.color || ""},${H1.loft ? "l" : ""},${b.door ?? ""},${b.floors},${b.inner ? "i" : ""}`
+    : st0 && st0.paint === "house" ? `|${cx - b.x},${cy - b.y},${b.w},${b.d},${b.roofColor || ""},${b.garage ? "g" : ""},${b.door ?? ""}`
     : st0 && st0.paint === "church" ? `|${cx - H1.x},${cy - H1.y},${H1.w},${H1.d},${H1.ridge || 0},${b.roofKit || ""},${b.floors}` : "";
   const key = signHere ? `u${cx},${cy}` : `${b.style}|${b.floors}|${edges}|${variant}|${b.awning || ""}|${b.color || ""}|${b.door || ""}${where}|${b.roofKit || ""}|${(edges & 15) === 0 ? W.hash2(cx, cy, 7) < 0.12 ? "ac" : "" : ""}`;
   let s = W.cellSprites.get(key);
@@ -280,7 +282,17 @@ W.PAINTERS = (() => {
     },
     /* a red barn: planks, white trim, a cross-braced door */
     barn(o) {
-      const { c, P, hpx, b, cx, cy, ZH } = o;
+      const { c, P, hpx, b, cx, cy, ZH, m } = o;
+      const S = b.struct !== undefined && m ? m.structures[b.struct] : null;
+      if (S && S.pitch) {
+        const red = S.color || "#6a2424";
+        faces(o, red, W.shade(red, 0.7));
+        c.strokeStyle = "rgba(0,0,0,.25)"; c.lineWidth = 1; c.beginPath();
+        for (let i = 1; i < 6; i++) { const u = i / 6; let a = P(u, 1, 0), e = P(u, 1, hpx); c.moveTo(a[0], a[1]); c.lineTo(e[0], e[1]); a = P(1, 1 - u, 0); e = P(1, 1 - u, hpx); c.moveTo(a[0], a[1]); c.lineTo(e[0], e[1]); }
+        c.stroke();
+        W.gableWall(o, S, red);
+        return;
+      }
       faces(o, "#6a2424", "#4a1818");
       c.strokeStyle = "rgba(0,0,0,.25)"; c.lineWidth = 1; c.beginPath();
       for (let i = 1; i < 6; i++) { const u = i / 6; let a = P(u, 1, 0), e = P(u, 1, hpx); c.moveTo(a[0], a[1]); c.lineTo(e[0], e[1]); a = P(1, 1 - u, 0); e = P(1, 1 - u, hpx); c.moveTo(a[0], a[1]); c.lineTo(e[0], e[1]); }
@@ -372,7 +384,7 @@ W.PAINTERS = (() => {
       quad([P(0, 1, 0), P(0.1, 1, 0), P(0.1, 1, hpx), P(0, 1, hpx)], W.shade(stone, 0.8));
       quad([P(1, 0.9, 0), P(1, 1, 0), P(1, 1, hpx), P(1, 0.9, hpx)], W.shade(stone, 0.55));
       // the top: the roof's slopes over the end walls, or a parapet
-      if (front || back) W.drawPitch(c, P, S, cx, cy);
+      if (S && S.pitch) W.drawPitch(c, P, S, cx, cy);
       else roof(o, S ? (S.roof || "#2e2c38") : "#4a4656", W.shade(stone, 1.1));
       // a bell tower: a belfry of open arches, and a spire over the middle
       if (b.roofKit === "spire") {
@@ -396,8 +408,69 @@ W.PAINTERS = (() => {
       onFace(o, "s", 0, 1, hpx - 4, hpx - 1, "rgba(84,242,255,.75)"); onFace(o, "e", 0, 1, hpx - 4, hpx - 1, "rgba(84,242,255,.45)");
       roof(o, "#2e3340", "#454c5c");
     },
+    /* clapboard: painted siding, shuttered windows; gabled if it is pitched */
+    clad(o) {
+      const { c, P, hpx, b, cx, cy, ZH, m, rnd } = o;
+      const S = b.struct !== undefined && m ? m.structures[b.struct] : null;
+      const col = (S && S.color) || b.color || "#c8c0b0";
+      faces(o, col, W.shade(col, 0.68));
+      c.strokeStyle = "rgba(0,0,0,.13)"; c.lineWidth = 1; c.beginPath();
+      for (let z = 3; z < hpx; z += 3) { let a = P(0, 1, z), e = P(1, 1, z); c.moveTo(a[0], a[1]); c.lineTo(e[0], e[1]); a = P(1, 0, z); e = P(1, 1, z); c.moveTo(a[0], a[1]); c.lineTo(e[0], e[1]); }
+      c.stroke();
+      if (!b.inner) for (const face of ["s", "e"]) for (let f = 0; f < b.floors; f++) {
+        const z = f * ZH;
+        const lit = rnd() < 0.5, g = lit ? (face === "s" ? "#ffcf6b" : "#c89a4a") : (face === "s" ? "#1a2030" : "#141a26");
+        onFace(o, face, 0.32, 0.68, z + 4, z + ZH - 3, g);
+        onFace(o, face, 0.2, 0.3, z + 4, z + ZH - 3, "#2a4a3a"); onFace(o, face, 0.7, 0.8, z + 4, z + ZH - 3, "#2a4a3a");
+      }
+      onFace(o, "s", 0, 1, hpx - 2, hpx, "#e8e4dc"); onFace(o, "e", 0, 1, hpx - 2, hpx, "#b8b4ac");
+      if (S && S.pitch) W.gableWall(o, S, col);
+      else roof(o, (S && S.roof) || "#4a3a34", "#e8e4dc");
+    },
   };
 })();
+
+/* The top of a wall of a pitched enterable building: on the gable end (the
+ * south face for pitch "y", the east face for pitch "x") the wall rises to
+ * the roof line, and over every wall the roof's slopes run on. */
+W.gableWall = (o, S, col) => {
+  const { c, P, hpx, cx, cy } = o;
+  const front = S.pitch === "y" ? cy === S.y + S.d - 1 : cx === S.x + S.w - 1;
+  const back = S.pitch === "y" ? cy === S.y : cx === S.x;
+  if (front) W.gableFace(c, P, S, cx, cy, hpx, col);
+  // every wall carries the roof's slope over itself, eaves included, so no step is left open
+  W.drawPitch(c, P, S, cx, cy);
+  void back;
+};
+/* A gable end over one cell, from zFrom up to the roof line, in the wall's
+ * colour: boards on a barn, white trim along the roof line, and (S.loft) a
+ * hayloft door under the peak. */
+W.gableFace = (c, P, S, cx, cy, zFrom, col) => {
+  const ys = S.pitch === "y";
+  const pt = (a, z) => ys ? P(a, 1, z) : P(1, a, z);
+  const Za = a => ys ? W.roofZ(S, cx, cy, a, 1) : W.roofZ(S, cx, cy, 1, a);
+  const N = 8, top = [];
+  for (let k = 0; k <= N; k++) top.push(pt(k / N, Za(k / N)));
+  const poly = [pt(0, zFrom), pt(1, zFrom), ...top.slice().reverse()];
+  c.save();
+  c.beginPath(); poly.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath();
+  c.fillStyle = ys ? col : W.shade(col, 0.7); c.fill(); c.clip();
+  if (S.style === "barn") {
+    c.strokeStyle = "rgba(0,0,0,.25)"; c.lineWidth = 1; c.beginPath();
+    for (let i = 1; i < 6; i++) { const a = pt(i / 6, zFrom), e = pt(i / 6, zFrom + 60); c.moveTo(a[0], a[1]); c.lineTo(e[0], e[1]); }
+    c.stroke();
+  }
+  // a hayloft door, or an attic window, under the peak
+  const mid = ys ? S.x + S.w / 2 - cx : S.y + S.d / 2 - cy;
+  if (mid > -0.7 && mid < 1.7) {
+    const hw = S.loft ? 0.6 : 0.3, z0 = zFrom + 3, z1 = zFrom + (S.loft ? 14 : 9);
+    const r = [pt(mid - hw, z0), pt(mid + hw, z0), pt(mid + hw, z1), pt(mid - hw, z1)];
+    c.fillStyle = S.loft ? "#2a1010" : "#ffcf6b"; c.beginPath(); r.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill();
+    if (S.loft) { c.strokeStyle = "#e8e4dc"; c.beginPath(); c.moveTo(r[0][0], r[0][1]); c.lineTo(r[2][0], r[2][1]); c.moveTo(r[1][0], r[1][1]); c.lineTo(r[3][0], r[3][1]); c.rect; c.stroke(); }
+  }
+  c.restore();
+  c.strokeStyle = "#e8e4dc"; c.lineWidth = 1; c.beginPath(); top.forEach(([x, y], i) => i ? c.lineTo(x, y - 0.5) : c.moveTo(x, y - 0.5)); c.stroke();
+};
 
 /* Whose signs a wall carries: an enterable building's outer walls carry the
  * building's, laid out along the whole facade. */
@@ -439,7 +512,7 @@ W.lintelSprite = (m, cx, cy, S) => {
     const P = (u, v, z) => [MX + W.HTW + (u - v) * W.HTW, H0 + (u + v) * W.HTH - z];
     const q = (pts, f) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fillStyle = f; c.fill(); };
     const wall = st.wall || "#3a3f4e";
-    if (S.pitch && cy === S.y + S.d - 1) {
+    if (S.pitch && S.style === "church" && cy === S.y + S.d - 1) {
       W.churchFront(c, P, S, cx, cy, H0, MX, DOOR);
       W.drawPitch(c, P, S, cx, cy);
       s = { cv, ox: W.HTW + MX, oy: H0 };
@@ -450,7 +523,8 @@ W.lintelSprite = (m, cx, cy, S) => {
     q([P(1, 0, DOOR), P(1, 1, DOOR), P(1, 1, hpx), P(1, 0, hpx)], W.shade(wall, 0.68));
     // the head of the doorway
     q([P(0, 1, DOOR), P(1, 1, DOOR), P(1, 1, DOOR + 1.5), P(0, 1, DOOR + 1.5)], W.shade(wall, 0.5));
-    q([P(0, 0, hpx), P(1, 0, hpx), P(1, 1, hpx), P(0, 1, hpx)], S.roof || st.roof);
+    if (S.pitch) W.gableWall({ c, P, hpx, cx, cy }, S, S.color || wall);
+    else q([P(0, 0, hpx), P(1, 0, hpx), P(1, 1, hpx), P(0, 1, hpx)], S.roof || st.roof);
     W.drawSigns(c, S, cx, cy, H0, MX, hpx, P);
     s = { cv, ox: W.HTW + MX, oy: H0 };
     W.cellSprites.set(key, s);
@@ -466,7 +540,9 @@ W.roofZ = (S, cx, cy, u, v) => {
   const hp = S.floors * W.ZH;
   if (!S.pitch) return hp;
   const t = S.pitch === "y" ? (cx - S.x + u) / S.w : (cy - S.y + v) / S.d;
-  return hp + (S.ridge || 16) * (1 - Math.abs(2 * t - 1));
+  const d = Math.min(1, Math.abs(2 * t - 1)), R = S.ridge || 16;
+  if (S.gambrel) return hp + R * (d > 0.5 ? 0.7 * (1 - d) / 0.5 : 0.7 + 0.3 * (0.5 - d) / 0.5);
+  return hp + R * (1 - d);
 };
 W.pitchedRoofSprite = (m, cx, cy, S) => {
   const key = `proof|${S.id}|${cx - S.x},${cy - S.y}|${m.district || ""}`;
@@ -486,19 +562,29 @@ W.drawPitch = (c, P, S, cx, cy) => {
   const q = (pts, f) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fillStyle = f; c.fill(); };
   const Z = (u, v) => W.roofZ(S, cx, cy, u, v);
   const col = S.roof || "#2e2c38";
-  if (S.pitch === "y") {
-    const r = W.clamp(S.x + S.w / 2 - cx, 0, 1);
-    if (r > 0) q([P(0, 0, Z(0, 0)), P(r, 0, Z(r, 0)), P(r, 1, Z(r, 1)), P(0, 1, Z(0, 1))], W.shade(col, 1.25));   // facing west, catching the light
-    if (r < 1) q([P(r, 0, Z(r, 0)), P(1, 0, Z(1, 0)), P(1, 1, Z(1, 1)), P(r, 1, Z(r, 1))], W.shade(col, 0.85));
-    c.strokeStyle = "rgba(0,0,0,.18)"; c.lineWidth = 1; c.beginPath();
-    for (const v of [0.33, 0.66]) { const a = P(0, v, Z(0, v)), b = P(1, v, Z(1, v)); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); }
-    c.stroke();
-    if (r > 0 && r < 1) { c.strokeStyle = W.shade(col, 1.6); c.beginPath(); const a = P(r, 0, Z(r, 0)), b = P(r, 1, Z(r, 1)); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.stroke(); }
-  } else {
-    const r = W.clamp(S.y + S.d / 2 - cy, 0, 1);
-    if (r > 0) q([P(0, 0, Z(0, 0)), P(1, 0, Z(1, 0)), P(1, r, Z(1, r)), P(0, r, Z(0, r))], W.shade(col, 0.85));
-    if (r < 1) q([P(0, r, Z(0, r)), P(1, r, Z(1, r)), P(1, 1, Z(1, 1)), P(0, 1, Z(0, 1))], W.shade(col, 1.25));
+  const ys = S.pitch === "y";
+  const r = ys ? W.clamp(S.x + S.w / 2 - cx, 0, 1) : W.clamp(S.y + S.d / 2 - cy, 0, 1);
+  const cuts = [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1];
+  if (r > 0 && r < 1 && !cuts.includes(r)) cuts.push(r);
+  cuts.sort((a, b) => a - b);
+  // one solid sheet under the strips, so no hairline seam between them lets the ground show through
+  const sheet = ys ? [...cuts.map(a => P(a, 0, Z(a, 0))), ...cuts.slice().reverse().map(a => P(a, 1, Z(a, 1)))]
+                   : [...cuts.map(a => P(0, a, Z(0, a))), ...cuts.slice().reverse().map(a => P(1, a, Z(1, a)))];
+  q(sheet, col);
+  // the slope toward the west (pitch "y") or the south (pitch "x") catches the light; a steep
+  // stretch of a gambrel shows a shade apart from its shallow one
+  for (let k = 0; k + 1 < cuts.length; k++) {
+    const a = cuts[k], b = cuts[k + 1], lit = (a + b) / 2 < r;
+    const steep = Math.abs(ys ? Z(b, 0) - Z(a, 0) : Z(0, b) - Z(0, a)) / (b - a) > (S.ridge || 16) * 1.2 / ((ys ? S.w : S.d) / 2);
+    const f = ys ? (lit ? 1.25 : 0.85) : (lit ? 0.85 : 1.25);
+    const shade = W.shade(col, f * (S.gambrel && steep ? 0.9 : 1));
+    if (ys) q([P(a, 0, Z(a, 0)), P(b, 0, Z(b, 0)), P(b, 1, Z(b, 1)), P(a, 1, Z(a, 1))], shade);
+    else q([P(0, a, Z(0, a)), P(1, a, Z(1, a)), P(1, b, Z(1, b)), P(0, b, Z(0, b))], shade);
   }
+  c.strokeStyle = "rgba(0,0,0,.18)"; c.lineWidth = 1; c.beginPath();
+  for (const t of [0.33, 0.66]) { const a = ys ? P(0, t, Z(0, t)) : P(t, 0, Z(t, 0)), b = ys ? P(1, t, Z(1, t)) : P(t, 1, Z(t, 1)); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); }
+  c.stroke();
+  if (r > 0 && r < 1) { c.strokeStyle = W.shade(col, 1.6); c.beginPath(); const a = ys ? P(r, 0, Z(r, 0)) : P(0, r, Z(0, r)), b = ys ? P(r, 1, Z(r, 1)) : P(1, r, Z(1, r)); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.stroke(); }
 };
 /* A church's front (its south face) over one cell, from zFrom up to the
  * roof line: stone, a pointed window, and the rose window centred in the
@@ -557,7 +643,7 @@ W.roofSprite = (m, cx, cy, S) => {
     const P = (u, v, z) => [MX + W.HTW + (u - v) * W.HTW, H0 + (u + v) * W.HTH - z];
     const q = (pts, f) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fillStyle = f; c.fill(); };
     q([P(0, 0, hpx), P(1, 0, hpx), P(1, 1, hpx), P(0, 1, hpx)], S.roof || st.roof);
-    if (S.canopy) {
+    if (S.canopy && !S.plain) {
       // glass down the middle, steel ribs across, a lip on the edges
       q([P(0, 0.3, hpx), P(1, 0.3, hpx), P(1, 0.7, hpx), P(0, 0.7, hpx)], "rgba(159,216,255,.28)");
       c.strokeStyle = "rgba(200,210,230,.35)"; c.lineWidth = 1; c.beginPath();
@@ -1079,9 +1165,55 @@ W.drawProp = (c, p, sx, sy, t) => {
       W.box(c, sx, sy, -0.6, -0.3, 0.6, 0.3, 16, 18, "#3a4258", "#2b3144", "#20263a");
       c.fillStyle = "rgba(159,216,255,.18)"; c.fillRect(sx - 8, sy - 15, 16, 12);
       break;
-    case "crate":
-      W.box(c, sx, sy, -0.4, -0.4, 0.4, 0.4, 0, 10, "#6a5a3a", "#55482e", "#433924");
+    case "crate": {
+      // a crate, or a stack of them (p.n), each a little askew and a shade apart
+      const n = p.n || 1;
+      for (let k = 0; k < n; k++) {
+        const j = ((p.x * 7 + p.y * 13 + k * 5) % 3 - 1) * 0.03, f = 1 - ((k + Math.floor(p.x + p.y)) % 3) * 0.08;
+        W.box(c, sx, sy, -0.4 + j, -0.4 - j, 0.4 + j, 0.4 - j, k * 10, k * 10 + 10, W.shade("#6a5a3a", f), W.shade("#55482e", f), W.shade("#433924", f));
+        const [a0, a1] = [P(-0.4 + j, 0.4 - j, k * 10 + 5), P(0.4 + j, 0.4 - j, k * 10 + 5)];
+        c.strokeStyle = "rgba(0,0,0,.25)"; c.lineWidth = 1; c.beginPath(); c.moveTo(a0[0], a0[1]); c.lineTo(a1[0], a1[1]); c.stroke();
+      }
       break;
+    }
+    case "solid": break;
+    case "silo": {
+      // a round silo: ribbed steel, a dome, a ladder up the side
+      const H = p.h || 80, rx = 30, ry = 15, col = p.color || "#9aa0a8";
+      c.fillStyle = "rgba(0,0,0,.35)"; c.beginPath(); c.ellipse(sx, sy, rx + 3, ry + 2, 0, 0, Math.PI * 2); c.fill();
+      const g = c.createLinearGradient(sx - rx, 0, sx + rx, 0);
+      g.addColorStop(0, W.shade(col, 1.15)); g.addColorStop(0.35, W.shade(col, 1.0)); g.addColorStop(1, W.shade(col, 0.55));
+      c.fillStyle = g;
+      c.beginPath(); c.moveTo(sx - rx, sy - H); c.lineTo(sx - rx, sy); c.ellipse(sx, sy, rx, ry, 0, Math.PI, 0, true); c.lineTo(sx + rx, sy - H); c.closePath(); c.fill();
+      c.strokeStyle = "rgba(0,0,0,.22)"; c.lineWidth = 1;
+      for (let z = 8; z < H; z += 8) { c.beginPath(); c.ellipse(sx, sy - z, rx, ry, 0, 0, Math.PI); c.stroke(); }
+      // the dome
+      c.fillStyle = W.shade(col, 0.85); c.beginPath(); c.ellipse(sx, sy - H, rx, ry, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = W.shade(col, 1.05); c.beginPath(); c.ellipse(sx, sy - H, rx, ry, 0, Math.PI, 0); c.lineTo(sx + rx, sy - H); c.quadraticCurveTo(sx, sy - H - 22, sx - rx, sy - H); c.fill();
+      c.fillStyle = W.shade(col, 0.7); c.beginPath(); c.moveTo(sx + rx, sy - H); c.quadraticCurveTo(sx + rx * 0.5, sy - H - 14, sx, sy - H - 15); c.lineTo(sx, sy - H + ry); c.ellipse(sx, sy - H, rx, ry, 0, Math.PI / 2, 0, true); c.fill();
+      c.fillStyle = "#5a6070"; c.fillRect(sx - 3, sy - H - 18, 6, 4);
+      // the ladder
+      c.strokeStyle = "#3a3f4c"; c.beginPath(); c.moveTo(sx + 12, sy + ry - 2); c.lineTo(sx + 12, sy - H + ry - 3); c.moveTo(sx + 16, sy + ry - 4); c.lineTo(sx + 16, sy - H + ry - 5); c.stroke();
+      for (let z = 4; z < H; z += 4) { c.beginPath(); c.moveTo(sx + 12, sy + ry - 2 - z); c.lineTo(sx + 16, sy + ry - 4 - z); c.stroke(); }
+      if (p.text) { c.save(); c.font = "bold 9px ui-monospace,Menlo,Consolas,monospace"; c.fillStyle = "rgba(232,228,220,.75)"; c.textAlign = "center"; c.fillText(p.text, sx - 4, sy - H * 0.6); c.restore(); }
+      break;
+    }
+    case "lorry": {
+      // a box lorry pointing north (-y), drawn from the back of its trailer
+      const col = p.color || "#c8ccd4", cab = p.cab || "#8a2a2a";
+      const q = (pts, f) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fillStyle = f; c.fill(); };
+      c.fillStyle = "rgba(0,0,0,.35)"; q([P(-0.5, -3.5, 0), P(0.5, -3.5, 0), P(0.5, 0.5, 0), P(-0.5, 0.5, 0)], "rgba(0,0,0,.35)");
+      // the cab, then the box behind it
+      W.box(c, sx, sy, -0.4, -3.45, 0.4, -2.35, 2, 15, W.shade(cab, 1.2), cab, W.shade(cab, 0.7));
+      q([P(0.4, -3.3, 8), P(0.4, -2.8, 8), P(0.4, -2.8, 13), P(0.4, -3.3, 13)], "#9fd8ff");
+      W.box(c, sx, sy, -0.44, -2.3, 0.44, 0.45, 2, 22, W.shade(col, 1.12), col, W.shade(col, 0.7));
+      q([P(0.44, -2.2, 12), P(0.44, 0.35, 12), P(0.44, 0.35, 15), P(0.44, -2.2, 15)], W.shade(p.stripe || "#ffb000", 0.75));
+      q([P(-0.44, 0.45, 12), P(0.44, 0.45, 12), P(0.44, 0.45, 15), P(-0.44, 0.45, 15)], p.stripe || "#ffb000");
+      // wheels
+      c.fillStyle = "#14161c";
+      for (const v of [-3.0, -1.4, -0.9, 0.0]) { const [x, y] = P(0.44, v, 0); c.fillRect(x - 3, y - 4, 6, 4); }
+      break;
+    }
     case "spout": {
       // the fountain's jet: a column of falling droplets, live
       c.fillStyle = "#3c4456"; c.fillRect(sx - 2, sy - 6, 5, 6);

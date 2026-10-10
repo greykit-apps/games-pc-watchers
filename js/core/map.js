@@ -58,6 +58,9 @@ W.PROPS = {
   laundry: { walk: true,  los: true,  h: 12 },
   yarn:    { walk: false, los: true,  h: 12 },
   rocket:  { walk: false, los: true,  h: 40 },
+  silo:    { walk: false, los: false, h: 90 },   // a round silo, three tiles across, drawn from its middle
+  lorry:   { walk: false, los: false, h: 22 },   // a box lorry four tiles long, drawn from its back end
+  solid:   { walk: false, los: false, h: 0 },    // nothing to see: the rest of a big prop's footprint
 };
 
 W.Map = class {
@@ -401,6 +404,7 @@ W.Map = class {
       m.ground[b] = this.ground[a]; m.mark[b] = this.mark[a]; m.height[b] = this.height[a]; m.deck[b] = this.deck[a];
       m.deckAxis[b] = this.deckAxis[a]; m.deckLo[b] = this.deckLo[a]; m.deckHi[b] = this.deckHi[a]; m.crossing[b] = this.crossing[a];
     }
+    const inside = (x, y, pad = 0) => x >= x0 - pad && y >= y0 - pad && x < x0 + w + pad && y < y0 + h + pad;
     const ids = new Map();
     for (const B of this.buildings) {
       const bx = Math.max(B.x, x0), by = Math.max(B.y, y0), ex = Math.min(B.x + B.w, x0 + w), ey = Math.min(B.y + B.d, y0 + h);
@@ -431,7 +435,6 @@ W.Map = class {
       const r = this.roofOf[this.i(sx, sy)];
       if (r >= 0 && sids.has(r)) m.roofOf[m.i(x, y)] = sids.get(r);
     }
-    const inside = (x, y, pad = 0) => x >= x0 - pad && y >= y0 - pad && x < x0 + w + pad && y < y0 + h + pad;
     for (const P of this.props) if (!P.gone && inside(P.x, P.y)) m.prop(P.type, P.x - x0, P.y - y0, Object.assign({}, P, { id: undefined, type: P.type, x: P.x - x0, y: P.y - y0 }));
     for (const L of this.lights) if (inside(L.x, L.y, L.r)) m.lights.push(Object.assign({}, L, { x: L.x - x0, y: L.y - y0 }));
     for (const P of this.paint) {

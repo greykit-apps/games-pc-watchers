@@ -540,6 +540,11 @@ W.roofSprite = (m, cx, cy, S) => {
   const same = (x, y) => m.inb(x, y) && (m.roofOf[m.i(x, y)] === S.id || (m.bid[m.i(x, y)] >= 0 && m.buildings[m.bid[m.i(x, y)]].inner && m.buildings[m.bid[m.i(x, y)]].struct === S.id));
   const edges = (same(cx, cy - 1) ? 0 : 1) | (same(cx + 1, cy) ? 0 : 2) | (same(cx, cy + 1) ? 0 : 4) | (same(cx - 1, cy) ? 0 : 8);
   if (S.pitch) return W.pitchedRoofSprite(m, cx, cy, S);
+  const Z = S.roofs && S.roofs.find(r => cx >= r.x && cy >= r.y && cx < r.x + r.w && cy < r.y + r.d);
+  if (Z) return W.zoneRoofSprite(cx, cy, S, Z);
+  // a stadium's roof over the stands: the front of the stand shows where it meets the pitch
+  const inCourt = (x, y) => S.court && x >= S.court.x && y >= S.court.y && x < S.court.x + S.court.w && y < S.court.y + S.court.d;
+  if (S.court && (inCourt(cx, cy + 1) || inCourt(cx + 1, cy))) return W.standSprite(S, inCourt(cx, cy + 1), inCourt(cx + 1, cy));
   const kit = W.hash2(cx, cy, 11) < 0.04 ? "ac" : "";
   // a big roof can carry skylights in rows, and plant between them
   const sky = S.skylights && (cy - S.y) % 7 >= 2 && (cy - S.y) % 7 <= 3 && (cx - S.x) % 9 >= 2 && (cx - S.x) % 9 <= 6 ? "sky" : "";
@@ -570,6 +575,121 @@ W.roofSprite = (m, cx, cy, S) => {
   }
   return s;
 };
+/* A part of a big roof done another way (S.roofs: { x, y, w, d, kind, rise }):
+ *   "raise"  a raised block with a clerestory of lit glass round its visible
+ *            sides and skylight strips across its top
+ *   "vault"  a barrel vault, glazed between steel ribs, its ridge along x
+ *   "glass"  flat glazing on mullions, the hall lit beneath
+ *   "plant"  a plant deck: air handlers, ducts and a cooling tower or two */
+W.zoneRoofSprite = (cx, cy, S, Z) => {
+  const st = W.STYLES[S.style] || W.STYLES.office, base = S.roof || st.roof;
+  const R = Z.rise || 0, u = cx - Z.x, v = cy - Z.y;
+  const southEdge = v === Z.d - 1, eastEdge = u === Z.w - 1, northEdge = v === 0, westEdge = u === 0;
+  const ext = Z.kind === "raise" ? `${+southEdge}${+eastEdge}${+northEdge}${+westEdge}|${v % 4 === 1 ? "s" : ""}`
+    : Z.kind === "vault" ? `${v}|${Z.d}|${u % 3 === 0 ? "r" : ""}|${+eastEdge}`
+    : Z.kind === "plant" ? `${W.hash2(cx, cy, 17) < 0.22 ? "a" : W.hash2(cx, cy, 19) < 0.04 && u % 6 === 2 && v % 6 === 2 ? "t" : ""}|${v % 6 === 4 ? "d" : ""}`
+    : `${u % 2}`;
+  const key = `zroof|${Z.kind}|${S.floors}|${R}|${base}|${ext}`;
+  let s = W.cellSprites.get(key);
+  if (s) return s;
+  const hpx = S.floors * W.ZH, H0 = 40 + hpx + R, MX = 8;
+  const cv = W.canvas(W.TW + MX * 2, H0 + W.TH + 4), c = cv.getContext("2d");
+  const P = (a, b, z) => [MX + W.HTW + (a - b) * W.HTW, H0 + (a + b) * W.HTH - z];
+  const q = (pts, f) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fillStyle = f; c.fill(); };
+  const line = (pts, col, w = 1) => { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); };
+  if (Z.kind === "raise") {
+    const top = hpx + R;
+    // the clerestory: wall, then a band of lit glass on mullions
+    if (southEdge) {
+      q([P(0, 1, hpx), P(1, 1, hpx), P(1, 1, top), P(0, 1, top)], W.shade(base, 0.9));
+      q([P(0, 1, hpx + 3), P(1, 1, hpx + 3), P(1, 1, top - 3), P(0, 1, top - 3)], "rgba(159,216,255,.55)");
+      for (const a of [0, 0.5]) line([P(a, 1, hpx + 3), P(a, 1, top - 3)], "#2a3444");
+    }
+    if (eastEdge) {
+      q([P(1, 0, hpx), P(1, 1, hpx), P(1, 1, top), P(1, 0, top)], W.shade(base, 0.62));
+      q([P(1, 0, hpx + 3), P(1, 1, hpx + 3), P(1, 1, top - 3), P(1, 0, top - 3)], "rgba(120,180,230,.38)");
+      for (const a of [0, 0.5]) line([P(1, a, hpx + 3), P(1, a, top - 3)], "#202a38");
+    }
+    q([P(0, 0, top), P(1, 0, top), P(1, 1, top), P(0, 1, top)], W.shade(base, 1.12));
+    // a lip round the raised block
+    const lip = W.shade(base, 1.4), L = 0.1;
+    if (northEdge) q([P(0, 0, top + 1), P(1, 0, top + 1), P(1, L, top + 1), P(0, L, top + 1)], lip);
+    if (westEdge) q([P(0, 0, top + 1), P(L, 0, top + 1), P(L, 1, top + 1), P(0, 1, top + 1)], lip);
+    if (southEdge) q([P(0, 1 - L, top + 1), P(1, 1 - L, top + 1), P(1, 1, top + 1), P(0, 1, top + 1)], lip);
+    if (eastEdge) q([P(1 - L, 0, top + 1), P(1, 0, top + 1), P(1, 1, top + 1), P(1 - L, 1, top + 1)], W.shade(lip, 0.85));
+    // skylight strips across the top
+    if (v % 4 === 1 && !northEdge && !southEdge) W.boxLocal(c, P, westEdge ? 0.2 : 0, 0.15, eastEdge ? 0.8 : 1, 0.85, top, top + 2, "rgba(120,220,240,.6)", "#2a4a5a", "#1a3444");
+  } else if (Z.kind === "vault") {
+    const zt = t => hpx + R * Math.sin(Math.PI * W.clamp(t, 0, 1));
+    const zv = b => zt((v + b) / Z.d);
+    // four strips across the cell, so the curve reads smooth; the slope toward the street is lit
+    for (let k = 0; k < 4; k++) {
+      const b0 = k / 4, b1 = (k + 1) / 4, mid = (v + (b0 + b1) / 2) / Z.d;
+      q([P(0, b0, zv(b0)), P(1, b0, zv(b0)), P(1, b1, zv(b1)), P(0, b1, zv(b1))], mid > 0.5 ? "#4f6f92" : "#34506e");
+      q([P(0.12, b0, zv(b0) + 0.3), P(0.88, b0, zv(b0) + 0.3), P(0.88, b1, zv(b1) + 0.3), P(0.12, b1, zv(b1) + 0.3)], mid > 0.5 ? "rgba(159,216,255,.32)" : "rgba(120,180,230,.18)");
+    }
+    // a steel rib every third cell
+    if (u % 3 === 0) { const pts = []; for (let k = 0; k <= 4; k++) pts.push(P(0, k / 4, zv(k / 4) + 0.5)); line(pts, "#8aa0b8"); }
+    // the east end: a glazed half-moon
+    if (eastEdge) {
+      const pts = [P(1, 0, hpx), P(1, 1, hpx)];
+      for (let k = 4; k >= 0; k--) pts.push(P(1, k / 4, zv(k / 4)));
+      q(pts, "#1a2a3a");
+      const inner = [P(1, 0.1, hpx + 2), P(1, 0.9, hpx + 2)];
+      for (let k = 4; k >= 0; k--) inner.push(P(1, 0.1 + 0.8 * k / 4, zv(0.1 + 0.8 * k / 4) - 2));
+      q(inner, "rgba(159,216,255,.4)");
+      line([P(1, 0.5, hpx), P(1, 0.5, zv(0.5))], "#2a3444");
+    }
+  } else if (Z.kind === "glass") {
+    // one long sheet of glass, mullions every other cell, a lit glow from the lobby under it
+    q([P(0, 0, hpx), P(1, 0, hpx), P(1, 1, hpx), P(0, 1, hpx)], "#2a5068");
+    q([P(0, 0, hpx), P(1, 0, hpx), P(1, 1, hpx), P(0, 1, hpx)], "rgba(140,210,250,.35)");
+    if (u % 2 === 0) line([P(0, 0, hpx + 0.5), P(0, 1, hpx + 0.5)], "rgba(200,220,240,.35)");
+    if (v === 0 || southEdge) line(southEdge ? [P(0, 1, hpx + 0.5), P(1, 1, hpx + 0.5)] : [P(0, 0, hpx + 0.5), P(1, 0, hpx + 0.5)], "rgba(200,220,240,.5)");
+  } else {
+    // the plant deck: darker membrane, ducts, air handlers, now and then a cooling tower
+    q([P(0, 0, hpx), P(1, 0, hpx), P(1, 1, hpx), P(0, 1, hpx)], W.shade(base, 0.85));
+    if (v % 6 === 4) W.boxLocal(c, P, 0, 0.35, 1, 0.65, hpx, hpx + 4, "#7a8296", "#5a6276", "#4a5266");
+    if (ext.startsWith("a")) W.boxLocal(c, P, 0.12, 0.15, 0.88, 0.7, hpx, hpx + 9, "#6a7288", "#565e74", "#454c60");
+    if (ext.startsWith("t")) {
+      W.boxLocal(c, P, 0.05, 0.05, 0.95, 0.95, hpx, hpx + 16, "#5a6276", "#4a5266", "#3a4256");
+      const f = P(0.5, 0.5, hpx + 16); c.fillStyle = "#22262f"; c.beginPath(); c.ellipse(f[0], f[1], 9, 4.5, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "rgba(220,230,240,.14)"; c.beginPath(); c.ellipse(f[0], f[1] - 7, 8, 6, 0, 0, Math.PI * 2); c.fill();
+    }
+  }
+  s = { cv, ox: W.HTW + MX, oy: H0 };
+  W.cellSprites.set(key, s);
+  return s;
+};
+/* A stadium's roof cell at the edge of the open bowl: the roof, and under
+ * its edge the shadowed back of the stand behind the top row of seats, the
+ * fascia and its floodlight gantry. */
+W.standSprite = (S, south, east) => {
+  const key = `stand|${S.floors}|${+south}${+east}|${S.seats || ""}`;
+  let s = W.cellSprites.get(key);
+  if (s) return s;
+  const st = W.STYLES[S.style] || W.STYLES.office;
+  const hpx = S.floors * W.ZH, H0 = 26 + hpx, MX = 8;
+  const cv = W.canvas(W.TW + MX * 2, H0 + W.TH + 4), c = cv.getContext("2d");
+  const P = (a, b, z) => [MX + W.HTW + (a - b) * W.HTW, H0 + (a + b) * W.HTH - z];
+  const q = (pts, f) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fillStyle = f; c.fill(); };
+  const cols = S.seats || ["#2a8a4a", "#c8ccd4"];
+  // the back of the bowl under the roof's edge: shadow down behind the top row of seats, the
+  // roof's fascia, and the floodlight gantry along it
+  const face = (pt, shade) => {
+    q([pt(0, 0), pt(1, 0), pt(1, hpx - 7), pt(0, hpx - 7)], W.shade("#14161c", shade));
+    q([pt(0, hpx - 7), pt(1, hpx - 7), pt(1, hpx), pt(0, hpx)], W.shade("#3a3f4c", shade));
+    q([pt(0, hpx - 6), pt(1, hpx - 6), pt(1, hpx - 4), pt(0, hpx - 4)], `rgba(255,250,230,${shade > 0.8 ? 0.75 : 0.5})`);
+    q([pt(0.3, hpx - 3), pt(0.7, hpx - 3), pt(0.7, hpx - 1.5), pt(0.3, hpx - 1.5)], W.shade(cols[0], shade));
+  };
+  if (south) face((a, z) => P(a, 1, z), 1);
+  if (east) face((a, z) => P(1, 1 - a, z), 0.7);
+  q([P(0, 0, hpx), P(1, 0, hpx), P(1, 1, hpx), P(0, 1, hpx)], S.roof || st.roof);
+  s = { cv, ox: W.HTW + MX, oy: H0 };
+  W.cellSprites.set(key, s);
+  return s;
+};
+
 /* A footbridge's deck over one cell: a slab, sloping where the walkway is a
  * ramp, with a steel leg under it where it stands on ground that is not
  * track. Railings run along an edge only where that edge is up in the air

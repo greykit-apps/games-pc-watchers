@@ -138,7 +138,7 @@ W.World = class {
   spawnTraffic() {
     // cars parked in lots and bays: they never move, but they burn
     for (const p of this.map.parked) {
-      this.cars.push({ isCar: true, id: "p" + this.cars.length, parked: true, axis: p.axis, dir: p.dir || 1, x: p.x, y: p.y,
+      this.cars.push({ isCar: true, id: "p" + this.cars.length, parked: true, axis: p.axis, dir: p.dir || 1, x: p.x, y: p.y, z: p.z || 0,
         len: 1.9, wid: 0.95, speed: 0, hp: 12, maxHp: 12, color: p.color || W.pick(["#4a5a7a", "#7a2a36", "#2a6a5a", "#8a8a96", "#3a3a48", "#6a5a3a", "#2a4a8a"]), alive: true });
     }
     for (const lane of this.map.lanes) {

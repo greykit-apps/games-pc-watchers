@@ -180,7 +180,7 @@ W.Map = class {
   }
   /* A road with no traffic of its own: service roads, dirt tracks. */
   lane(x, y, w, h, g = W.G.ROAD) { this.fill(x, y, w, h, g); }
-  park(x, y, axis, color, dir = 1) { this.parked.push({ x, y, axis, color, dir }); }
+  park(x, y, axis, color, dir = 1, z = 0) { this.parked.push({ x, y, axis, color, dir, z }); }
   point(kind, x, y, name, area) { this.points[kind].push({ x, y, name, area }); }
   /* A railway: two tracks side by side (at..at+1 one way, at+2..at+3 the
    * other), with trains that stop at each of `stops` (positions along the
@@ -211,6 +211,8 @@ W.Map = class {
     const { x, y, w, d } = s;
     this.fill(x + 1, y + 1, w - 2, d - 2, s.floor);
     for (let j = y; j < y + d; j++) for (let i = x; i < x + w; i++) if (this.inb(i, j)) this.roofOf[this.i(i, j)] = s.id;
+    // a court: an open-air middle (a stadium's pitch), inside the walls but under no roof
+    if (s.court) { const C = s.court; for (let j = C.y; j < C.y + C.d; j++) for (let i = C.x; i < C.x + C.w; i++) if (this.inb(i, j)) this.roofOf[this.i(i, j)] = -1; }
     // the outer walls, broken where the doors are
     const gaps = { n: [], s: [], w: [], e: [] };
     for (const [side, at, wd] of s.doors) gaps[side].push([at, at + (wd || 2)]);
@@ -278,6 +280,28 @@ W.Map = class {
     for (let v = 0; v < stair; v++) for (const u of [span - 2, span - 1]) set(u, stair + 2 + v, h * (stair - v) / stair, h * (stair - v - 1) / stair);   // the ramp down
     (this.bridges || (this.bridges = [])).push({ tracks, x, y, span, stair, h });
   }
+  /* A raised level: a flat walkway h px up over a rectangle (a parking
+   * deck, a skybridge). Whoever walks on it is up there. */
+  deckArea(x, y, w, d, h) {
+    for (let j = y; j < y + d; j++) for (let i = x; i < x + w; i++) {
+      if (!this.inb(i, j)) continue;
+      const k = this.i(i, j);
+      this.deck[k] = h; this.deckAxis[k] = 0; this.deckLo[k] = h; this.deckHi[k] = h;
+      this.clearProps(i, j, 1, 1);
+    }
+  }
+  /* A ramp over a rectangle, rising to h px toward `up` ("n" "s" "e" "w"). */
+  deckRamp(x, y, w, d, up, h) {
+    const ax = up === "e" || up === "w", n = ax ? w : d, rising = up === "e" || up === "s";
+    for (let j = y; j < y + d; j++) for (let i = x; i < x + w; i++) {
+      if (!this.inb(i, j)) continue;
+      const t = ax ? i - x : j - y, k = this.i(i, j);
+      const lo = rising ? h * t / n : h * (n - t) / n, hi = rising ? h * (t + 1) / n : h * (n - t - 1) / n;
+      this.deck[k] = Math.round(Math.max(lo, hi)); this.deckAxis[k] = ax ? 1 : 2;
+      this.deckLo[k] = Math.round(lo); this.deckHi[k] = Math.round(hi);
+      this.clearProps(i, j, 1, 1);
+    }
+  }
   crowd(x, y, r, n) { this.crowds.push({ x, y, r, n }); }
   /* a post for a member of a standing garrison: { x, y, dir, who } */
   garrison(x, y, dir, who = "benton") { (this.garrisons || (this.garrisons = [])).push({ x, y, dir, who }); }
@@ -336,6 +360,14 @@ W.Map = class {
       this.walk[k] = walk ? 1 : 0;
       this.losBlock[k] = los ? 1 : 0;
     }
+    // a parked car is in the way: walk round it (or shoot over it)
+    for (const c of this.parked) {
+      const ax = c.axis === "x";
+      for (const t of [-0.6, 0.6]) {
+        const cx = Math.floor(c.x + (ax ? t : 0)), cy = Math.floor(c.y + (ax ? 0 : t));
+        if (this.inb(cx, cy)) this.walk[this.i(cx, cy)] = 0;
+      }
+    }
     // fences join up: each runs a rail toward every fence beside it that meets it (corners, tees,
     // crosses), and out to the cell's edge along its own line where it simply ends
     const fenceAt = (x, y) => { if (!this.inb(x, y)) return null; const p = this.propAt[this.i(x, y)]; return p >= 0 && this.props[p].type === "fence" && !this.props[p].gone ? this.props[p] : null; };
@@ -385,6 +417,8 @@ W.Map = class {
     for (const S of this.structures) {
       if (S.x + S.w <= x0 || S.y + S.d <= y0 || S.x >= x0 + w || S.y >= y0 + h) continue;
       const n = Object.assign({}, S, { x: S.x - x0, y: S.y - y0, id: m.structures.length });
+      if (S.court) n.court = Object.assign({}, S.court, { x: S.court.x - x0, y: S.court.y - y0 });
+      if (S.roofs) n.roofs = S.roofs.map(r => Object.assign({}, r, { x: r.x - x0, y: r.y - y0 }));
       sids.set(S.id, n.id); m.structures.push(n);
     }
     for (const B of m.buildings) if (B.struct !== undefined) B.struct = sids.has(B.struct) ? sids.get(B.struct) : undefined;

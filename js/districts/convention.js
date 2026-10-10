@@ -37,7 +37,9 @@ W.district({
     m.street("y", 210, 2); m.street("x", 160, 2); m.street("x", 210, 1);
 
     // ================= the Convention Center =================
-    const cc = m.structure({ x: 14, y: 14, w: 72, d: 56, floors: 4, style: "hall", skylights: true, name: "PumaCity Convention Center",
+    const cc = m.structure({ x: 14, y: 14, w: 72, d: 56, floors: 4, style: "hall", name: "PumaCity Convention Center",
+      roofs: [{ x: 15, y: 15, w: 70, d: 13, kind: "plant" }, { x: 18, y: 32, w: 34, d: 22, kind: "raise", rise: 16 },
+        { x: 58, y: 32, w: 25, d: 22, kind: "vault", rise: 24 }, { x: 16, y: 59, w: 68, d: 8, kind: "glass" }],
       doors: [["s", 10, 3], ["s", 30, 8], ["s", 58, 3], ["n", 8, 4], ["n", 60, 4], ["w", 20, 2], ["e", 10, 2], ["e", 40, 2]],
       signs: [{ face: "s", text: "PUMACITY CONVENTION CENTER", at: 42.5, z: 44, color: "#ffb000", size: 11 }] });   // over the plain wall between the canopy and the east door
     // the grand lobby, along the front
@@ -106,8 +108,37 @@ W.district({
     garage(90, 32, 20, 36, "Garage A", [["s", 8, 4], ["n", 8, 4], ["w", 14, 3], ["e", 14, 4]]);
     m.driveway(109, 47, 1, 4, "e");                                           // the ramp out to Expo Avenue
     // ---- the Grand Puma Hotel ----
-    m.building({ x: 92, y: 12, w: 14, d: 14, floors: 18, style: "glass", roofKit: "beacon", name: "Grand Puma Hotel", signs: [{ face: "s", text: "GRAND PUMA", at: 3, z: 230, color: "#ffb000", size: 10 }] });
-    m.prop("blade", 106.06, 20, { text: "HOTEL", color: "#ff5266", z: 22 });
+    // the lobby, the front desk, the Puma Bar, the manager's office and its safe
+    {
+      const ht = m.structure({ x: 92, y: 12, w: 14, d: 14, floors: 18, style: "glass", floor: G.CARPET, name: "Grand Puma Hotel", doors: [["e", 5, 3], ["s", 5, 4], ["w", 8, 2]],
+        signs: [{ face: "s", text: "GRAND PUMA", at: 3, z: 230, color: "#ffb000", size: 10 }] });
+      m.partition(ht, 93, 18, 12, 1, [[2, 2], [8, 2]]);
+      m.partition(ht, 99, 13, 1, 5, []);
+      m.floorIn(93, 19, 12, 6, G.PLAZA);
+      m.prop("box", 98.5, 20.2, { w: 5, d: 0.8, h: 7, side: "#3a2418", top: "#c8a060", screen: "#ffb000" });   // the front desk
+      for (const [x, y] of [[94.5, 22.5], [94.5, 23.7], [103.5, 22.5], [103.5, 23.7]]) m.prop("box", x, y, { w: 1.6, d: 0.8, h: 3, side: "#6a2a3a" });
+      for (const x of [93.5, 104.5]) m.prop("planter", x, 19.5);
+      m.light(98.5, 22, 5, "#ffcf6b", 0.2);
+      m.prop("box", 102, 16.6, { w: 4, d: 0.7, h: 7, side: "#3a2418", top: "#8a5a3a", glow: "#ff8fd8" });   // the Puma Bar
+      for (let i = 0; i < 2; i++) m.prop("table", 101 + i * 2.5, 14.5);
+      m.light(102, 15.5, 3, "#ff8fd8", 0.22);
+      m.prop("box", 95.5, 14.5, { w: 2.4, d: 1, h: 6, side: "#3a2418", top: "#8a5a3a", screen: "#9ff7ff" });  // the manager's desk
+      m.prop("box", 97.5, 13.5, { w: 1, d: 0.8, h: 8, side: "#5a6070", top: "#8a90a0" });                    // the safe
+      m.loot.push({ type: "pistol", ammo: 24, x: 94.5, y: 16.5 });
+      // the grand entrance on Expo Avenue: a drive in off North Road, along the front under a
+      // porte-cochere, and out onto the avenue; the valet stand on the island, a red carpet to the doors
+      m.driveway(107, 8, 2, 20, "n");
+      m.drive(109, 26, 3, 2);
+      m.canopy({ x: 106, y: 16, w: 4, d: 7, floors: 2, every: 3, name: "Grand Puma porte-cochere", roof: "#3a2e24" });
+      m.floorIn(106, 18, 1, 3, G.CARPET);
+      m.prop("kiosk", 110.5, 19.5, { color: "#ffb000" });                            // the valet stand
+      for (const y of [16.5, 22.5]) m.prop("banner", 110.5, y, { color: "#ffb000" });
+      for (const y of [10.5, 13.5, 25.2]) m.prop("planter", 110.5, y);
+      m.park(107.5, 17.5, "y", "#16161c", 1); m.park(107.5, 24.5, "y", "#e8e4dc", 1);   // a car at the door, another waiting
+      m.light(108, 19.5, 4, "#ffcf6b", 0.25);
+      m.crowd(108.5, 19.5, 2, 3);
+    }
+    m.prop("blade", 106.06, 14, { text: "HOTEL", color: "#ff5266", z: 22 });
 
     // ================= across Expo Avenue: the light rail, the arena =================
     m.rail("y", 118, 0, 224, [88, 168], 1);
@@ -117,21 +148,69 @@ W.district({
     m.canopy({ x: 118, y: 84, w: 11, d: 10, floors: 2, every: 4 });
     m.canopy({ x: 118, y: 164, w: 11, d: 10, floors: 2, every: 4 });
     {
-      const AX = 166, AY = 48;
+      // the footprint x 142..190, y 24..72; the pitch in the middle, open to the sky
+      const C = { x: 154, y: 36, w: 25, d: 25 }, SEATS = ["#2a8a4a", "#c8ccd4"];
       m.fill(138, 20, 58, 58, G.PLAZA);
-      m.building({ x: 144, y: 26, w: 45, d: 45, floors: 4, style: "arena", name: "Arena",
-        mask: (i, j) => { const dx = i + 0.5 - AX, dy = j + 0.5 - AY, r = Math.hypot(dx, dy); return r >= 14 && r <= 22 && Math.abs(dx) > 2.5 && Math.abs(dy) > 2.5; } });
-      m.daub({ type: "circle", x: AX, y: AY, r: 11, color: "rgba(84,242,255,.35)", w: 2 });
-      m.building({ x: 162, y: 38, w: 9, d: 4, floors: 1, style: "metal", name: "Stage", signs: [{ face: "s", text: "LIVE", at: 3, z: 8, color: "#ff5266" }] });
-      for (const [x, y] of [[157, 39], [175, 39], [157, 57], [175, 57]]) { m.prop("flood", x, y); m.light(x, y + 0.5, 5, "#fffbe8", 0.2); }
-      // ticket booths at the four gates, merch stalls, and a tailgate party by the lot
-      for (const [x, y] of [[163, 23], [169, 23], [163, 73], [169, 73], [141, 45], [141, 51], [191, 45], [191, 51]]) m.prop("kiosk", x + 0.5, y + 0.5, { color: "#ffb000" });
-      for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + 0.4, x = AX + Math.cos(a) * 25.5, y = AY + Math.sin(a) * 25.5; m.prop("kiosk", x, y, { color: ["#4ade6a", "#54f2ff", "#ff8fd8"][k % 3] }); }
-      for (let k = 0; k < 12; k++) m.prop("banner", 140.5 + k * 4.5, 76.4, { color: k % 2 ? "#4ade6a" : "#e8e4dc" });
-      for (const [x, c] of [[142, "#c83a6a"], [150, "#3ac88a"]]) { m.prop("truck", x + 0.5, 68.5, { color: c }); m.prop("table", x + 2.5, 71.5, { umbrella: c }); }
-      for (const [x, y] of [[166, 25], [166, 71], [143, 48], [189, 48]]) m.crowd(x, y, 3, 5);
-      m.crowd(147, 71, 4, 6);
-      K.parking(m, rng, 130, 80, 76, 12, { fill: 0.5, gates: [["s", 10], ["s", 60]] });
+      const ar = m.structure({ x: 142, y: 24, w: 49, d: 49, floors: 3, style: "arena", name: "Pounce FC Arena", court: { x: C.x - 6, y: C.y - 6, w: C.w + 12, d: C.d + 12 }, seats: SEATS,
+        doors: [["n", 22, 5], ["s", 22, 5], ["w", 21, 5], ["e", 21, 5]],
+        signs: [{ face: "s", text: "POUNCE FC ARENA", at: 4, z: 34, color: "#4ade6a", size: 11 }, { face: "e", text: "POUNCE FC", at: 4, z: 34, color: "#4ade6a", size: 11 }] });
+      // the bowl is open to the sky: the pitch, and concrete terraces round it up to the roof
+      m.fill(C.x - 6, C.y - 6, C.w + 12, C.d + 12, G.PLAZA);
+      m.fill(C.x, C.y, C.w, C.d, G.GRASS);
+      const X0 = C.x + 1.5, X1 = C.x + C.w - 1.5, Y0 = C.y + 1.5, Y1 = C.y + C.d - 1.5, MXc = C.x + C.w / 2, MYc = C.y + C.d / 2, white = "rgba(232,228,220,.5)";
+      m.daub({ type: "rect", x: X0, y: Y0, x2: X1, y2: Y1, color: white });
+      m.daub({ type: "line", x: X0, y: MYc, x2: X1, y2: MYc, color: white });
+      m.daub({ type: "circle", x: MXc, y: MYc, r: 3.5, color: white, w: 1 });
+      m.daub({ type: "rect", x: C.x + 7.5, y: Y0, x2: C.x + C.w - 7.5, y2: Y0 + 4, color: white });
+      m.daub({ type: "rect", x: C.x + 7.5, y: Y1 - 4, x2: C.x + C.w - 7.5, y2: Y1, color: white });
+      for (const gy of [C.y + 1.1, C.y + C.d - 1.1]) m.prop("box", MXc, gy, { w: 3.6, d: 0.4, h: 6, side: "#e8e4dc", top: "#ffffff" });   // the goals
+      // advertising boards round the pitch, with gaps to climb through
+      for (let k = 0; k < C.w; k++) if (k % 6 !== 3) {
+        m.prop("box", C.x + k + 0.5, C.y + 0.2, { w: 1, d: 0.25, h: 3, side: k % 12 < 6 ? "#2a8a4a" : "#1a2a5a", top: "#4ade6a" });
+        m.prop("box", C.x + k + 0.5, C.y + C.d - 0.2, { w: 1, d: 0.25, h: 3, side: k % 12 < 6 ? "#1a2a5a" : "#2a8a4a", top: "#4ade6a" });
+      }
+      for (let k = 1; k < C.d - 1; k++) if (k % 6 !== 3) {
+        m.prop("box", C.x + 0.2, C.y + k + 0.5, { w: 0.25, d: 1, h: 3, side: "#2a8a4a", top: "#4ade6a" });
+        m.prop("box", C.x + C.w - 0.2, C.y + k + 0.5, { w: 0.25, d: 1, h: 3, side: "#1a2a5a", top: "#4ade6a" });
+      }
+      // floodlight masts at the corners of the pitch
+      for (const [x, y] of [[C.x + 1, C.y + 1], [C.x + C.w - 1, C.y + 1], [C.x + 1, C.y + C.d - 1], [C.x + C.w - 1, C.y + C.d - 1]]) { m.prop("flood", x, y); m.light(x, y + 0.5, 7, "#fffbe8", 0.14); }
+      // the stands: five rows stepping up from the pitch to the roof, in the club's colours, aisles down to the front
+      const AISLE = new Set([2, 3, 10, 11, 12, 13, 14, 21, 22]);
+      const dist = (i, j) => Math.max(C.x - i, i - (C.x + C.w - 1), C.y - j, j - (C.y + C.d - 1));
+      for (let j = C.y - 6; j < C.y + C.d + 6; j++) for (let i = C.x - 6; i < C.x + C.w + 6; i++) {
+        const dd = dist(i, j); if (dd < 2 || dd > 6) continue;
+        const inX = i >= C.x && i < C.x + C.w, inY = j >= C.y && j < C.y + C.d;
+        const aisle = inX ? AISLE.has(i - C.x) : inY ? AISLE.has(j - C.y) : (i < C.x ? C.x - i : i - C.x - C.w + 1) === (j < C.y ? C.y - j : j - C.y - C.d + 1);
+        if (aisle) continue;
+        const col = SEATS[dd % 2];
+        m.prop("box", i + 0.5, j + 0.5, { w: 1, d: 1, h: 4 + (dd - 2) * 6, side: W.shade(col, 0.6), top: col });
+      }
+      // the wall behind the stands, its tunnels lined up with the aisles
+      m.partition(ar, 147, 29, 39, 1, [[9, 2], [17, 5], [28, 2]]);
+      m.partition(ar, 147, 67, 39, 1, [[9, 2], [17, 5], [28, 2]]);
+      m.partition(ar, 147, 30, 1, 37, [[8, 2], [16, 5], [27, 2]]);
+      m.partition(ar, 185, 30, 1, 37, [[8, 2], [16, 5], [27, 2]]);
+      // the concourse: food and beer stands along the outer wall
+      const stand = (x, y, c) => { m.prop("box", x, y, { w: 2, d: 0.8, h: 8, side: "#2a3044", top: "#3a4258", glow: c, screen: c }); };
+      for (const x of [149, 154, 178, 183]) { stand(x, 25.6, "#ffb000"); stand(x, 71.4, "#4ade6a"); }
+      for (const y of [33, 38, 58, 63]) { stand(143.6, y, "#ff8fd8"); stand(189.4, y, "#54f2ff"); }
+      m.light(166, 26.5, 5, "#ffcf6b", 0.12); m.light(166, 70.5, 5, "#ffcf6b", 0.12);
+      m.loot.push({ type: "medikit", ammo: 1, x: 145.5, y: 27.5 });
+      // outside: ticket booths at the four gates, merch at the corners, the tailgate party
+      for (const [x, y] of [[162, 22], [170, 22], [162, 74], [170, 74], [140, 44], [140, 52], [192, 44], [192, 52]]) m.prop("kiosk", x + 0.5, y + 0.5, { color: "#4ade6a" });
+      for (const [x, y, c] of [[139, 21, "#4ade6a"], [193, 21, "#54f2ff"], [139, 75, "#ff8fd8"], [193, 75, "#4ade6a"]]) m.prop("kiosk", x + 0.5, y + 0.5, { color: c });
+      for (let k = 0; k < 12; k++) m.prop("banner", 140.5 + k * 4.5, 77.4, { color: k % 2 ? "#4ade6a" : "#e8e4dc" });
+      for (const [x, c] of [[145, "#c83a6a"], [184, "#3ac88a"]]) { m.prop("truck", x + 0.5, 75.5, { color: c }); m.prop("table", x + 3.5, 76.5, { umbrella: c }); }
+      for (const [x, y] of [[166, 22], [166, 75], [140, 48], [192, 48]]) m.crowd(x, y, 3, 5);
+      m.crowd(147, 76, 3, 6);
+      // inside: fans in the concourse and the stands, and something happening on the pitch
+      for (const [x, y] of [[166, 26.5], [166, 70.5], [144.5, 48], [188.5, 48]]) m.crowd(x, y, 2.5, 4);
+      m.crowd(MXc, MYc, 4, 8);
+      // the arena lot, and a forecourt where the skybridge from the parkade comes down
+      K.parking(m, rng, 130, 80, 56, 12, { fill: 0.5, gates: [["s", 10], ["s", 44]] });
+      m.fill(186, 80, 20, 12, G.PLAZA);
+      K.lamps(m, 187, 84.5, 205, 84.5, 6, "#9ff7ff");
     }
     K.lots(m, rng, 126, 8, 82, 10, { styles: ["concrete", "office"], floors: [3, 7], noAlley: true, signs: ["EXPO", "HOTEL", "BAR"] });
     // the Rail Yard Market: a food hall beside the tracks
@@ -159,10 +238,57 @@ W.district({
 
 
     // ================= south of Convention Way =================
-    garage(130, 104, 36, 34, "Garage B", [["n", 14, 4], ["w", 10, 3], ["e", 20, 3], ["s", 16, 3]]);
-    m.driveway(144, 103, 4, 1, "n");                                          // the ramp out to Convention Way
-    K.lots(m, rng, 170, 102, 38, 36, { styles: ["brick", "concrete"], floors: [3, 8], signs: ["MOTEL", "HOTEL", "BAR", "VACANCY"] });
-    m.building({ x: 12, y: 102, w: 20, d: 14, floors: 8, style: "brick", name: "Hotel Calico", signs: [{ face: "s", text: "HOTEL CALICO", at: 4, z: 100, color: "#ff5266" }] });
+    /* The Arena Parkade: four storeys of it from outside; inside, a ground
+     * floor of bays and pillars, and to the east a raised deck, two ramps up
+     * to it, cars parked on top, and a skybridge from the deck over
+     * Convention Way to the arena forecourt. */
+    {
+      const PX = 128, PY = 104, PW = 80, PD = 34, H = 24;
+      const pk = m.structure({ x: PX, y: PY, w: PW, d: PD, floors: 4, style: "parkade", floor: G.PARK, name: "Arena Parkade",
+        doors: [["n", 16, 4], ["n", 64, 2], ["w", 12, 3], ["s", 12, 4], ["s", 40, 3], ["e", 26, 3]],
+        signs: [{ face: "s", text: "ARENA PARKADE", at: 26, z: 50, color: "#54f2ff", size: 11 }, { face: "e", text: "P", at: 14, z: 50, color: "#54f2ff", size: 11 }] });
+      m.driveway(144, 103, 4, 1, "n");                                        // the way in from Convention Way
+      // the upper deck and its ramps
+      m.deckArea(170, 105, 34, 28, H);
+      m.deckRamp(162, 108, 8, 2, "e", H); m.deckRamp(162, 129, 8, 2, "e", H);
+      // the deck stands on walls: round its open sides, and along the ramps
+      const wall = (x, y, h = H - 3) => m.prop("box", x + 0.5, y + 0.5, { w: 1, d: 1, h, side: "#4a4e58", top: "#3e424c", blocks: h > 12 });
+      for (let y = 105; y <= 132; y++) { if (y !== 108 && y !== 109 && y !== 129 && y !== 130) wall(169, y); wall(204, y); }
+      for (let x = 169; x <= 204; x++) wall(x, 133);
+      for (let x = 162; x <= 168; x++) for (const y of [107, 110, 128, 131]) wall(x, y, Math.max(2, H * (x - 161) / 8 - 3));
+      // cars: rows on the deck, and rows on the ground floor
+      const ROWS = [105, 111, 113, 119, 121, 125, 131];
+      const CC = ["#4a5a7a", "#7a2a36", "#2a6a5a", "#8a8a96", "#3a3a48", "#6a5a3a", "#2a4a8a", "#c8b040", "#e8e4dc"];
+      for (const r of ROWS) for (let x = 170; x <= 203; x++) if (x !== 178 && x !== 179 && (x < 191 || x > 194) && rng() < 0.7) m.park(x + 0.5, r + 1, "y", pick(CC), r % 2 ? 1 : -1, H);
+      for (const r of ROWS) for (let x = 129; x <= (r >= 125 ? 160 : 168); x++) {
+        if (x === 137 || x === 138 || x === 149 || x === 150 || (r === 105 && x >= 141 && x <= 149) || (r === 119 && x <= 131)) continue;
+        if (rng() < 0.6) m.park(x + 0.5, r + 1, "y", pick(CC), r % 2 ? 1 : -1);
+      }
+      // pillars down the ground floor's aisles, lights, the pay booth
+      for (const x of [134, 146, 158]) for (const y of [109, 117, 124, 129]) m.prop("box", x + 0.5, y + 0.5, { w: 0.6, d: 0.6, h: 50, side: "#5a5e68", top: "#6a6e78", blocks: true });
+      for (const [x, y] of [[140, 109], [152, 117], [140, 124], [152, 129], [133, 135], [160, 135], [186, 135], [206, 120]]) m.light(x, y, 4, "#fff3c4", 0.16);
+      m.prop("kiosk", 142.5, 106.5, { color: "#54f2ff" });
+      m.loot.push({ type: "shotgun", ammo: 16, x: 131.5, y: 135.5 });
+      // the skybridge: from the deck out through the north wall, over the street, down to the arena forecourt
+      m.deckArea(192, 94, 2, 11, H);
+      m.deckRamp(192, 86, 2, 8, "s", H);
+      void pk;
+    }
+    // Hotel Calico: a lobby, a corridor, and rooms let by the hour
+    {
+      const hc = m.structure({ x: 12, y: 102, w: 20, d: 14, floors: 8, style: "brick", floor: G.WOOD, name: "Hotel Calico", doors: [["n", 8, 3], ["e", 2, 2]],
+        signs: [{ face: "s", text: "HOTEL CALICO", at: 4, z: 100, color: "#ff5266" }] });
+      m.partition(hc, 13, 107, 18, 1, [[7, 3]]);
+      m.partition(hc, 13, 110, 18, 1, [[1, 1], [6, 1], [11, 1], [16, 1]]);
+      for (const x of [17, 22, 27]) m.partition(hc, x, 111, 1, 4, []);
+      m.floorIn(13, 103, 18, 4, G.CARPET);
+      m.prop("box", 22, 104.2, { w: 4, d: 0.8, h: 7, side: "#3a2418", top: "#8a5a3a", screen: "#ff5266" });   // the desk, behind glass
+      m.prop("box", 15, 105.5, { w: 1.6, d: 0.8, h: 3, side: "#5a2a3a" });
+      for (const x of [14.5, 19.5, 24.5]) { m.prop("box", x + 0.3, 112.5, { w: 1.6, d: 2, h: 4, side: "#7a2a3a", top: "#e8e4dc" }); m.light(x + 1, 113, 2, "#ff8a5c", 0.2); }
+      for (let i = 0; i < 3; i++) m.prop("crate", 30.5, 111.5 + i);
+      m.loot.push({ type: "uzi", ammo: 30, x: 28.5, y: 113.5 });
+      m.light(22, 105, 4, "#ff5266", 0.18);
+    }
     K.lots(m, rng, 36, 102, 72, 36, { styles: ["brick", "concrete", "office"], floors: [2, 6], signs: ["BAR", "PAWN", "24H", "DINER"] });
 
     // ---- Neon Street ----
@@ -279,7 +405,7 @@ W.district({
       [207.5, 100.5, "East Boulevard at Convention Way"], [9.5, 164.5, "the Highway at Neon Street"], [109.5, 164.5, "Expo Avenue at Neon Street"], [207.5, 164.5, "East Boulevard at Neon Street"],
       [126.5, 90.5, "the light rail stop"], [126.5, 172.5, "the Neon Street rail stop"], [207.5, 9.5, "East Boulevard at North Road"], [60.5, 208.5, "South Road"],
       [60.5, 93.5, "the south edge of the expo plaza"], [129, 41, "the north footbridge"], [124.5, 137.5, "the south footbridge"], [100.5, 70.5, "Garage A"],
-      [146, 99.5, "Garage B's ramp"], [196.5, 70.5, "behind the arena"], [39, 199, "Lantern Square"], [77.5, 203.5, "the night market"], [130.5, 207.5, "South Road, east"],
+      [146, 99.5, "the parkade's ramp"], [196.5, 70.5, "behind the arena"], [39, 199, "Lantern Square"], [77.5, 203.5, "the night market"], [130.5, 207.5, "South Road, east"],
       [3.5, 130.5, "the Highway, west side"], [216.5, 98, "East Boulevard, east side"], [190.5, 92.5, "the arena lot"]])
       m.point("spawn", x, y, n);
     for (const [x, y, n] of [[0.5, 5.5, "the west end of North Road"], [5.5, 0.5, "the Highway north"], [5.5, 223.5, "the Highway south"], [0.5, 97.5, "the west end of Convention Way"],
@@ -291,8 +417,10 @@ W.district({
       [44, 27, "the offices"], [79, 25, "the loading bay"], [18.5, 22, "a meeting room"]]);
     T("The Expo Plaza", [[66, 86, "the expo plaza"], [30.5, 88.5, "the food trucks"], [50, 76, "the fountain"]]);
     T("Garage A", [[100, 50, "level one of Garage A"]]);
-    T("Garage B", [[150, 124, "level one of Garage B"]]);
-    T("The Arena", [[166, 44, "the arena stage"], [166, 56, "the arena floor"]]);
+    T("The Arena Parkade", [[150, 116, "the parkade's ground floor"], [186, 117, "the parkade's upper deck"], [166, 108.5, "the parkade ramp"], [192.5, 98, "the skybridge"]]);
+    T("The Arena", [[166, 48, "the centre circle"], [166, 39, "the home end"], [160, 31.5, "the north stand"], [146, 33, "the arena concourse"], [188, 62, "the east concourse"]]);
+    T("Grand Puma Hotel", [[98.5, 22, "the Grand Puma's lobby"], [102, 14.5, "the Puma Bar"], [95.5, 16, "the manager's office"], [108.5, 20, "the Grand Puma's front door"]]);
+    T("Hotel Calico", [[22, 105.5, "the Hotel Calico lobby"], [28.5, 112.5, "room 4 at the Hotel Calico"]]);
     T("Club Catnip", [[28, 147, "the dance floor at Club Catnip"], [38.5, 144.5, "the VIP room at Club Catnip"], [38.5, 150.5, "the bar at Club Catnip"]]);
     T("The Litter Box", [[63, 154, "the bar at The Litter Box"], [64, 146.5, "the back room of The Litter Box"]]);
     T("The Purrcade", [[39, 174, "the Purrcade"]]);
@@ -300,7 +428,7 @@ W.district({
     T("The Loading Dock", [[50, 10.5, "the loading dock"]]);
     T("Rail Yard Market", [[130.5, 55, "the Rail Yard Market"], [130.5, 68, "the market's south stalls"]]);
     T("Pounce FC", [[202, 27, "the Pounce FC trophy room"], [203, 45, "the Pounce FC locker room"]]);
-    T("The Arena", [[166, 22, "the arena's north gate"], [146, 71, "the tailgate party"]]);
+    T("The Arena", [[166, 22, "the arena's north gate"], [147, 76, "the tailgate party"]]);
     T("The Night Market", [[77, 195, "the middle of the night market"], [70, 201, "the night market's tables"]]);
     T("Lantern Square", [[38.5, 196, "Lantern Square"]]);
     T("The Old Expo Hall", [[147, 200, "the den in the old expo hall"], [156, 192, "the old expo hall floor"]]);

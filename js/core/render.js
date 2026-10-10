@@ -360,6 +360,8 @@ W.Renderer = class {
       if (!u.alive || u.faction !== "player" || u.inCar) continue;
       const cx = Math.floor(u.x), cy = Math.floor(u.y);
       if (m.inb(cx, cy) && m.roofOf[m.i(cx, cy)] >= 0 && !m.structures[m.roofOf[m.i(cx, cy)]].canopy) open.add(m.roofOf[m.i(cx, cy)]);
+      // out on a stadium's pitch, the stands are open to view too
+      for (const S of m.structures) if (S.court && cx >= S.court.x && cy >= S.court.y && cx < S.court.x + S.court.w && cy < S.court.y + S.court.d) open.add(S.id);
     }
     if (opts.openAll) for (const s of m.structures) open.add(s.id);
 
@@ -367,7 +369,7 @@ W.Renderer = class {
     const dyn = [];
     // people up on a walkway sort after its deck
     for (const u of world.units) dyn.push({ kind: "unit", u, d: u.x + u.y + (u.alive ? 0 : -0.4) + ((u.z || 0) > 0.3 ? 1.7 : 0) });
-    for (const car of world.cars) dyn.push({ kind: "car", car, d: car.x + car.y });
+    for (const car of world.cars) dyn.push({ kind: "car", car, d: car.x + car.y + (car.z ? 1.7 : 0) });
     for (const it of world.items) dyn.push({ kind: "item", it, d: it.x + it.y - 0.3 });
     dyn.sort((a, b) => a.d - b.d);
     const st = m._static;
@@ -443,7 +445,7 @@ W.Renderer = class {
           if (u.flash > 0) glows.push([px + ox, py + oy - 12, "#ffe9a8", 16]);
         } else if (b.kind === "car") {
           if (!vis(b.car.x, b.car.y)) continue;
-          W.drawCar(c, b.car, ox, oy);
+          W.drawCar(c, b.car, ox, oy - (b.car.z || 0));
           if (!b.car.dead && !b.car.parked && !b.car.train) {
             const ax = b.car.axis === "x", f = b.car.dir;
             const hx = b.car.x + (ax ? f * (b.car.len / 2 + 0.6) : 0), hy = b.car.y + (ax ? 0 : f * (b.car.len / 2 + 0.6));

@@ -225,15 +225,7 @@ W.LEVELS.plaza = {
     world.escapeCar = car;
 
     // the Watchers, stepping off South Avenue
-    const roster = opts.roster || W.defaultRoster();
-    const spots = [[14.5, 48.6], [15.6, 48.6], [14.5, 49.5], [15.6, 49.5]];
-    roster.forEach((a, i) => {
-      if (!a) return;
-      const u = world.add(W.makeUnit("agent", spots[i][0], spots[i][1], { name: a.name, slot: i, look: W.agentLook(a), dir: -Math.PI / 2 }));
-      a.weapons.forEach(w => W.giveWeapon(u, w.type, w.ammo));
-      u.ipa = {}; for (const s of W.STIMS) u.ipa[s.id] = { lvl: 0.5, dep: 0, eff: 0.5 };
-      world.selected.add(u);
-    });
+    W.spawnSquad(world, opts.roster || W.defaultRoster(), [[14.5, 48.6], [15.6, 48.6], [14.5, 49.5], [15.6, 49.5]]);
 
     world.objective({ type: "kill", unit: sly, text: "Eliminate Vesper Sly" });
     world.objective({ type: "recruit", n: 5, optional: true, text: "Recruit 5 followers with the Purrsuader" });
@@ -241,12 +233,3 @@ W.LEVELS.plaza = {
   },
   start: [21, 43],
 };
-
-/* The squad, until the overworld gives us a real roster. */
-W.defaultRoster = () => [
-  { name: "LYNX", fur: "#b08a5a", weapons: [{ type: "pistol" }, { type: "purrsuader" }, { type: "medikit", ammo: 1 }] },
-  { name: "MANX", fur: "#7c7c84", weapons: [{ type: "pistol" }, { type: "uzi", ammo: 80 }, { type: "medikit", ammo: 1 }] },
-  { name: "SPHYNX", fur: "#c9a49a", weapons: [{ type: "pistol" }, { type: "shotgun", ammo: 24 }, { type: "medikit", ammo: 1 }] },
-  { name: "CALICO", fur: "#e8e4dc", patch: "#c98a4a", weapons: [{ type: "pistol" }, { type: "uzi", ammo: 80 }, { type: "medikit", ammo: 1 }] },
-];
-W.agentLook = a => ({ coat: "#1b2130", trim: "#54f2ff", legs: "#10131c", fur: a.fur, patch: a.patch || null, visor: "#54f2ff", long: true });

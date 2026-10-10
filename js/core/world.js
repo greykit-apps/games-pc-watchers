@@ -35,7 +35,7 @@ W.World = class {
   }
 
   /* ---- effects ---- */
-  tracer(x0, y0, z0, x1, y1, z1, color = "#ffe9a8") { this.tracers.push({ x0, y0, z0, x1, y1, z1, color, t: 0, life: 0.07 }); }
+  tracer(x0, y0, z0, x1, y1, z1, color = "#ffe9a8", w = 1, life = 0.07) { this.tracers.push({ x0, y0, z0, x1, y1, z1, color, w, t: 0, life }); }
   spark(x, y, z, color, n = 4) {
     for (let i = 0; i < n; i++) this.particles.push({ x, y, z, vx: W.rand(-1.5, 1.5), vy: W.rand(-1.5, 1.5), vz: W.rand(10, 40), color, size: 1, t: 0, life: W.rand(0.2, 0.45) });
   }
@@ -73,6 +73,7 @@ W.World = class {
     // what they carried lands on the pavement
     const guns = u.isAgent ? u.weapons.filter(w => W.WEAPONS[w.type].gun && w.type !== "pistol") : u.weapons.filter(w => W.WEAPONS[w.type].gun).slice(0, 1);
     guns.forEach((w, i) => this.items.push({ type: w.type, ammo: w.ammo, x: u.x + (i ? W.rand(-0.3, 0.3) : 0), y: u.y + (i ? W.rand(-0.3, 0.3) : 0) }));
+    if (src && src.isAgent && !u.isAgent) src.kills = (src.kills || 0) + 1;
     if (u.isAgent) { this.stats.lost++; this.msg(`${u.name} is down.`, "#ff5266"); }
     else if (u.kind === "civ" && !u.follower) this.stats.civ++;
     else if (u.faction === "crew") this.stats.crew++;

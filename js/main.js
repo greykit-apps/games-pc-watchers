@@ -1,5 +1,6 @@
 /* PumaCity: Watchers -- the screens and the controls. Boot (the greykit.games
- * canon), title over a live plaza, the briefing, the mission, the debrief. */
+ * canon), title over a live plaza, the overworld (campaign), the briefing,
+ * the mission, the debrief. */
 "use strict";
 
 const Game = W.game = {
@@ -33,6 +34,7 @@ const Game = W.game = {
   toTitle(reveal = true) {
     this.mode = "title";
     this.closeSheets();
+    if (this.ow) { this.ow.close(); this.ow = null; }
     document.getElementById("game").hidden = true;
     W.audio.ambience(false);
     const host = document.getElementById("title-host");
@@ -40,10 +42,11 @@ const Game = W.game = {
     if (this.titleUI) this.titleUI.unmount();
     this.titleUI = mountTitle(host, {
       name: "Watchers",
-      primary: "new",
+      primary: W.C.load() ? "resume" : "new",
       items: [
-        { act: "new", label: "New quick game", key: "N", meta: "Mission 1 · Market Plaza" },
-        { act: "brief", label: "Briefing", key: "B", meta: "read the dossier first" },
+        (c => c && { act: "resume", label: "Resume campaign", key: "R", meta: `Day ${c.day} · ${W.money(c.cash)}` })(W.C.load()),
+        { act: "new", label: "New campaign", key: "N", meta: "four Watchers, $10,000" },
+        { act: "skirmish", label: "Skirmish", key: "K", meta: "Market Plaza, nothing saved" },
         "gap",
         { act: "settings", label: "Settings", key: "S" },
         { act: "help", label: "Help", key: "?" },
@@ -53,9 +56,13 @@ const Game = W.game = {
       help: this.helpTabs(),
       about: this.aboutHTML(),
       settings: this.settingsSheet(),
-      onAct: act => {
-        if (act === "new") this.toBriefing(true);
-        if (act === "brief") this.toBriefing(false);
+      onAct: async (act, ui) => {
+        if (act === "resume") { this.campaign = W.C.load(); this.toOverworld(); }
+        if (act === "new") {
+          if (W.C.load() && !(await ui.confirm("Start a new campaign? The one in progress, its squad, cash and research, is lost.", "Start a new campaign"))) return;
+          this.campaign = W.C.fresh(); W.C.save(this.campaign); this.toOverworld();
+        }
+        if (act === "skirmish") { this.campaign = null; this.toBriefing(null); }
       },
     });
     // a line under the name: whose city this is
@@ -100,13 +107,17 @@ const Game = W.game = {
         <tr><td><b>Red Dot</b></td><td>aim, and how far a Watcher looks for trouble</td></tr>
         <tr><td><b>Silvervine</b></td><td>reflexes and initiative. Too little and a Watcher will not fire unless ordered; a heavy dose also uses a medikit by itself when badly hurt</td></tr></table>
         <p>Above the white midpoint a dose burns off slowly and builds a <b>dependency</b> (the red hatching), which eats into the effect until it fades. Dose for the fight, not the walk.</p>`],
+      ["Campaign", `<p>Casey Benton pays by the contract. The fee is paid on success, with extra for each bonus objective, and scaled by your grade. A contract you have already finished can be run again as a mop-up, for a smaller fee.</p>
+        <p><b>Research</b> turns that cash into new gear. Two labs, weapons and cyber-mods, each work on one project at a time and spend their funding every day that passes. Days pass while you are on a contract, or when you choose to wait.</p>
+        <p>Finished research goes on sale: weapons in the <b>Armoury</b>, mods in the <b>Clinic</b>. Ammunition is topped up free before every mission; medikits are not.</p>
+        <p>Watchers who die on a mission are gone, with whatever they carried. Hire replacements from the <b>Roster</b>. Weapons a Watcher picks up in the field come home with them.</p>`],
       ["About", this.aboutHTML()],
     ];
   },
   aboutHTML() {
     return `<p><b>PumaCity: Watchers</b>. Casey Benton owns PumaCity, and the Watchers are how she keeps it. Four cyber-cats in long coats, a city of rival crews, and the Boss's orders.</p>
       <p>A squad tactics game in the spirit of <i>Syndicate</i> (Bullfrog Productions, 1993). Everything here is original: code, maps, art and sound are drawn and synthesised in the page.</p>
-      <p>Mission 1 of the campaign. The overworld, where research and investment buy the squad its upgrades, is coming.</p>
+      <p>Contracts pay for research; research puts new weapons and cyber-mods in the squad's hands, as in <i>Syndicate Wars</i>. One district so far: more are coming.</p>
       <p class="gk-credit">Built by <a href="https://greykit.com/" target="_blank" rel="noopener">greykit.com</a></p>`;
   },
   settingsSheet() {
@@ -136,11 +147,29 @@ const Game = W.game = {
     };
   },
 
-  /* ---------------- the briefing ---------------- */
-  toBriefing(quick) {
+  /* ---------------- the overworld ---------------- */
+  toOverworld() {
+    this.closeSheets();
+    if (this.titleUI) { this.titleUI.unmount(); this.titleUI = null; }
+    const host = document.getElementById("title-host");
+    host.hidden = true; host.innerHTML = ""; this.attract = null;
+    document.getElementById("game").hidden = true;
+    W.audio.ambience(false);
+    this.mode = "world";
+    if (!this.ow) this.ow = new W.Overworld(this);
+    this.ow.open();
+  },
+
+  /* ---------------- the briefing ----------------
+   * contractId: a campaign contract, or null for a skirmish with the
+   * standard kit. */
+  toBriefing(contractId) {
+    const c = contractId && W.C.CONTRACTS.find(x => x.id === contractId);
+    this.run = { contract: c || null, opts: { roster: c && this.campaign ? W.C.missionRoster(this.campaign) : undefined } };
+    this.level = W.LEVELS[c ? c.level : "plaza"];
     const L = this.level;
-    this.world = new W.World(L, {});
-    if (quick) return this.beginMission();
+    this.world = new W.World(L, this.run.opts);
+    if (this.ow) { this.ow.close(); this.ow = null; }
     this.mode = "brief";
     // the title goes away entirely, so its menu keys cannot fire under the dossier
     if (this.titleUI) { this.titleUI.unmount(); this.titleUI = null; }
@@ -152,11 +181,13 @@ const Game = W.game = {
     const w = this.world, sly = w.targetUnit;
     el.innerHTML = `<div class="wrap">
       <div>
-        <div class="tag">Mission 1 · ${W.esc(L.district)}</div>
+        <div class="tag">${c ? `Day ${this.campaign.day} · ` : "Skirmish · "}${W.esc(L.district)}</div>
         <h1>${W.esc(L.name)}</h1>
         <div class="code">OPERATION ${W.esc(L.codename)}</div>
         <div class="from">From: ${W.esc(L.briefing.from)}</div>
         <div class="text">${L.briefing.text.map(p => `<p>${W.esc(p)}</p>`).join("")}</div>
+        ${c ? `<div class="panel"><h3>The contract</h3><table><tr><td>Fee</td><td>${W.money(W.C.contractFee(this.campaign, c))}, plus ${W.money(c.bonusFee)} a bonus, scaled by grade</td></tr>
+          <tr><td>Time</td><td>${c.days} days: the labs keep spending while you are out</td></tr><tr><td>Losses</td><td>Watchers killed are gone for good, with what they carry</td></tr></table></div>` : ""}
       </div>
       <div>
         <div class="panel"><h3>The plaza</h3><canvas class="map" data-map width="216" height="112"></canvas>
@@ -178,9 +209,11 @@ const Game = W.game = {
     this.resize();
     el.querySelectorAll("[data-agent]").forEach(c => W.drawPortrait(c.getContext("2d"), w.agents[+c.dataset.agent].look, 40, 40));
     el.querySelector("[data-go]").addEventListener("click", () => this.beginMission());
-    el.querySelector("[data-back]").addEventListener("click", () => this.toTitle());
+    el.querySelector("[data-back]").addEventListener("click", () => this.backFromBrief());
     el.querySelector("[data-go]").focus();
   },
+
+  backFromBrief() { if (this.run && this.run.contract) this.toOverworld(); else this.toTitle(); },
 
   /* ---------------- the mission ---------------- */
   beginMission() {
@@ -191,7 +224,7 @@ const Game = W.game = {
     this.attract = null;
     document.getElementById("game").hidden = false;
     this.mode = "play"; this.paused = false;
-    if (!this.world || this.world.time > 0 || this.world.status !== "play") this.world = new W.World(this.level, {});
+    if (!this.world || this.world.time > 0 || this.world.status !== "play") this.world = new W.World(this.level, (this.run && this.run.opts) || {});
     this.resize();
     const w = this.world;
     this.renderer.centerOn(w, this.level.start[0], this.level.start[1]);
@@ -204,7 +237,8 @@ const Game = W.game = {
     this.hint(true);
     this.view.focus && this.view.focus();
   },
-  restartMission() { this.world = null; this.beginMission(); },
+  /* a skirmish can be replayed at once; a contract cannot (the dead stay dead) */
+  restartMission() { if (this.run && this.run.contract) return; this.world = null; this.beginMission(); },
 
   banner(text, sub, color) {
     const b = document.getElementById("banner");
@@ -334,7 +368,7 @@ const Game = W.game = {
     if (!ui.mouseIn || !this.world) { ui.hover = null; return; }
     const u = this.unitAt(ui.x, ui.y);
     const sel = this.selectedAgents();
-    const purr = sel.some(a => W.curWeapon(a) && W.curWeapon(a).type === "purrsuader");
+    const purr = sel.some(a => W.curDef(a) && W.curDef(a).persuade);
     const h = { x: ui.x, y: ui.y, mode: "move" };
     if (u) {
       if (u.isAgent) { h.mode = "select"; h.label = u.name; h.labelColor = "#54f2ff"; }
@@ -413,7 +447,7 @@ const Game = W.game = {
     let any = false;
     for (const a of sel) {
       const cur = W.curWeapon(a);
-      if (cur && cur.type === "purrsuader" && !t.isCar) { a.manual = t; any = true; continue; }
+      if (cur && W.WEAPONS[cur.type].persuade && !t.isCar) { a.manual = t; any = true; continue; }
       if (!W.armed(a)) {
         // reach for the best loaded gun
         let best = -1, sc = -1;
@@ -516,16 +550,22 @@ const Game = W.game = {
     window.addEventListener("keydown", ev => {
       if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
       const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key.toLowerCase();
-      if (k === "m" && (this.mode === "play" || this.mode === "title" || this.mode === "brief")) {
+      if (k === "m" && (this.mode === "play" || this.mode === "title" || this.mode === "brief" || this.mode === "world")) {
         if (document.querySelector(".gk-sheet")) return;
         this.toggleSound(); return;
       }
+      if (this.mode === "world") {
+        if (document.querySelector(".gk-sheet")) return;
+        if (this.ow && this.ow.onKey(k, ev)) ev.preventDefault();
+        return;
+      }
       if (this.mode === "brief") {
         if (k === "enter") { ev.preventDefault(); this.beginMission(); }
-        if (k === "escape") { ev.preventDefault(); this.toTitle(); }
+        if (k === "escape") { ev.preventDefault(); this.backFromBrief(); }
         return;
       }
       if (this.mode === "debrief") {
+        if (this.run && this.run.contract) { if (k === "enter" || k === "escape") { ev.preventDefault(); this.toOverworld(); } return; }
         if (k === "r" || k === "enter") { ev.preventDefault(); this.restartMission(); }
         if (k === "escape" || k === "t") { ev.preventDefault(); this.toTitle(); }
         return;
@@ -534,7 +574,7 @@ const Game = W.game = {
       if (document.querySelector(".gk-sheet")) return;
       if (this.menuEl) {
         if (k === "escape") { ev.preventDefault(); this.closeMenu(); }
-        if (k === "r") { ev.preventDefault(); this.closeMenu(); this.restartMission(); }
+        if (k === "r" && !(this.run && this.run.contract)) { ev.preventDefault(); this.closeMenu(); this.restartMission(); }
         return;
       }
       if (["w", "a", "s", "d", "arrowleft", "arrowright", "arrowup", "arrowdown"].includes(k)) { this.keys.add(k); ev.preventDefault(); return; }
@@ -589,11 +629,11 @@ const Game = W.game = {
       <p class="note">${W.esc(this.level.name)} · ${this.hud.clock.textContent} on the clock · ${w.agents.filter(a => a.alive).length} of ${w.agents.length} Watchers standing</p>
       <div class="col">
         <button class="primary" data-a="resume"><kbd>Esc</kbd>Resume</button>
-        <button data-a="restart"><kbd>R</kbd>Restart mission</button>
+        ${this.run && this.run.contract ? "" : `<button data-a="restart"><kbd>R</kbd>Restart mission</button>`}
         <button data-a="help"><kbd>?</kbd>Controls</button>
         <button data-a="sound" aria-label="Sound" aria-pressed="${!W.prefs.muted}"><kbd>M</kbd>Sound ${W.prefs.muted ? "off" : "on"}</button>
         <button data-a="rain" aria-pressed="${W.prefs.rain}">Rain ${W.prefs.rain ? "on" : "off"}</button>
-        <button class="danger" data-a="abort">Abort to title</button>
+        <button class="danger" data-a="abort">${this.run && this.run.contract ? "Abort mission" : "Abort to title"}</button>
       </div>
       <div data-help hidden><h3>Controls</h3>${this.helpTabs()[0][1]}</div></div>`;
     el.addEventListener("click", async ev => {
@@ -605,7 +645,14 @@ const Game = W.game = {
       if (a === "help") el.querySelector("[data-help]").hidden = !el.querySelector("[data-help]").hidden;
       if (a === "sound") { this.toggleSound(); b.setAttribute("aria-pressed", String(!W.prefs.muted)); b.innerHTML = `<kbd>M</kbd>Sound ${W.prefs.muted ? "off" : "on"}`; }
       if (a === "rain") { W.prefs.rain = !W.prefs.rain; W.savePrefs(); W.audio.setRain(W.prefs.rain); b.setAttribute("aria-pressed", String(W.prefs.rain)); b.textContent = `Rain ${W.prefs.rain ? "on" : "off"}`; }
-      if (a === "abort") { if (await confirmSheet("Abort the mission and go back to the title? Casey Benton will not be pleased.", "Abort mission")) { this.closeMenu(); this.toTitle(); } }
+      if (a === "abort") {
+        const contract = this.run && this.run.contract;
+        const q = contract ? "Abort the mission? It counts as a failed contract: no fee, and anyone already down stays down." : "Abort the mission and go back to the title?";
+        if (!(await confirmSheet(q, "Abort mission"))) return;
+        this.closeMenu();
+        if (contract) { this.world.end("lost", "Mission aborted."); this.toDebrief(); }
+        else this.toTitle();
+      }
     });
     document.body.appendChild(el);
     this.menuEl = el;
@@ -645,6 +692,16 @@ const Game = W.game = {
     const quote = won
       ? (s.civ > 4 ? `"Sly's done. The tourists are not coming back this week, and that's coming out of your budget." -- Casey Benton` : `"Sly's done, and the shoppers barely noticed. That's how I like it." -- Casey Benton`)
       : (w.endReason.includes("away") ? `"He walked. You let him walk." -- Casey Benton` : `"I'll need new Watchers. Try not to break these ones." -- Casey Benton`);
+    // a contract settles up: the fee, the dead, the days that passed
+    const camp = this.run && this.run.contract && this.campaign;
+    let slip = null;
+    if (camp) {
+      slip = W.C.settle(this.campaign, {
+        contract: this.run.contract.id, won, grade, bonuses: bonus,
+        agents: w.agents.map(a => ({ id: a.rosterId, alive: a.alive, kills: a.kills || 0, items: a.weapons.map(x => ({ type: x.type, ammo: x.ammo })) })),
+      });
+      W.C.save(this.campaign);
+    }
     const el = document.createElement("div");
     el.className = "sheet debrief"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Debrief");
     el.innerHTML = `<div class="box">
@@ -661,17 +718,21 @@ const Game = W.game = {
         <tr><td>Recruited</td><td>${s.recruited}</td></tr>
         <tr><td>Rounds fired</td><td>${s.shots}</td></tr>
       </table>
+      ${slip ? `<h3>Payslip</h3><table class="payslip">${slip.lines.map(([k, v]) => `<tr><td>${W.esc(k)}</td><td>${v ? W.money(v) : "--"}</td></tr>`).join("")}
+        <tr class="total"><td>Cash now</td><td>${W.money(this.campaign.cash)}</td></tr></table>` : ""}
       <p class="quote">${W.esc(quote)}</p>
-      <div class="acts"><button class="primary" data-a="again"><kbd>R</kbd>${won ? "Play it again" : "Try again"}</button><button data-a="title"><kbd>Esc</kbd>Back to title</button></div>
+      <div class="acts">${camp ? `<button class="primary" data-a="world"><kbd>Enter</kbd>Back to command</button>`
+        : `<button class="primary" data-a="again"><kbd>R</kbd>${won ? "Play it again" : "Try again"}</button><button data-a="title"><kbd>Esc</kbd>Back to title</button>`}</div>
     </div>`;
     el.addEventListener("click", ev => {
       const b = ev.target.closest("button"); if (!b) return;
       if (b.dataset.a === "again") this.restartMission();
       if (b.dataset.a === "title") this.toTitle();
+      if (b.dataset.a === "world") this.toOverworld();
     });
     document.body.appendChild(el);
     this.debriefEl = el;
-    el.querySelector("[data-a=again]").focus();
+    el.querySelector(".acts button").focus();
   },
 };
 

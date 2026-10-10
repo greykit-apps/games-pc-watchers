@@ -52,6 +52,7 @@ W.audio = (() => {
     pistol(t, v) { noiseBurst(t, { dur: 0.12, f: 1800, q: 0.6, vol: 0.55 * v }); tone(t, { f: 180, fEnd: 50, dur: 0.09, type: "triangle", vol: 0.35 * v }); },
     uzi(t, v) { noiseBurst(t, { dur: 0.06, f: 2400, q: 0.7, vol: 0.4 * v }); tone(t, { f: 220, fEnd: 80, dur: 0.05, type: "triangle", vol: 0.2 * v }); },
     shotgun(t, v) { noiseBurst(t, { dur: 0.32, f: 900, q: 0.5, vol: 0.8 * v, type: "lowpass", fEnd: 200 }); tone(t, { f: 120, fEnd: 35, dur: 0.22, type: "sine", vol: 0.5 * v }); },
+    laser(t, v) { tone(t, { f: 2200, fEnd: 300, dur: 0.3, type: "sawtooth", vol: 0.18 * v }); tone(t, { f: 1100, fEnd: 150, dur: 0.3, type: "square", vol: 0.08 * v }); },
     purr(t, v) {
       // a rising warble, and a purr under it
       const o = ac.createOscillator(); o.type = "sawtooth"; o.frequency.setValueAtTime(70, t);

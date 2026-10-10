@@ -6,11 +6,12 @@
  *
  *   node tools/sim.js [runs=5] [--quiet] [--attract]
  *   --quiet: the bot walks in holstered and draws late; the default bot goes in loud
+ *   --campaign: the squad a new campaign starts with (pistols and shotguns)
  */
 "use strict";
 const fs = require("fs"), path = require("path"), vm = require("vm");
 const ROOT = path.join(__dirname, "..");
-const FILES = ["js/core/util.js", "js/core/map.js", "js/core/weapons.js", "js/core/units.js", "js/core/world.js", "js/levels/plaza.js"];
+const FILES = ["js/core/util.js", "js/core/map.js", "js/core/weapons.js", "js/core/units.js", "js/core/world.js", "js/levels/plaza.js", "js/campaign/campaign.js"];
 
 function load() {
   const store = {};
@@ -27,8 +28,8 @@ function load() {
   return ctx.W;
 }
 
-function run(W, seed, attract, quiet) {
-  const world = new W.World(W.LEVELS.plaza, { attract });
+function run(W, seed, attract, quiet, camp, roster) {
+  const world = new W.World(W.LEVELS.plaza, { attract, roster: roster || (camp ? W.C.missionRoster(W.C.fresh()) : undefined) });
   const m = world.map, dt = 1 / 60;
   let t = 0, orderT = 0;
   const fail = msg => { throw new Error(`run ${seed} t=${t.toFixed(1)}: ${msg}`); };
@@ -56,19 +57,23 @@ function run(W, seed, attract, quiet) {
         if (!a.path) W.goTo(world, a, goal.x + (a.slot % 2), goal.y + (a.slot >> 1));
       }
     }
-    if (world.status !== "play") return { status: world.status, reason: world.endReason, t, stats: world.stats };
+    if (world.status !== "play") return { status: world.status, reason: world.endReason, t, stats: world.stats, world };
   }
   fail("the mission never ended");
 }
+
+module.exports = { load, run };
+if (require.main !== module) return;
 
 const args = process.argv.slice(2);
 const runs = +(args.find(a => /^\d+$/.test(a)) || 5);
 const attract = args.includes("--attract");
 const quiet = args.includes("--quiet");
+const camp = args.includes("--campaign");
 const W = load();
 let won = 0;
 for (let i = 0; i < runs; i++) {
-  const r = run(W, i, attract, quiet);
+  const r = run(W, i, attract, quiet, camp);
   if (r.status === "won") won++;
   console.log(`run ${i}: ${r.status}${r.reason ? " -- " + r.reason : ""} at ${r.t.toFixed(1)}s` + (r.stats ? ` (lost ${r.stats.lost}, crew ${r.stats.crew}, sec ${r.stats.sec}, civ ${r.stats.civ}, shots ${r.stats.shots})` : ""));
 }

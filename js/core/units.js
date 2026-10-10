@@ -90,7 +90,7 @@ W.STIMS = [
 W.stimTick = (u, dt) => {
   for (const s of W.STIMS) {
     const st = u.ipa[s.id];
-    if (st.lvl > 0.5) { st.dep += (st.lvl - 0.5) * 0.035 * dt; st.lvl = Math.max(0.5, st.lvl - 0.012 * dt); }
+    if (st.lvl > 0.5) { st.dep += (st.lvl - 0.5) * 0.035 * (1 - 0.25 * W.mod(u, "heart")) * dt; st.lvl = Math.max(0.5, st.lvl - 0.012 * dt); }
     st.dep = Math.max(0, st.dep - 0.004 * dt);
     st.eff = W.clamp(st.lvl - st.dep * 0.6, 0, 1);
   }
@@ -99,7 +99,11 @@ W.eff = (u, id) => u.ipa ? u.ipa[id].eff : 0.5;
 
 W.speedOf = u => {
   let s = u.baseSpeed;
-  if (u.isAgent) s *= 0.75 + 0.6 * W.eff(u, "zoom");
+  if (u.isAgent) {
+    s *= (0.75 + 0.6 * W.eff(u, "zoom")) * (1 + 0.12 * W.mod(u, "legs"));
+    const d = W.curDef(u);
+    if (d && d.heavy && W.mod(u, "arms") < 1) s *= 0.8;
+  }
   if (u.state === "panic") s = 2.5;
   if (u.state === "flee") s *= 1.25;
   if (u.follower && !u.isAgent && u.leader) s = Math.max(s, u.leader.alive ? Math.min(W.speedOf(u.leader), 2.6) : s);
@@ -200,7 +204,7 @@ W.tryFire = (world, u, tx, ty, victim) => {
   }
   if (w.ammo != null) w.ammo--;
   let cd = def.cd;
-  if (u.isAgent) cd *= 1.15 - 0.3 * W.eff(u, "zoom");
+  if (u.isAgent) cd *= (1.15 - 0.3 * W.eff(u, "zoom")) * (1 - 0.08 * W.mod(u, "arms"));
   u.cd = cd;
   u.dir = Math.atan2(ty - u.y, tx - u.x);
   u.flash = 0.07;
@@ -208,8 +212,8 @@ W.tryFire = (world, u, tx, ty, victim) => {
   W.audio.at(def.sound, u.x, u.y);
   const d = W.dist(u.x, u.y, tx, ty);
   let acc = def.acc * u.acc;
-  if (u.isAgent) acc *= 0.8 + 0.4 * W.eff(u, "dot");
-  const fall = 1 - 0.45 * W.clamp(d / def.range, 0, 1.4);
+  if (u.isAgent) acc *= (0.8 + 0.4 * W.eff(u, "dot")) * (1 + 0.06 * W.mod(u, "eyes"));
+  const fall = 1 - (0.45 - 0.08 * W.mod(u, "eyes")) * W.clamp(d / def.range, 0, 1.4);
   const mz = 12; // muzzle height
   for (let p = 0; p < (def.pellets || 1); p++) {
     let ang = Math.atan2(ty - u.y, tx - u.x);
@@ -245,11 +249,12 @@ W.tryFire = (world, u, tx, ty, victim) => {
         if (Math.random() < 0.3) W.audio.at("ric", ex, ey, 0.6);
       }
     }
-    world.tracer(u.x + Math.cos(ang) * 0.3, u.y + Math.sin(ang) * 0.3, mz, ex, ey, ez, def.tracer);
+    world.tracer(u.x + Math.cos(ang) * 0.3, u.y + Math.sin(ang) * 0.3, mz, ex, ey, ez, def.tracer, def.beam ? 2 : 1, def.beam ? 0.25 : 0.07);
     if (hit) {
       if (hit.isCar) world.damageCar(hit, def.dmg, u);
       else world.damage(hit, def.dmg, u);
     }
+    if (def.blast) world.explode(ex, ey, def.blast.r, def.blast.dmg, u);
   }
   world.noise(u.x, u.y, 9, u);
   return true;
@@ -259,8 +264,12 @@ W.tryFire = (world, u, tx, ty, victim) => {
 W.squadFollowers = world => world.units.filter(o => o.alive && o.follower && !o.isAgent).length;
 W.canPersuade = (world, agent, t) => {
   if (!t.alive || t.inCar || t.faction === "player" || t.isAgent) return false;
-  const need = t.kind === "target" ? Infinity : t.kind === "crew" ? (t.guard ? 6 : W.PERSUADE_NEED.crew) : W.PERSUADE_NEED[t.kind];
-  return need !== undefined && W.squadFollowers(world) >= need;
+  let need = t.kind === "target" ? Infinity : t.kind === "crew" ? (t.guard ? 6 : W.PERSUADE_NEED.crew) : W.PERSUADE_NEED[t.kind];
+  if (need === undefined) return false;
+  // a better Purrsuader halves the crowd needed; a better brain counts as followers
+  const def = W.curDef(agent);
+  if (def && def.persuade > 1) need = Math.ceil(need / 2);
+  return W.squadFollowers(world) + W.mod(agent, "brain") >= need;
 };
 W.persuade = (world, agent, t) => {
   t.faction = "player"; t.follower = true; t.leader = agent;
@@ -337,7 +346,7 @@ W.thinkAgent = (world, u) => {
     if (k >= 0) { u.prevCur = u.cur; u.cur = k; return; }
   }
   // the Purrsuader works on whoever wanders into range
-  if (def && W.curWeapon(u).type === "purrsuader") {
+  if (def && def.persuade) {
     if (u.cd <= 0) {
       const m = u.manual && u.manual.alive && u.manual.faction !== "player" ? u.manual : null;
       let pick = null, bd = Infinity;
@@ -377,10 +386,10 @@ W.thinkAgent = (world, u) => {
   // them think for themselves
   const vine = W.eff(u, "vine");
   if (vine < 0.15) { u.target = null; return; }
-  const range = def.range + W.eff(u, "dot") * 1.5;
+  const range = def.range + W.eff(u, "dot") * 1.5 + 0.6 * W.mod(u, "eyes");
   const foe = W.nearestFoe(world, u, range);
   if (foe) {
-    if (u.target !== foe) { u.target = foe; u.aimT = Math.max(0.12, 0.95 - 0.65 * vine - 0.2 * W.eff(u, "dot")); }
+    if (u.target !== foe) { u.target = foe; u.aimT = Math.max(0.1, (0.95 - 0.65 * vine - 0.2 * W.eff(u, "dot")) * (1 - 0.18 * W.mod(u, "brain"))); }
   } else u.target = null;
 };
 
@@ -575,7 +584,7 @@ W.updateUnit = (world, u, dt) => {
   if (u.say) { u.say.t -= dt; if (u.say.t <= 0) u.say = null; }
   if (u.isAgent) {
     W.stimTick(u, dt);
-    if (u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + 0.12 * dt);
+    if (u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + (0.12 + 0.15 * W.mod(u, "heart")) * dt);
   }
   u.thinkT -= dt;
   if (u.thinkT <= 0) { u.thinkT = 0.18 + Math.random() * 0.1; W.think(world, u, dt); }
@@ -615,3 +624,27 @@ W.updateUnit = (world, u, dt) => {
     }
   }
 };
+
+/* ---- the squad ----
+ * A roster entry is { id, name, fur, patch, mods, weapons: [{ type, ammo }] };
+ * the campaign builds them, and W.defaultRoster stands in without one. */
+W.agentLook = a => ({ coat: "#1b2130", trim: "#54f2ff", legs: "#10131c", fur: a.fur, patch: a.patch || null, visor: "#54f2ff", long: true });
+W.spawnSquad = (world, roster, spots) => {
+  roster.slice(0, spots.length).forEach((a, i) => {
+    const mods = Object.assign({}, a.mods || {});
+    const u = world.add(W.makeUnit("agent", spots[i][0], spots[i][1], { name: a.name, slot: i, rosterId: a.id, look: W.agentLook(a), dir: -Math.PI / 2, mods, kills: 0 }));
+    // a chest mod: more to hit, and harder to hurt
+    u.maxHp = u.hp = 24 + 6 * (mods.chest || 0);
+    u.armor = 0.75 * (1 - 0.1 * (mods.chest || 0));
+    a.weapons.forEach(w => W.giveWeapon(u, w.type, w.ammo));
+    u.ipa = {};
+    for (const s of W.STIMS) u.ipa[s.id] = { lvl: 0.5, dep: 0, eff: 0.5 };
+    world.selected.add(u);
+  });
+};
+W.defaultRoster = () => [
+  { id: 1, name: "LYNX", fur: "#b08a5a", weapons: [{ type: "pistol" }, { type: "purrsuader" }, { type: "medikit", ammo: 1 }] },
+  { id: 2, name: "MANX", fur: "#7c7c84", weapons: [{ type: "pistol" }, { type: "uzi", ammo: 80 }, { type: "medikit", ammo: 1 }] },
+  { id: 3, name: "SPHYNX", fur: "#c9a49a", weapons: [{ type: "pistol" }, { type: "shotgun", ammo: 24 }, { type: "medikit", ammo: 1 }] },
+  { id: 4, name: "CALICO", fur: "#e8e4dc", patch: "#c98a4a", weapons: [{ type: "pistol" }, { type: "uzi", ammo: 80 }, { type: "medikit", ammo: 1 }] },
+];

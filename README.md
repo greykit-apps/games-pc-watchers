@@ -5,14 +5,40 @@ tactics game in the spirit of *Syndicate* (Bullfrog, 1993), set in PumaCity.
 You run the Watchers, the Boss's covert enforcers, through the city's
 districts one contract at a time.
 
-Status: engine plus one playable mission (Market Plaza). The overworld, where
-research and investment drive the squad's upgrades, comes next.
+Status: the engine, one playable district (Market Plaza), and the campaign
+loop: contracts pay, money funds research, research unlocks gear.
 
 ## Play
 
 Open `index.html` from disk, or serve the folder (`python -m http.server`).
 Plain `<script>` tags, no build step, no network at play time. Everything,
 art and sound included, is drawn and synthesised in the page.
+
+### The campaign
+
+As in *Syndicate Wars*, the Boss pays by the contract and the money buys the
+squad's future:
+
+- **Contracts** pay a fee on success, plus a bonus for each optional
+  objective, scaled by grade (S ×1.25 to D ×0.8). A finished contract can be
+  run again as a mop-up, for a smaller fee.
+- **Research.** Two labs, *Weapons* and *Cyber*, each work on one project at
+  a time and spend their daily funding ($0 to $4,000) as days pass. A
+  contract takes two days; *Wait a day* passes one.
+  - Weapons: Uzi, Longwhisker rifle, Purrsuader II, Minigun (needs the Uzi),
+    Laser (needs the rifle), Gauss Gun (needs both).
+  - Cyber: Legs, Arms, Chest, Heart, Eyes and Brain, in three versions each.
+- **The Armoury** sells what has been researched, to a chosen Watcher (8
+  slots each). Ammunition is topped up free before every mission; medikits
+  are bought. Selling pays back half the price.
+- **The Clinic** installs researched mods, one version at a time.
+- **The Roster** holds up to 8 Watchers; 4 deploy. The dead stay dead, along
+  with what they carried. Weapons picked up in the field come home. Hire
+  replacements for $4,000.
+- **Skirmish** on the title plays Market Plaza with the standard kit and
+  saves nothing.
+
+The campaign saves under `pcwatchers_campaign_v1` after every change.
 
 ### Mission 1: Market Plaza (Operation Clean Sweep)
 
@@ -65,9 +91,12 @@ js/core/render.js     painter's-order renderer, cutaway, lights, rain, scanner
 js/core/units.js      units, stims, hostility, AI per kind, firing, Purrsuader
 js/core/world.js      a mission in progress: traffic, damage, effects, win/lose
 js/levels/plaza.js    Mission 1: map, population, briefing, objectives
-js/ui/hud.js          the left panel
+js/campaign/campaign.js  the campaign: research, prices, roster, pay (no DOM)
+js/ui/hud.js          the mission's left panel
+js/ui/overworld.js    Watchers command: city, contracts, labs, Armoury, Clinic, Roster
 js/main.js            screens, input, loop
 tools/sim.js          headless bot runs of the mission
+tools/campaign.js     a headless campaign: contracts, research, shopping
 ```
 
 - **Isometric, pixel-scaled.** The city renders at a low internal resolution
@@ -90,7 +119,9 @@ tools/sim.js          headless bot runs of the mission
 ```
 node tools/sim.js 10 --quiet   # bot walks in holstered, draws late
 node tools/sim.js 10           # bot goes in loud
+node tools/sim.js 10 --campaign  # with a new campaign's kit (no Uzis)
 node tools/sim.js 2 --attract  # the title screen's backdrop sim
+node tools/campaign.js 14      # a bot plays 14 contracts; checks the economy
 ```
 
 The sim fails on a crash, a NaN position, a unit standing inside a wall, or a
@@ -109,12 +140,11 @@ Storage keys start with `pcwatchers_`, and Settings has *Forget everything*.
 
 ## Roadmap
 
-1. The overworld: PumaCity's districts as a map, contracts, tax and
-   investment, research that unlocks weapons and cyber-mods (legs, arms,
-   chest, eyes, brain), and a persistent roster.
+1. ~~The campaign loop: contracts, research, Armoury, Clinic, roster.~~
 2. More districts: The Starport, PVN Tower, The Vault, The Ranch, The
    Convention Center, The Suburbs.
-3. Engine: enterable vehicles, more weapons (minigun, laser, flamer, time
+3. Overworld depth: districts held pay tribute, rival syndicates, events.
+4. Engine: enterable vehicles, more weapons (minigun, laser, flamer, time
    bomb), mission types (persuade, evacuate, retrieve), touch controls.
 
 ## Credits

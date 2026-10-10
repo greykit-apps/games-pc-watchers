@@ -15,7 +15,7 @@ W.HUD = class {
       <div class="hud-sub">Objectives</div>
       <ul class="hud-obj" data-obj></ul>
       <div class="hud-sub">Scanner</div>
-      <canvas class="hud-mini" data-mini width="216" height="112"></canvas>
+      <canvas class="hud-mini" data-mini width="216" height="176" title="Scanner: click to look there, Shift-click to send the squad, wheel to zoom"></canvas>
       <div class="hud-foot"><button data-menu title="Menu (Esc)"><kbd>Esc</kbd>Menu</button><button data-sound aria-label="Sound" aria-pressed="${!W.prefs.muted}" title="Sound (M)"><kbd>M</kbd><span data-soundlbl>${W.prefs.muted ? "Sound off" : "Sound on"}</span></button></div>`;
     this.cardsEl = root.querySelector("[data-cards]");
     this.weapEl = root.querySelector("[data-weapons]");
@@ -34,6 +34,7 @@ W.HUD = class {
     this.mini.addEventListener("pointerdown", ev => { this.miniDrag = true; this.onMini(ev); ev.preventDefault(); });
     this.mini.addEventListener("pointermove", ev => { if (this.miniDrag) this.onMini(ev); });
     this.mini.addEventListener("contextmenu", ev => ev.preventDefault());
+    this.mini.addEventListener("wheel", ev => { ev.preventDefault(); this.zoom = W.clamp((this.zoom || 3) + (ev.deltaY < 0 ? 1 : -1), 1.5, 7); }, { passive: false });
   }
 
   build(world) {
@@ -115,7 +116,12 @@ W.HUD = class {
     }
   }
 
-  drawMini(renderer) { if (this.world) renderer.mini(this.miniC, this.world); }
+  /* the scanner follows the lead Watcher (or the view, with nobody selected) */
+  drawMini(renderer) {
+    if (!this.world) return;
+    const L = this.lead();
+    renderer.scanner(this.miniC, this.world, { center: L ? [L.x, L.y] : renderer.viewCenter(this.world), k: this.zoom || 3, ping: true });
+  }
 
   onClick(ev) {
     const b = ev.target.closest("button");
@@ -162,7 +168,7 @@ W.HUD = class {
   onMini(ev) {
     const r = this.mini.getBoundingClientRect();
     const mx = (ev.clientX - r.left) * this.mini.width / r.width, my = (ev.clientY - r.top) * this.mini.height / r.height;
-    const [x, y] = this.game.renderer.miniToWorld(this.world.map, mx, my);
+    const [x, y] = this.game.renderer.scanToWorld(mx, my);
     if (ev.button === 2 || ev.shiftKey) this.game.orderMove(x, y);
     else this.game.centerAt(x, y);
   }

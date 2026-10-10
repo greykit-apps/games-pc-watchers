@@ -7,8 +7,17 @@
 "use strict";
 
 W.GROUND_COL = {
-  0: "#1c2131", 1: "#10131d", 2: "#20253a", 3: "#0f2019", 4: "#0a2534", 5: "#12151f", 6: "#15171f", 7: "#0a0c12"
+  0: "#1c2131", 1: "#10131d", 2: "#20253a", 3: "#0f2019", 4: "#0a2534", 5: "#12151f", 6: "#15171f", 7: "#0a0c12",
+  8: "#221c15", 9: "#1b1810", 10: "#242934", 11: "#13161e",
+  12: "#22252e", 13: "#2a1d27", 14: "#2a2017", 15: "#1a1814"
 };
+/* the scanner's colours, top-down */
+W.SCAN_COL = {
+  0: "#141b2c", 1: "#0c1220", 2: "#182036", 3: "#0e2a1f", 4: "#0b3346", 5: "#10141f", 6: "#121620", 7: "#2c3a5c",
+  8: "#261f16", 9: "#1f2512", 10: "#1e2430", 11: "#0e121a",
+  12: "#3a3f4e", 13: "#4a3346", 14: "#4a3a28", 15: "#2a2620"
+};
+W.CHUNK = 512;
 
 W.Renderer = class {
   constructor(canvas, overlay) {
@@ -55,11 +64,13 @@ W.Renderer = class {
   }
   viewCenter(world) { return this.toWorld(world, this.cssW / 2, this.cssH / 2); }
 
-  /* ---- the static layers, built once per map ---- */
+  /* ---- the static layers, built once per map ----
+   * The ground is drawn lazily in 512px chunks as they come into view, so a
+   * district of any size never needs one giant canvas. */
   prepare(m) {
-    if (m._ground) return;
+    if (m._static) return;
     m._gox = m.h * W.HTW + 4;
-    m._ground = this.drawGround(m);
+    m._chunks = new Map();
     // every building cell and prop, sorted back to front
     const st = [];
     let maxH = 0;
@@ -67,43 +78,107 @@ W.Renderer = class {
       const k = m.i(x, y);
       if (m.height[k] > 0) { st.push({ kind: "cell", x, y, d: x + y + 1 }); maxH = Math.max(maxH, m.height[k]); }
     }
-    for (const p of m.props) st.push({ kind: "prop", p, d: p.x + p.y + (p.type === "blade" ? 0.6 : 0) });
+    for (const p of m.props) if (!p.gone) st.push({ kind: "prop", p, d: p.x + p.y + (p.type === "blade" ? 0.6 : 0) });
+    // footbridge decks, a slab per cell, drawn over whatever passes under
+    for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
+      const k = m.i(x, y);
+      if (m.deck[k] || m.deckHi[k]) st.push({ kind: "deck", x, y, d: x + y + 1.6 });
+    }
+    // the wall over each doorway
+    for (const l of m.lintels) st.push({ kind: "lintel", x: l.x, y: l.y, s: l.s, d: l.x + l.y + 1 });
+    // the roofs of enterable buildings, drawn over whoever is inside
+    for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
+      const k = m.i(x, y);
+      if (m.roofOf[k] >= 0 && m.height[k] === 0) st.push({ kind: "roof", x, y, s: m.roofOf[k], d: x + y + 1.98 });
+    }
     st.sort((a, b) => a.d - b.d);
     m._static = st;
-    m._maxZ = maxH * W.ZH + 60;
-    m._mini = this.drawMiniBase(m);
+    m._maxZ = Math.max(maxH * W.ZH, 100) + 60;
+    m._top = this.drawTop(m);
+  }
+  chunk(m, cx, cy) {
+    const key = cx + "," + cy;
+    let cv = m._chunks.get(key);
+    if (!cv) {
+      const CH = W.CHUNK;
+      cv = W.canvas(CH, CH);
+      const c = cv.getContext("2d");
+      c.fillStyle = "#05070f"; c.fillRect(0, 0, CH, CH);
+      c.translate(-cx * CH, -cy * CH);
+      this.drawGround(m, c, { x0: cx * CH, y0: cy * CH, x1: (cx + 1) * CH, y1: (cy + 1) * CH });
+      m._chunks.set(key, cv);
+    }
+    return cv;
   }
 
-  drawGround(m) {
-    const gw = (m.w + m.h) * W.HTW + 8, gh = (m.w + m.h) * W.HTH + 8;
-    const cv = W.canvas(gw, gh), c = cv.getContext("2d");
+  /* The ground inside one region of the ground plane (pixels, world (0,0)
+   * at (m._gox, 0)), into c. */
+  drawGround(m, c, R) {
     const ox = m._gox, oy = 0;
     const P = (x, y) => [ox + (x - y) * W.HTW, oy + (x + y) * W.HTH];
     const dia = (x, y, w = 1, h = 1) => { const a = P(x, y), b = P(x + w, y), d = P(x + w, y + h), e = P(x, y + h); c.beginPath(); c.moveTo(...a); c.lineTo(...b); c.lineTo(...d); c.lineTo(...e); c.closePath(); };
-    c.fillStyle = "#05070f"; c.fillRect(0, 0, gw, gh);
-    for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
+    // the cells whose diamonds touch the region
+    const cells = [];
+    const s0 = Math.floor(R.y0 / W.HTH) - 2, s1 = Math.ceil(R.y1 / W.HTH) + 1;
+    const d0 = Math.floor((R.x0 - ox) / W.HTW) - 2, d1 = Math.ceil((R.x1 - ox) / W.HTW) + 2;
+    for (let sum = s0; sum <= s1; sum++) for (let d = d0; d <= d1; d++) {
+      if (((sum + d) & 1) !== 0) continue;
+      const x = (sum + d) / 2, y = (sum - d) / 2;
+      if (m.inb(x, y)) cells.push(x, y);
+    }
+    for (let n = 0; n < cells.length; n += 2) {
+      const x = cells[n], y = cells[n + 1];
       const g = m.ground[m.i(x, y)];
       let col = W.GROUND_COL[g] || "#1c2131";
-      const n = W.hash2(x, y, 3);
+      const h = W.hash2(x, y, 3);
       if (g === W.G.PLAZA && (x + y) % 2) col = "#23293f";
-      if (g === W.G.WALK) col = n < 0.5 ? "#1c2131" : "#1e2335";
-      if (g === W.G.GRASS) col = n < 0.5 ? "#0f2019" : "#11241c";
+      if (g === W.G.WALK) col = h < 0.5 ? "#1c2131" : "#1e2335";
+      if (g === W.G.GRASS) col = h < 0.5 ? "#0f2019" : "#11241c";
+      if (g === W.G.DIRT) col = h < 0.5 ? "#221c15" : "#251e16";
+      if (g === W.G.PAD && ((x >> 2) + (y >> 2)) % 2) col = "#262b37";
+      if (g === W.G.INDOOR && (x + y) % 2) col = "#262a34";
+      if (g === W.G.CARPET && h < 0.5) col = "#2d2029";
       dia(x, y); c.fillStyle = col; c.fill();
-      // paving seams
-      if (g === W.G.WALK || g === W.G.PLAZA) { c.strokeStyle = "rgba(255,255,255,.035)"; c.lineWidth = 1; c.stroke(); }
+      if (g === W.G.WALK || g === W.G.PLAZA || g === W.G.PAD) { c.strokeStyle = g === W.G.PAD ? (x % 4 === 0 || y % 4 === 0 ? "rgba(255,255,255,.05)" : "rgba(0,0,0,0)") : "rgba(255,255,255,.035)"; c.lineWidth = 1; c.stroke(); }
       if (g === W.G.WATER) {
         c.fillStyle = "rgba(84,242,255,.10)";
         const [px, py] = P(x + 0.5, y + 0.5);
-        c.fillRect(px - 6 + n * 6, py - 1, 6, 1);
+        c.fillRect(px - 6 + h * 6, py - 1, 6, 1);
+      }
+      if (g === W.G.FIELD) {
+        // furrows running along x
+        c.strokeStyle = "rgba(0,0,0,.35)"; c.lineWidth = 1; c.beginPath();
+        for (const v of [0.2, 0.55, 0.85]) { c.moveTo(...P(x, y + v)); c.lineTo(...P(x + 1, y + v)); }
+        c.stroke();
+        if (h < 0.25) { const [px, py] = P(x + 0.5, y + 0.5); c.fillStyle = "rgba(90,140,60,.35)"; c.fillRect(px - 2, py - 1, 2, 1); }
+      }
+      if (g === W.G.DIRT && h < 0.3) { const [px, py] = P(x + h * 3, y + 0.5); c.fillStyle = "rgba(0,0,0,.25)"; c.fillRect(px, py, 2, 1); }
+      if (g === W.G.WOOD) {
+        c.strokeStyle = "rgba(0,0,0,.3)"; c.lineWidth = 1; c.beginPath();
+        for (const v of [0.33, 0.66]) { c.moveTo(...P(x + v, y)); c.lineTo(...P(x + v, y + 1)); }
+        c.stroke();
+      }
+      if (g === W.G.RAIL) {
+        // sleepers across, two rails along
+        const ax = m.mark[m.i(x, y)] === W.MARK.RAIL_X;
+        c.strokeStyle = "#3a2e24"; c.lineWidth = 2; c.beginPath();
+        for (const v of [0.2, 0.6]) { if (ax) { c.moveTo(...P(x + v, y + 0.1)); c.lineTo(...P(x + v, y + 0.9)); } else { c.moveTo(...P(x + 0.1, y + v)); c.lineTo(...P(x + 0.9, y + v)); } }
+        c.stroke();
+        const lane = ax ? (y % 2) : (x % 2);   // the rails sit where a train's wheels run
+        c.strokeStyle = "#8a90a0"; c.lineWidth = 1; c.beginPath();
+        const r = lane ? 0.25 : 0.75;
+        if (ax) { c.moveTo(...P(x, y + r)); c.lineTo(...P(x + 1, y + r)); } else { c.moveTo(...P(x + r, y)); c.lineTo(...P(x + r, y + 1)); }
+        c.stroke();
       }
     }
     // curbs: a lit edge wherever a pavement meets the road or water
     c.lineWidth = 1;
-    for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
+    const nb = (i, j) => m.inb(i, j) ? m.ground[m.i(i, j)] : -1;
+    for (let n = 0; n < cells.length; n += 2) {
+      const x = cells[n], y = cells[n + 1];
       const g = m.ground[m.i(x, y)];
-      if (g === W.G.ROAD || g === W.G.PARK || g === W.G.ROOF) continue;
-      const nb = (i, j) => m.inb(i, j) ? m.ground[m.i(i, j)] : -1;
-      const edge = (t) => t === W.G.ROAD || t === W.G.PARK || (g !== W.G.WATER && t === W.G.WATER);
+      if (g === W.G.ROAD || g === W.G.PARK || g === W.G.ROOF || g === W.G.TARMAC || g === W.G.FIELD || g === W.G.DIRT || g === W.G.GRASS || W.FLOORS.has(g) || g === W.G.RAIL) continue;
+      const edge = t => t === W.G.ROAD || t === W.G.PARK || t === W.G.TARMAC || (g !== W.G.WATER && t === W.G.WATER);
       c.strokeStyle = g === W.G.WATER ? "#3a5a6a" : "#3a4258";
       c.beginPath();
       if (edge(nb(x, y - 1))) { c.moveTo(...P(x, y)); c.lineTo(...P(x + 1, y)); }
@@ -112,6 +187,8 @@ W.Renderer = class {
       if (edge(nb(x - 1, y))) { c.moveTo(...P(x, y)); c.lineTo(...P(x, y + 1)); }
       c.stroke();
     }
+    // is a world point anywhere near this region?
+    const near = (x, y, pad = 2) => { const [px, py] = P(x, y); return px > R.x0 - pad * 32 && px < R.x1 + pad * 32 && py > R.y0 - pad * 16 && py < R.y1 + pad * 16; };
     // road markings
     const inJ = (x, y, pad = 0) => m.junctions.some(j => x >= j.x0 - pad && x < j.x1 + pad && y >= j.y0 - pad && y < j.y1 + pad);
     const seg = (x0, y0, x1, y1, col, w = 1) => { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); c.moveTo(...P(x0, y0)); c.lineTo(...P(x1, y1)); c.stroke(); };
@@ -119,53 +196,77 @@ W.Renderer = class {
       if (r.axis === "x") {
         const cy = r.y + r.h / 2;
         for (let x = r.x; x < r.x + r.w; x++) {
-          if (inJ(x + 0.5, cy, 1)) continue;
-          seg(x + 0.15, cy, x + 0.6, cy, "rgba(255,200,90,.55)");
+          if (!near(x, cy) || inJ(x + 0.5, cy, 1)) continue;
+          seg(x + 0.15, cy, x + 0.6, cy, r.oneway ? "rgba(220,230,255,.4)" : "rgba(255,200,90,.55)");
           seg(x, r.y + 0.12, x + 1, r.y + 0.12, "rgba(220,230,255,.12)");
           seg(x, r.y + r.h - 0.12, x + 1, r.y + r.h - 0.12, "rgba(220,230,255,.12)");
         }
       } else {
         const cx = r.x + r.w / 2;
         for (let y = r.y; y < r.y + r.h; y++) {
-          if (inJ(cx, y + 0.5, 1)) continue;
-          seg(cx, y + 0.15, cx, y + 0.6, "rgba(255,200,90,.55)");
+          if (!near(cx, y) || inJ(cx, y + 0.5, 1)) continue;
+          seg(cx, y + 0.15, cx, y + 0.6, r.oneway ? "rgba(220,230,255,.4)" : "rgba(255,200,90,.55)");
           seg(r.x + 0.12, y, r.x + 0.12, y + 1, "rgba(220,230,255,.12)");
           seg(r.x + r.w - 0.12, y, r.x + r.w - 0.12, y + 1, "rgba(220,230,255,.12)");
         }
       }
     }
-    // zebra crossings on every arm of every junction
     const zebra = (x0, y0, x1, y1, along) => {
       c.fillStyle = "rgba(220,230,255,.22)";
       if (along === "y") { for (let y = y0 + 0.1; y < y1; y += 0.4) { dia(x0 + 0.15, y, (x1 - x0) - 0.3, 0.2); c.fill(); } }
       else { for (let x = x0 + 0.1; x < x1; x += 0.4) { dia(x, y0 + 0.15, 0.2, (y1 - y0) - 0.3); c.fill(); } }
     };
     for (const j of m.junctions) {
-      zebra(j.x0 - 1, j.y0, j.x0, j.y1, "y");
-      zebra(j.x1, j.y0, j.x1 + 1, j.y1, "y");
-      zebra(j.x0, j.y0 - 1, j.x1, j.y0, "x");
-      zebra(j.x0, j.y1, j.x1, j.y1 + 1, "x");
+      if (!near((j.x0 + j.x1) / 2, (j.y0 + j.y1) / 2, 4)) continue;
+      zebra(j.x0 - 1, j.y0, j.x0, j.y1, "y"); zebra(j.x1, j.y0, j.x1 + 1, j.y1, "y");
+      zebra(j.x0, j.y0 - 1, j.x1, j.y0, "x"); zebra(j.x0, j.y1, j.x1, j.y1 + 1, "x");
     }
-    // parking bays
-    for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
-      if (m.ground[m.i(x, y)] !== W.G.PARK) continue;
-      if (m.mark[m.i(x, y)] === W.MARK.BAY) seg(x, y, x, y + 1, "rgba(220,230,255,.25)");
+    for (let n = 0; n < cells.length; n += 2) {
+      const x = cells[n], y = cells[n + 1];
+      if (m.ground[m.i(x, y)] === W.G.PARK && m.mark[m.i(x, y)] === W.MARK.BAY) seg(x, y, x, y + 1, "rgba(220,230,255,.25)");
+      if (m.ground[m.i(x, y)] === W.G.PARK && m.mark[m.i(x, y)] === W.MARK.EDGE_X) seg(x, y, x + 1, y, "rgba(220,230,255,.25)");
+    }
+    // painted lines, pads and lettering
+    for (const d of m.paint) {
+      if (!near(d.x, d.y, (d.r || 0) + 30)) continue;
+      c.strokeStyle = d.color || "rgba(255,200,90,.6)"; c.fillStyle = d.color || "rgba(255,200,90,.6)"; c.lineWidth = d.w || 1;
+      if (d.type === "circle" || d.type === "disc") {
+        const [px, py] = P(d.x, d.y);
+        c.save(); c.translate(px, py); c.scale(1, 0.5); c.rotate(Math.PI / 4);
+        c.beginPath(); c.arc(0, 0, d.r * W.HTW * Math.SQRT2, 0, Math.PI * 2);
+        c.restore();
+        if (d.type === "disc") c.fill(); else c.stroke();
+      } else if (d.type === "rect") {
+        dia(d.x, d.y, d.x2 - d.x, d.y2 - d.y); if (d.fill) c.fill(); else c.stroke();
+      } else if (d.type === "line") {
+        if (d.dash) c.setLineDash(d.dash);
+        seg(d.x, d.y, d.x2, d.y2, d.color, d.w || 1);
+        c.setLineDash([]);
+      } else if (d.type === "text") {
+        const [px, py] = P(d.x, d.y);
+        c.save();
+        if (d.axis === "y") c.setTransform(1, -0.5, 1, 0.5, px - R.x0, py - R.y0); else c.setTransform(1, 0.5, -1, 0.5, px - R.x0, py - R.y0);
+        c.font = `bold ${d.size || 12}px ui-monospace,Menlo,Consolas,monospace`;
+        c.textAlign = "center"; c.textBaseline = "middle";
+        c.fillText(d.text, 0, 0);
+        c.restore();
+      }
     }
     // grime and puddles
-    const R = W.rng(m.seed || 7);
+    const Rn = W.rng(m.seed || 7);
     for (let i = 0; i < m.w * m.h / 6; i++) {
-      const x = R() * m.w, y = R() * m.h, g = m.groundAt(x, y);
+      const x = Rn() * m.w, y = Rn() * m.h, a = Rn(), b = Rn(), e = Rn(), f = Rn();
+      if (!near(x, y, 1)) continue;
+      const g = m.groundAt(x, y);
       if (g < 0 || g === W.G.ROOF || g === W.G.WATER) continue;
       const [px, py] = P(x, y);
-      if (R() < 0.15) {
-        c.fillStyle = "rgba(90,120,170,.08)"; c.beginPath(); c.ellipse(px, py, 4 + R() * 8, 2 + R() * 3, 0, 0, Math.PI * 2); c.fill();
-      } else {
-        c.fillStyle = "rgba(0,0,0,.18)"; c.fillRect(px, py, 1 + (R() * 2 | 0), 1);
-      }
+      if (a < 0.15) { c.fillStyle = "rgba(90,120,170,.08)"; c.beginPath(); c.ellipse(px, py, 4 + b * 8, 2 + e * 3, 0, 0, Math.PI * 2); c.fill(); }
+      else { c.fillStyle = "rgba(0,0,0,.18)"; c.fillRect(px, py, 1 + (f * 2 | 0), 1); }
     }
     // light pools, added
     c.globalCompositeOperation = "lighter";
     for (const L of m.lights) {
+      if (!near(L.x, L.y, L.r + 2)) continue;
       const [px, py] = P(L.x, L.y);
       const r = L.r * W.HTW * 1.4;
       c.save(); c.translate(px, py); c.scale(1, 0.5);
@@ -175,26 +276,26 @@ W.Renderer = class {
       c.restore();
     }
     c.globalCompositeOperation = "source-over";
-    return cv;
   }
 
-  /* the scanner's base: the whole map flattened into the same projection */
-  drawMiniBase(m) {
-    const MW = 216, k = MW / (m.w + m.h), MH = Math.ceil((m.w + m.h) * k / 2) + 2;
-    const cv = W.canvas(MW, MH), c = cv.getContext("2d");
-    c.fillStyle = "#03050b"; c.fillRect(0, 0, MW, MH);
+  /* The scanner's base: one pixel per tile, top-down. */
+  drawTop(m) {
+    const cv = W.canvas(m.w, m.h), c = cv.getContext("2d");
+    const img = c.createImageData(m.w, m.h), d = img.data;
+    const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+    const cache = {};
     for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
-      const kk = m.i(x, y), g = m.ground[kk], h = m.height[kk];
+      const k = m.i(x, y), g = m.ground[k], h = m.height[k];
       let col;
-      if (h > 0) col = W.shade("#2c3a5c", 0.8 + Math.min(h, 10) * 0.07);
-      else if (g === W.G.ROAD || g === W.G.PARK) col = "#0c1220";
-      else if (g === W.G.WATER) col = "#0b3346";
-      else if (g === W.G.GRASS) col = "#0e2a1f";
-      else col = "#141b2c";
-      const px = (x - y + m.h) * k / 1, py = (x + y) * k / 2;
-      c.fillStyle = col; c.fillRect(Math.floor(px), Math.floor(py), Math.ceil(k) + 1, Math.ceil(k / 2) + 1);
+      if (h > 0) {
+        const b = m.buildings[m.bid[k]], st = b && W.STYLES[b.style];
+        col = st && st.scan ? st.scan : W.shade("#2c3a5c", 0.85 + Math.min(h, 12) * 0.06);
+      } else col = W.SCAN_COL[g] || "#141b2c";
+      const rgb = cache[col] || (cache[col] = hex(col));
+      const o = k * 4;
+      d[o] = rgb[0]; d[o + 1] = rgb[1]; d[o + 2] = rgb[2]; d[o + 3] = 255;
     }
-    m._miniK = k;
+    c.putImageData(img, 0, 0);
     return cv;
   }
 
@@ -218,7 +319,14 @@ W.Renderer = class {
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.fillStyle = "#05070f"; c.fillRect(0, 0, this.vw, this.vh);
     const ox = -cam.x, oy = -cam.y; // screen position of world (0,0)
-    c.drawImage(m._ground, Math.round(ox - m._gox), Math.round(oy));
+    {
+      const CH = W.CHUNK, gx0 = Math.round(cam.x) + m._gox, gy0 = Math.round(cam.y);
+      for (let cy = Math.floor(gy0 / CH); cy <= Math.floor((gy0 + this.vh) / CH); cy++)
+        for (let cx = Math.floor(gx0 / CH); cx <= Math.floor((gx0 + this.vw) / CH); cx++) {
+          if (cx < 0 || cy < 0 || cx * CH > (m.w + m.h) * W.HTW + 8 || cy * CH > (m.w + m.h) * W.HTH + 8) continue;
+          c.drawImage(this.chunk(m, cx, cy), cx * CH - gx0, cy * CH - gy0);
+        }
+    }
 
     // ground decals: scorch, then rings under the people that matter
     for (const d of world.decals) {
@@ -236,6 +344,7 @@ W.Renderer = class {
       const sel = world.selected && world.selected.has(u);
       const isT = u.kind === "target";
       if (!sel && !isT && !(u.isAgent)) continue;
+      if ((u.z || 0) > 3) continue;            // rings for people up on a walkway are drawn with them
       const [sx, sy] = W.proj(u.x, u.y);
       c.strokeStyle = sel ? "#54f2ff" : isT ? (Math.sin(t * 6) > 0 ? "#ffb000" : "#7a5500") : "rgba(84,242,255,.35)";
       c.lineWidth = 1;
@@ -245,10 +354,19 @@ W.Renderer = class {
     // buildings standing between the camera and a Watcher (or the target)
     // are drawn see-through, so nobody that matters is ever hidden
     const fade = this.occluders(world);
+    // a building is open (roof off, walls cut down) while one of ours is inside
+    const open = this.openNow = new Set();
+    for (const u of world.units) {
+      if (!u.alive || u.faction !== "player" || u.inCar) continue;
+      const cx = Math.floor(u.x), cy = Math.floor(u.y);
+      if (m.inb(cx, cy) && m.roofOf[m.i(cx, cy)] >= 0 && !m.structures[m.roofOf[m.i(cx, cy)]].canopy) open.add(m.roofOf[m.i(cx, cy)]);
+    }
+    if (opts.openAll) for (const s of m.structures) open.add(s.id);
 
     // everything that stands up, back to front
     const dyn = [];
-    for (const u of world.units) dyn.push({ kind: "unit", u, d: u.x + u.y + (u.alive ? 0 : -0.4) });
+    // people up on a walkway sort after its deck
+    for (const u of world.units) dyn.push({ kind: "unit", u, d: u.x + u.y + (u.alive ? 0 : -0.4) + ((u.z || 0) > 0.3 ? 1.7 : 0) });
     for (const car of world.cars) dyn.push({ kind: "car", car, d: car.x + car.y });
     for (const it of world.items) dyn.push({ kind: "item", it, d: it.x + it.y - 0.3 });
     dyn.sort((a, b) => a.d - b.d);
@@ -261,11 +379,35 @@ W.Renderer = class {
       const a = st[i], b = dyn[j];
       if (b === undefined || (a !== undefined && a.d <= b.d)) {
         i++;
-        if (a.kind === "cell") {
-          if (!vis(a.x + 0.5, a.y + 0.5)) continue;
-          const s = W.cellSprite(m, a.x, a.y);
+        if (a.kind === "lintel") {
+          if (open.has(a.s) || !vis(a.x + 0.5, a.y + 0.5)) continue;
+          const s = W.lintelSprite(m, a.x, a.y, m.structures[a.s]);
           const [px, py] = W.proj(a.x, a.y);
-          const f = fade.get(m.bid[m.i(a.x, a.y)]);
+          const f = fade.get("s" + a.s);
+          if (f) c.globalAlpha = f;
+          c.drawImage(s.cv, Math.round(px + ox - s.ox), Math.round(py + oy - s.oy));
+          if (f) c.globalAlpha = 1;
+        } else if (a.kind === "deck") {
+          if (!vis(a.x + 0.5, a.y + 0.5)) continue;
+          const s = W.deckSprite(m, a.x, a.y);
+          const [px, py] = W.proj(a.x, a.y);
+          c.drawImage(s.cv, Math.round(px + ox - s.ox), Math.round(py + oy - s.oy));
+        } else if (a.kind === "roof") {
+          if (open.has(a.s) || !vis(a.x + 0.5, a.y + 0.5)) continue;
+          const s = W.roofSprite(m, a.x, a.y, m.structures[a.s]);
+          const [px, py] = W.proj(a.x, a.y);
+          const f = fade.get("s" + a.s);
+          if (f) c.globalAlpha = f;
+          c.drawImage(s.cv, Math.round(px + ox - s.ox), Math.round(py + oy - s.oy));
+          if (f) c.globalAlpha = 1;
+        } else if (a.kind === "cell") {
+          if (!vis(a.x + 0.5, a.y + 0.5)) continue;
+          const B = m.buildings[m.bid[m.i(a.x, a.y)]];
+          const cut = B && B.struct !== undefined && open.has(B.struct);
+          // an inside wall of a closed building is just more roof
+          const s = cut ? W.cutSprite(m, a.x, a.y) : B && B.inner ? W.roofSprite(m, a.x, a.y, m.structures[B.struct]) : W.cellSprite(m, a.x, a.y);
+          const [px, py] = W.proj(a.x, a.y);
+          const f = cut ? 0 : fade.get(B && B.struct !== undefined ? "s" + B.struct : m.bid[m.i(a.x, a.y)]);
           if (f) c.globalAlpha = f;
           c.drawImage(s.cv, Math.round(px + ox - s.ox), Math.round(py + oy - s.oy));
           if (f) c.globalAlpha = 1;
@@ -274,23 +416,35 @@ W.Renderer = class {
           if (!vis(p.x, p.y)) continue;
           const [px, py] = W.proj(p.x, p.y);
           W.drawProp(c, p, Math.round(px + ox), Math.round(py + oy), t);
+          // whatever glows inside a closed building stays inside it
+          const ro = m.roofOf[m.i(Math.floor(p.x), Math.floor(p.y))];
+          if (ro >= 0 && !open.has(ro) && !m.structures[ro].canopy) continue;
           if (p.type === "lamp") glows.push([px + ox + 4, py + oy - 28, "#ffd890", 22]);
           else if (p.type === "blade") glows.push([px + ox, py + oy - (p.z || 18) - 16, p.color || "#ff5266", 18]);
           else if (p.type === "vend" || p.type === "kiosk") glows.push([px + ox, py + oy - 9, p.color || "#54f2ff", 14]);
           else if (p.type === "billboard") glows.push([px + ox, py + oy - 42, p.color || "#54f2ff", 26]);
+          else if (p.type === "flood") glows.push([px + ox, py + oy - 46, "#fffbe8", 30]);
+          else if (p.type === "truck") glows.push([px + ox, py + oy - 10, "#ffe2a0", 14]);
+          else if (p.type === "crane") glows.push([px + ox - 24, py + oy - 85, "#ff3048", 8]);
+          else if (p.type === "box" && p.glow) glows.push([px + ox, py + oy - (p.h || 8) - 2, p.glow, p.glowR || 10]);
+          else if (p.type === "watertower") glows.push([px + ox, py + oy - 100, "#ff3048", 8]);
         }
       } else {
         j++;
         if (b.kind === "unit") {
           const u = b.u;
           if (!vis(u.x, u.y)) continue;
-          const [px, py] = W.proj(u.x, u.y);
+          const [px, py] = W.proj(u.x, u.y, u.z || 0);
+          if ((u.z || 0) > 3 && u.alive && (world.selected.has(u) || u.isAgent || u.kind === "target")) {
+            c.strokeStyle = world.selected.has(u) ? "#54f2ff" : u.kind === "target" ? "#ffb000" : "rgba(84,242,255,.35)"; c.lineWidth = 1;
+            c.beginPath(); c.ellipse(Math.round(px + ox), Math.round(py + oy), 6, 3, 0, 0, Math.PI * 2); c.stroke();
+          }
           W.drawUnit(c, u, px + ox, py + oy, t);
           if (u.flash > 0) glows.push([px + ox, py + oy - 12, "#ffe9a8", 16]);
         } else if (b.kind === "car") {
           if (!vis(b.car.x, b.car.y)) continue;
           W.drawCar(c, b.car, ox, oy);
-          if (!b.car.dead) {
+          if (!b.car.dead && !b.car.parked && !b.car.train) {
             const ax = b.car.axis === "x", f = b.car.dir;
             const hx = b.car.x + (ax ? f * (b.car.len / 2 + 0.6) : 0), hy = b.car.y + (ax ? 0 : f * (b.car.len / 2 + 0.6));
             const [qx, qy] = W.proj(hx, hy);
@@ -370,7 +524,25 @@ W.Renderer = class {
   occluders(world) {
     const m = world.map, now = new Map();
     const who = world.units.filter(u => u.alive && !u.inCar && (u.isAgent || u.kind === "target" || (u.follower && world.selected.size)));
+    const fadeOf = (key, hit) => {
+      const prev = this.fadeState?.get(key) ?? 1;
+      const next = hit ? Math.max(0.28, prev - 0.08) : Math.min(1, prev + 0.08);
+      if (next < 1) now.set(key, next);
+    };
+    // an enterable building fades as one, walls and roof together
+    for (const S of m.structures) {
+      const L = (S.floors * W.ZH + 4) / W.TH;
+      let hit = false;
+      for (const u of who) {
+        const cx = Math.floor(u.x), cy = Math.floor(u.y);
+        if (m.inb(cx, cy) && m.roofOf[m.i(cx, cy)] === S.id) { if (S.canopy) { hit = true; break; } continue; }
+        const t0 = Math.max(0, S.x - u.x, S.y - u.y), t1 = Math.min(L, S.x + S.w - u.x, S.y + S.d - u.y);
+        if (t1 > t0) { hit = true; break; }
+      }
+      fadeOf("s" + S.id, hit);
+    }
     for (const b of m.buildings) {
+      if (b.struct !== undefined) continue;
       const L = (b.floors * W.ZH + 4) / W.TH;   // how far in front it can be and still cover the feet
       let hit = false;
       for (const u of who) {
@@ -397,7 +569,7 @@ W.Renderer = class {
     o.textAlign = "center"; o.textBaseline = "bottom";
     for (const u of world.units) {
       if (!u.alive) continue;
-      const [sx, sy] = this.toScreen(world, u.x, u.y);
+      const [sx, sy] = this.toScreen(world, u.x, u.y, u.z || 0);
       const X = sx * k, Y = sy * k;
       if (X < -100 || X > this.cssW + 100 || Y < -60 || Y > this.cssH + 80) continue;
       if (u.isAgent) {
@@ -443,41 +615,93 @@ W.Renderer = class {
     }
   }
 
-  /* ---- the scanner ---- */
-  mini(c, world, opts = {}) {
-    const m = world.map, base = m._mini, k = m._miniK;
+  /* ---- the scanner ----
+   * Syndicate's: a top-down map turned 45 degrees so it faces the way the
+   * view does, centred on the lead Watcher, with a radar ping sweeping out
+   * every two seconds. Blips flare as the ring passes them; a target off the
+   * edge gets an arrow on the rim.
+   *   opts.center [x, y]   opts.k pixels per tile   opts.full fit the map
+   *   opts.ping            opts.noCiv               opts.noView */
+  scanner(c, world, opts = {}) {
+    const m = world.map;
+    this.prepare(m);
+    const Wd = c.canvas.width, Ht = c.canvas.height;
+    let k = opts.k || 3, cx, cy;
+    if (opts.full) { k = Math.min(Wd, Ht) / ((m.w + m.h) / Math.SQRT2) * 0.98; cx = m.w / 2; cy = m.h / 2; }
+    else [cx, cy] = opts.center || this.viewCenter(world);
+    this.scan = { cx, cy, k, Wd, Ht };
+    const P = (x, y) => [Wd / 2 + ((x - cx) - (y - cy)) * k / Math.SQRT2, Ht / 2 + ((x - cx) + (y - cy)) * k / Math.SQRT2];
     c.setTransform(1, 0, 0, 1, 0, 0);
-    c.drawImage(base, 0, 0);
-    const P = (x, y) => [(x - y + m.h) * k, (x + y) * k / 2];
-    for (const car of world.cars) {
-      const [x, y] = P(car.x, car.y);
-      c.fillStyle = car.dead ? "#3a2a20" : car.escape ? "#ffb000" : "#8b96b8";
-      c.fillRect(x - 1, y - 1, 2, 2);
+    c.imageSmoothingEnabled = false;
+    c.fillStyle = "#03050b"; c.fillRect(0, 0, Wd, Ht);
+    c.save();
+    c.translate(Wd / 2, Ht / 2); c.rotate(Math.PI / 4); c.scale(k, k); c.translate(-cx, -cy);
+    c.drawImage(m._top, 0, 0);
+    // a faint grid every 8 tiles
+    c.strokeStyle = "rgba(84,242,255,.05)"; c.lineWidth = 1 / k; c.beginPath();
+    for (let x = 0; x <= m.w; x += 8) { c.moveTo(x, 0); c.lineTo(x, m.h); }
+    for (let y = 0; y <= m.h; y += 8) { c.moveTo(0, y); c.lineTo(m.w, y); }
+    c.stroke();
+    c.restore();
+    // the ping
+    const t = world.time, PERIOD = 2.2, ph = (t % PERIOD) / PERIOD, R = 46 * ph;
+    const pc = opts.center || [cx, cy];
+    if (opts.ping) {
+      const [px, py] = P(pc[0], pc[1]);
+      c.strokeStyle = `rgba(84,242,255,${0.55 * (1 - ph)})`; c.lineWidth = 1.5;
+      c.beginPath(); c.arc(px, py, R * k, 0, Math.PI * 2); c.stroke();
+      c.strokeStyle = `rgba(84,242,255,${0.15 * (1 - ph)})`; c.lineWidth = 4;
+      c.beginPath(); c.arc(px, py, Math.max(0, R * k - 3), 0, Math.PI * 2); c.stroke();
     }
-    const blink = Math.sin(world.time * 8) > 0;
+    const flare = (x, y) => opts.ping ? Math.max(0, 1 - Math.abs(W.dist(x, y, pc[0], pc[1]) - R) / 3) * (1 - ph) : 0;
+    const blip = (x, y, col, s) => { const [px, py] = P(x, y); if (px < -4 || py < -4 || px > Wd + 4 || py > Ht + 4) return; const f = flare(x, y); c.fillStyle = col; const z = s + f * 2; c.fillRect(Math.round(px - z / 2), Math.round(py - z / 2), z, z); };
+    for (const car of world.cars) blip(car.x, car.y, car.dead ? "#3a2a20" : car.escapeCar ? "#ffb000" : "#6a7590", 2);
+    for (const it of world.items) blip(it.x, it.y, "#ffb000", 1);
+    const blink = Math.sin(t * 8) > 0;
+    let target = null;
     for (const u of world.units) {
-      if (!u.alive) continue;
-      const [x, y] = P(u.x, u.y);
-      let col, s = 2;
-      if (u.isAgent) { col = "#54f2ff"; s = 3; }
-      else if (u.kind === "target") { col = blink ? "#ffb000" : "#05070f"; s = 4; }
+      if (!u.alive || u.inCar) continue;
+      let col, sz = 2;
+      if (u.isAgent) { col = world.selected.has(u) ? "#ffffff" : "#54f2ff"; sz = 3; }
+      else if (u.kind === "target") { target = u; col = blink ? "#ffb000" : "#7a5500"; sz = 4; }
       else if (u.faction === "player") col = "#2fb8c4";
       else if (u.faction === "crew") col = u.hostile ? "#ff5266" : "#b8424f";
-      else if (u.faction === "sec") col = u.angry ? "#7aa8ff" : "#4c6fd0";
-      else { if (opts.noCiv) continue; col = "#4a5470"; s = 1; }
-      c.fillStyle = col; c.fillRect(Math.round(x - s / 2), Math.round(y - s / 2), s, s);
+      else if (u.faction === "sec") col = u.angryAt.player ? "#9ab8ff" : "#4c6fd0";
+      else { if (opts.noCiv) continue; col = "#56607a"; sz = 1; }
+      blip(u.x, u.y, col, sz);
     }
-    for (const it of world.items) { const [x, y] = P(it.x, it.y); c.fillStyle = "#ffb000"; c.fillRect(x, y, 1, 1); }
-    // the view, as the same rectangle shrunk
-    const f = k / W.HTW;
-    const vx = (world.cam.x + m.h * W.HTW) * f, vy = world.cam.y * f;
-    c.strokeStyle = "rgba(84,242,255,.6)"; c.lineWidth = 1;
-    c.strokeRect(Math.round(vx) + 0.5, Math.round(vy) + 0.5, Math.round(this.vw * f), Math.round(this.vh * f));
+    if (!target && world.escapeCar && world.escapeCar.passenger && !world.escapeCar.dead) target = world.escapeCar;
+    // the target off the edge: an arrow on the rim
+    if (target && !opts.full) {
+      const [px, py] = P(target.x, target.y);
+      if (px < 6 || py < 6 || px > Wd - 6 || py > Ht - 6) {
+        const a = Math.atan2(py - Ht / 2, px - Wd / 2);
+        const rx = Wd / 2 - 9, ry = Ht / 2 - 9, f = Math.min(rx / Math.abs(Math.cos(a) || 1e-6), ry / Math.abs(Math.sin(a) || 1e-6));
+        const ax = Wd / 2 + Math.cos(a) * f, ay = Ht / 2 + Math.sin(a) * f;
+        c.save(); c.translate(ax, ay); c.rotate(a);
+        c.fillStyle = blink ? "#ffb000" : "#a87400";
+        c.beginPath(); c.moveTo(7, 0); c.lineTo(-4, -5); c.lineTo(-2, 0); c.lineTo(-4, 5); c.closePath(); c.fill();
+        c.restore();
+      }
+    }
+    // the view, as the ground it covers
+    if (!opts.noView && this.vw) {
+      const q = [[0, 0], [this.cssW, 0], [this.cssW, this.cssH], [0, this.cssH]].map(([x, y]) => P(...this.toWorld(world, x, y)));
+      c.strokeStyle = "rgba(84,242,255,.45)"; c.lineWidth = 1;
+      c.beginPath(); q.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.stroke();
+    }
+    // the frame
+    c.strokeStyle = "rgba(84,242,255,.25)"; c.strokeRect(0.5, 0.5, Wd - 1, Ht - 1);
   }
-  /* scanner pixel -> world */
-  miniToWorld(m, mx, my) {
-    const k = m._miniK;
-    const a = mx / k - m.h, b = my * 2 / k;
-    return [(a + b) / 2, (b - a) / 2];
+  /* world -> scanner pixel, for the last scanner drawn */
+  scanPoint(x, y) {
+    const S = this.scan;
+    return [S.Wd / 2 + ((x - S.cx) - (y - S.cy)) * S.k / Math.SQRT2, S.Ht / 2 + ((x - S.cx) + (y - S.cy)) * S.k / Math.SQRT2];
+  }
+  /* scanner pixel -> world, for the last scanner drawn */
+  scanToWorld(mx, my) {
+    const S = this.scan; if (!S) return [0, 0];
+    const dx = (mx - S.Wd / 2) / S.k, dy = (my - S.Ht / 2) / S.k;
+    return [S.cx + (dx + dy) / Math.SQRT2, S.cy + (dy - dx) / Math.SQRT2];
   }
 };

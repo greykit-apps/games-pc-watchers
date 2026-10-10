@@ -1,3 +1,5 @@
 Source/
 .claude/
 .DS_Store
+# map renders saved by tools/serve.py for review
+screenshots/*-iso*.png

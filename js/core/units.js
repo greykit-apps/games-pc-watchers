@@ -430,11 +430,12 @@ W.thinkCiv = (world, u) => {
   if (u.state === "idle") {
     if (u.stateT > 0) return;
     // somewhere to be: mostly pavement, crossing roads where they must
-    const R = 12;
+    // most people roam; a crowd member drifts about where the crowd is
+    const R = u.crowd ? 3 : 12, ox = u.crowd ? u.home[0] : u.x, oy = u.crowd ? u.home[1] : u.y;
     for (let k = 0; k < 8; k++) {
-      const x = u.x + W.rand(-R, R), y = u.y + W.rand(-R, R);
+      const x = ox + W.rand(-R, R), y = oy + W.rand(-R, R);
       const g = world.map.groundAt(x, y);
-      if (g === W.G.WALK || g === W.G.PLAZA || (u.roam === "any" && g === W.G.ALLEY)) {
+      if (W.STROLL.has(g)) {
         if (W.goTo(world, u, x, y, { avoidRoad: true })) { u.state = "walk"; break; }
       }
     }
@@ -454,7 +455,7 @@ W.secCall = (world, u, who) => {
   for (const o of world.units) if (o.alive && o.kind === "sec" && !o.follower && o !== u && W.dist(u.x, u.y, o.x, o.y) < 16 && !o.angryAt[who]) {
     o.angryAt[who] = true; o.calmT = 20; W.drawBest(o);
   }
-  if (who === "player") world.msg("PLAZA SECURITY: Officer needs backup!", "#7aa8ff");
+  if (who === "player") world.msg(`${world.names.sec.toUpperCase()}: Officer needs backup!`, "#7aa8ff");
 };
 
 W.thinkSec = (world, u) => {
@@ -547,6 +548,11 @@ W.thinkTarget = (world, u) => {
     if (car && !car.dead) {
       if (W.dist(u.x, u.y, car.door[0], car.door[1]) < 0.9) { world.boardEscape(u, car); return; }
       if (!u.path || u.chaseT <= 0) { W.goTo(world, u, car.door[0], car.door[1]); u.chaseT = 1.5; }
+    } else if (world.escapePoint && !car) {
+      // on foot, for the way out
+      const [ex, ey] = world.escapePoint;
+      if (W.dist(u.x, u.y, ex, ey) < 1.2) { u.inCar = true; u.path = null; world.escaped = true; return; }
+      if (!u.path || u.chaseT <= 0) { W.goTo(world, u, ex, ey); u.chaseT = 1.5; }
     } else if (!u.path) {
       // no car: run from the nearest Watcher
       const ag = world.units.filter(a => a.isAgent && a.alive);
@@ -562,7 +568,7 @@ W.thinkTarget = (world, u) => {
     if (u.stateT <= 0) {
       u.state = "flee";
       W.say(u, W.pick(W.LINES.flee), "#ffb000", 2.5);
-      world.msg("VESPER SLY is making a run for his car!", "#ffb000");
+      world.msg(`${world.names.target.toUpperCase()} is making a run for ${world.escapeCar ? "the car" : "it"}!`, "#ffb000");
     }
     return;
   }
@@ -576,8 +582,21 @@ W.thinkTarget = (world, u) => {
 };
 
 /* ---- the tick ---- */
+W.deckZ = (m, x, y) => {
+  const cx = Math.floor(x), cy = Math.floor(y);
+  if (!m.inb(cx, cy)) return 0;
+  const k = m.i(cx, cy);
+  if (!m.deck[k] && !m.deckHi[k]) return 0;
+  const ax = m.deckAxis[k];
+  if (!ax) return m.deck[k];
+  const f = ax === 1 ? x - cx : y - cy;
+  return m.deckLo[k] + (m.deckHi[k] - m.deckLo[k]) * f;
+};
 W.updateUnit = (world, u, dt) => {
   if (!u.alive || u.inCar) return;
+  // up on a walkway, or down on the ground: eased, so stairs read as stairs
+  const zt = W.deckZ(world.map, u.x, u.y);
+  u.z = (u.z || 0) + (zt - (u.z || 0)) * Math.min(1, dt * 20);
   u.cd -= dt; u.flash -= dt; u.stateT -= dt; u.warnT -= dt; u.calmT -= dt; u.chaseT = (u.chaseT || 0) - dt;
   if (u.dryT) u.dryT = Math.max(0, u.dryT - dt);
   if (u.denyT) u.denyT = Math.max(0, u.denyT - dt);

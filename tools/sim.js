@@ -7,6 +7,7 @@
  *   node tools/sim.js [runs=5] [--quiet] [--attract]
  *   --quiet: the bot walks in holstered and draws late; the default bot goes in loud
  *   --campaign: the squad a new campaign starts with (pistols and shotguns)
+ *   --district=ranch[/maze]: generated missions in a district (seeds 1000+)
  */
 "use strict";
 const fs = require("fs"), path = require("path"), vm = require("vm");
@@ -23,13 +24,14 @@ function load() {
   };
   ctx.window = ctx;
   vm.createContext(ctx);
-  for (const f of FILES) vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), ctx, { filename: f });
+  const districts = ["js/districts/kit.js", ...fs.readdirSync(path.join(ROOT, "js/districts")).filter(f => f !== "kit.js" && f.endsWith(".js")).sort().map(f => "js/districts/" + f)];
+  for (const f of FILES.concat(districts)) vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), ctx, { filename: f });
   ctx.W.audio = { play() {}, at() {}, ambience() {}, setRain() {}, setMuted() {}, listen() {} };
   return ctx.W;
 }
 
-function run(W, seed, attract, quiet, camp, roster) {
-  const world = new W.World(W.LEVELS.plaza, { attract, roster: roster || (camp ? W.C.missionRoster(W.C.fresh()) : undefined) });
+function run(W, seed, attract, quiet, camp, roster, level) {
+  const world = new W.World(level || W.LEVELS.plaza, { attract, roster: roster || (camp ? W.C.missionRoster(W.C.fresh()) : undefined) });
   const m = world.map, dt = 1 / 60;
   let t = 0, orderT = 0;
   const fail = msg => { throw new Error(`run ${seed} t=${t.toFixed(1)}: ${msg}`); };
@@ -48,10 +50,12 @@ function run(W, seed, attract, quiet, camp, roster) {
       orderT = 2;
       const T = world.targetUnit;
       const goal = T.inCar ? world.escapeCar : T;
-      const near = world.agents.some(a => a.alive && W.dist(a.x, a.y, 34.5, 27.5) < 2.5);
+      // the quiet bot's stopping point: the plaza's fountain, or 8 tiles short of a district target
+      const stop = level ? null : [34.5 + 44, 27.5 + 88];
+      const near = stop ? world.agents.some(a => a.alive && W.dist(a.x, a.y, stop[0], stop[1]) < 2.5) : world.agents.some(a => a.alive && W.dist(a.x, a.y, T.x, T.y) < 8);
       for (const a of world.agents) {
         if (!a.alive) continue;
-        if (quiet && !near && !world.alarm) { if (!a.path) W.goTo(world, a, 34 + (a.slot % 2) * 0.8, 27 + (a.slot >> 1) * 0.8); continue; }
+        if (quiet && !near && !world.alarm) { if (!a.path) W.goTo(world, a, (stop ? stop[0] : T.x) + (a.slot % 2) * 0.8, (stop ? stop[1] : T.y) + (a.slot >> 1) * 0.8); continue; }
         if (!W.armed(a)) W.drawBest(a);
         a.manual = goal.alive || goal.isCar ? goal : null;
         if (!a.path) W.goTo(world, a, goal.x + (a.slot % 2), goal.y + (a.slot >> 1));
@@ -70,10 +74,15 @@ const runs = +(args.find(a => /^\d+$/.test(a)) || 5);
 const attract = args.includes("--attract");
 const quiet = args.includes("--quiet");
 const camp = args.includes("--campaign");
+const dArg = (args.find(a => a.startsWith("--district=")) || "").slice(11);
 const W = load();
 let won = 0;
 for (let i = 0; i < runs; i++) {
-  const r = run(W, i, attract, quiet, camp);
+  let level;
+  if (dArg) { const [district, section] = dArg.split("/"); level = W.missionLevel({ district, section, seed: 1000 + i }); }
+  const r = run(W, i, attract, quiet, camp, undefined, level);
+  if (level) process.stdout.write(`${level.picks.spawn.name} -> ${level.picks.target.name}${level.picks.exit ? " (runs for " + level.picks.exit.name + ")" : ""}
+  `);
   if (r.status === "won") won++;
   console.log(`run ${i}: ${r.status}${r.reason ? " -- " + r.reason : ""} at ${r.t.toFixed(1)}s` + (r.stats ? ` (lost ${r.stats.lost}, crew ${r.stats.crew}, sec ${r.stats.sec}, civ ${r.stats.civ}, shots ${r.stats.shots})` : ""));
 }

@@ -7,11 +7,17 @@ W.World = class {
   constructor(level, opts = {}) {
     this.level = level;
     this.attract = !!opts.attract;
-    const m = new W.Map(level.w, level.h);
-    m.seed = level.seed || 1;
-    level.build(m);
-    m.finish();
+    let m;
+    if (level.makeMap) m = level.makeMap(opts);
+    else {
+      m = new W.Map(level.w, level.h);
+      m.seed = level.seed || 1;
+      level.build(m);
+      m.finish();
+    }
     this.map = m;
+    // who is who, in this level's words
+    this.names = Object.assign({ target: "Vesper Sly", crew: "Vesper's crew", sec: "Plaza Security", guard: "Bodyguard", henchman: "Henchcat", civ: "Civilian" }, level.names || {});
     this.units = []; this.cars = []; this.items = [];
     this.tracers = []; this.particles = []; this.booms = []; this.decals = []; this.smoke = []; this.pings = [];
     this.msgs = [];
@@ -23,6 +29,7 @@ W.World = class {
     this.objectives = [];
     this.light = { x: true, y: false };
     this.spawnTraffic();
+    for (const l of m.loot) this.items.push(Object.assign({}, l));
     level.populate(this, opts);
   }
 
@@ -106,7 +113,7 @@ W.World = class {
     this.alarmAt = [seen ? seen.x : by.x, seen ? seen.y : by.y];
     if (this.alarm) return;
     this.alarm = true;
-    this.msg("Vesper's crew has made you. They're on the radio.", "#ff5266");
+    this.msg(`${this.names.crew} has made you. They're on the radio.`, "#ff5266");
     W.audio.play("alarm", 0.8);
     for (const u of this.units) if (u.alive && u.faction === "crew" && !u.follower && W.dist(u.x, u.y, this.alarmAt[0], this.alarmAt[1]) < 20) {
       if (!u.hostile && u.kind !== "target") { u.hostile = true; W.drawBest(u); }
@@ -129,12 +136,20 @@ W.World = class {
 
   /* ---- traffic ---- */
   spawnTraffic() {
+    // cars parked in lots and bays: they never move, but they burn
+    for (const p of this.map.parked) {
+      this.cars.push({ isCar: true, id: "p" + this.cars.length, parked: true, axis: p.axis, dir: p.dir || 1, x: p.x, y: p.y,
+        len: 1.9, wid: 0.95, speed: 0, hp: 12, maxHp: 12, color: p.color || W.pick(["#4a5a7a", "#7a2a36", "#2a6a5a", "#8a8a96", "#3a3a48", "#6a5a3a", "#2a4a8a"]), alive: true });
+    }
     for (const lane of this.map.lanes) {
       const n = lane.cars ?? 2;
       const span = lane.to - lane.from;
       for (let i = 0; i < n; i++) {
         const s = lane.from + span * ((i + Math.random() * 0.5) / n);
-        this.addCar(lane, s);
+        if (lane.train) {
+          // a train: three carriages nose to tail
+          for (let k = 0; k < 3; k++) this.addCar(lane, s - lane.dir * k * 4.1, { train: true, len: 3.9, wid: 1.3, maxSpeed: 6, hp: 60, maxHp: 60, color: "#9aa4b8", wait: 0 });
+        } else this.addCar(lane, s);
       }
     }
   }
@@ -147,9 +162,15 @@ W.World = class {
       color: W.pick(["#4a5a7a", "#7a2a36", "#2a6a5a", "#8a8a96", "#3a3a48", "#6a5a3a", "#2a4a8a", "#c8b040"]),
       alive: true,
     }, o);
-    if (car.color === "#c8b040") car.taxi = true;
+    if (car.color === "#c8b040" && !car.train) car.taxi = true;
     this.cars.push(car);
     return car;
+  }
+  /* the leading carriage of the train this one belongs to */
+  leadOf(car) {
+    let lead = car;
+    for (const o of this.cars) if (o.train && o.lane === car.lane && (o.axis === "x" ? o.x - lead.x : o.y - lead.y) * car.dir > 0 && (o.axis === "x" ? o.x - lead.x : o.y - lead.y) * car.dir < 4.6) lead = o;
+    return lead === car ? car : this.leadOf(lead) === lead ? lead : this.leadOf(lead);
   }
   damageCar(car, dmg, src) {
     if (car.dead) return;
@@ -170,7 +191,7 @@ W.World = class {
     u.inCar = true; u.path = null;
     car.passenger = u; car.escape = true; car.parked = false; car.startT = 2.2;
     W.audio.at("engine", car.x, car.y);
-    this.msg("Vesper Sly is in the car. Stop it!", "#ffb000");
+    this.msg(`${this.names.target} is in the car. Stop it!`, "#ffb000");
   }
   updateCar(car, dt) {
     if (car.dead) {
@@ -183,32 +204,53 @@ W.World = class {
     const ax = car.axis === "x", dir = car.dir;
     const s = ax ? car.x : car.y, lat = ax ? car.y : car.x;
     let want = car.escape ? 5.5 : car.maxSpeed;
-    // the car in front
+    // trains wait at their stops, a few seconds each
+    if (car.train) {
+      if (car.wait > 0) { car.wait -= dt; want = 0; }
+      else for (const st of car.lane.stops || []) {
+        const front = s + dir * car.len / 2, ahead = (st - front) * dir;
+        if (ahead > -0.2 && ahead < 0.15 && car.lastStop !== st && car === this.leadOf(car)) { car.wait = 5; car.lastStop = st; want = 0; }
+        if (ahead > 0 && ahead < 4 && car.lastStop !== st && car === this.leadOf(car)) want = Math.min(want, 1 + ahead * 1.5);
+      }
+    }
+    // whatever is in front: the car ahead in the lane, or anything crossing it
+    const front = s + dir * car.len / 2;
     for (const o of this.cars) {
       if (o === car || o.dead && !o.boomed) continue;
-      const os = ax ? o.x : o.y, ol = ax ? o.y : o.x;
-      if (Math.abs(ol - lat) > 0.75) continue;
-      const ahead = (os - s) * dir;
-      if (ahead <= 0) continue;
-      const gap = ahead - (car.len + o.len) / 2;
-      if (gap < 2.4) want = Math.min(want, Math.max(0, gap - 0.5) * 2.2);
+      if (car.train && !o.train) continue;          // trains do not stop for cars
+      const oax = o.axis === "x";
+      if (o.axis === car.axis) {
+        const os = ax ? o.x : o.y, ol = ax ? o.y : o.x;
+        if (Math.abs(ol - lat) > 0.75) continue;
+        const ahead = (os - s) * dir;
+        if (ahead <= 0) continue;
+        const gap = ahead - (car.len + o.len) / 2;
+        if (gap < 2.4) want = Math.min(want, Math.max(0, gap - 0.5) * 2.2);
+      } else {
+        // crossing traffic: is its body inside the next stretch of our lane?
+        const os = ax ? o.x : o.y, ol = ax ? o.y : o.x;
+        const halfAlong = o.wid / 2, halfAcross = o.len / 2;
+        if (Math.abs(ol - lat) > halfAcross + 0.6) continue;
+        const ahead = (os - front) * dir;
+        if (ahead > -halfAlong && ahead < 2.6 + halfAlong) want = Math.min(want, Math.max(0, ahead - halfAlong - 0.4) * 2);
+      }
     }
-    // people in the road: stop for them, unless you are running
+    // people in the road: stop for them, unless you are running; not people on a bridge overhead
     for (const u of this.units) {
-      if (!u.alive || u.inCar) continue;
+      if (!u.alive || u.inCar || (u.z || 0) > 6) continue;
       const us = ax ? u.x : u.y, ul = ax ? u.y : u.x;
       if (Math.abs(ul - lat) > 0.75) continue;
       const ahead = (us - s) * dir;
-      if (car.escape) {
+      if (car.escape || car.train) {
         if (ahead > -car.len / 2 && ahead < car.len / 2 + 0.3 && car.speed > 1.5 && !u.hitBy) {
-          u.hitBy = car.id; this.damage(u, 9, { faction: "crew", x: car.x, y: car.y });
+          u.hitBy = car.id; this.damage(u, car.train ? 30 : 9, { faction: car.train ? "none" : "crew", x: car.x, y: car.y });
           const k = W.rand(-0.9, 0.9);
           if (ax) u.y += k > 0 ? 0.9 : -0.9; else u.x += k > 0 ? 0.9 : -0.9;
         }
       } else if (ahead > 0 && ahead < car.len / 2 + 1.3) want = 0;
     }
     // the lights
-    if (!car.escape) {
+    if (!car.escape && !car.train) {
       const front = s + dir * car.len / 2;
       for (const j of this.map.junctions) {
         const lo = ax ? j.y0 : j.x0, hi = ax ? j.y1 : j.x1;
@@ -225,6 +267,7 @@ W.World = class {
     const L = car.lane;
     if ((dir > 0 && ns > L.to) || (dir < 0 && ns < L.from)) {
       if (car.escape) { car.gone = true; return; }
+      if (car.train) { car.lastStop = null; }
       // round again from the start of the lane, if it is clear
       const start = dir > 0 ? L.from : L.to;
       const clear = !this.cars.some(o => o !== car && o.lane === L && Math.abs((ax ? o.x : o.y) - start) < 3);
@@ -244,9 +287,9 @@ W.World = class {
       if (o.type === "recruit" && this.stats.recruited >= o.n) { o.state = "done"; this.msg(`Bonus: ${o.text}.`, "#4ade6a"); }
       if (o.type === "civcap" && this.stats.civ > o.n) { o.state = "failed"; this.msg(`Bonus lost: ${o.text}.`, "#ffb000"); }
     }
-    if (T && !T.alive && this.status === "play") this.end("won", "Vesper Sly is dead.");
+    if (T && !T.alive && this.status === "play") this.end("won", `${this.names.target} is dead.`);
     else if (!this.units.some(u => u.isAgent && u.alive)) this.end("lost", "Every Watcher is down.");
-    else if (this.escapeCar && this.escapeCar.gone) this.end("lost", "Vesper Sly got away.");
+    else if ((this.escapeCar && this.escapeCar.gone) || this.escaped) this.end("lost", `${this.names.target} got away.`);
   }
   end(status, reason) {
     this.status = status; this.endReason = reason; this.endT = 0;
@@ -260,9 +303,9 @@ W.World = class {
     this.time += dt;
     if (this.status === "play") this.stats.time += dt;
     else this.endT += dt;
-    // traffic lights: 8s each way, a second of all-red between
-    const ph = this.time % 18;
-    this.light.x = ph < 8; this.light.y = ph >= 9 && ph < 17;
+    // traffic lights: 8s each way, 2.5s of all-red between so a wide crossing clears
+    const ph = this.time % 21;
+    this.light.x = ph < 8; this.light.y = ph >= 10.5 && ph < 18.5;
     W.lightPhase = this.light;
     for (const u of this.units) W.updateUnit(this, u, dt);
     W.separate(this, dt);

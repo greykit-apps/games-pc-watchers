@@ -34,6 +34,8 @@ const Game = W.game = {
   toTitle(reveal = true) {
     this.mode = "title";
     this.closeSheets();
+    if (this.mr) { this.mr.close(); this.mr = null; }
+    this.fromMapRoom = false;
     if (this.ow) { this.ow.close(); this.ow = null; }
     document.getElementById("game").hidden = true;
     W.audio.ambience(false);
@@ -46,7 +48,7 @@ const Game = W.game = {
       items: [
         (c => c && { act: "resume", label: "Resume campaign", key: "R", meta: `Day ${c.day} · ${W.money(c.cash)}` })(W.C.load()),
         { act: "new", label: "New campaign", key: "N", meta: "four Watchers, $10,000" },
-        { act: "skirmish", label: "Skirmish", key: "K", meta: "Market Plaza, nothing saved" },
+        { act: "skirmish", label: "Skirmish", key: "K", meta: "any district, nothing saved" },
         "gap",
         { act: "settings", label: "Settings", key: "S" },
         { act: "help", label: "Help", key: "?" },
@@ -62,7 +64,7 @@ const Game = W.game = {
           if (W.C.load() && !(await ui.confirm("Start a new campaign? The one in progress, its squad, cash and research, is lost.", "Start a new campaign"))) return;
           this.campaign = W.C.fresh(); W.C.save(this.campaign); this.toOverworld();
         }
-        if (act === "skirmish") { this.campaign = null; this.toBriefing(null); }
+        if (act === "skirmish") { this.campaign = null; this.toMapRoom(); }
       },
     });
     // a line under the name: whose city this is
@@ -78,7 +80,7 @@ const Game = W.game = {
     this.attract = new W.World(this.level, { attract: true });
     this.attractR = new W.Renderer(cv, null);
     this.attractR.resize(window.innerWidth, window.innerHeight, window.innerWidth > 1500 ? 3 : 2);
-    this.attractR.centerOn(this.attract, 30, 30);
+    this.attractR.centerOn(this.attract, 74, 118);
     this.attractT = 0;
   },
   helpTabs() {
@@ -97,10 +99,10 @@ const Game = W.game = {
         <tr><td><kbd>Space</kbd></td><td>pause</td></tr>
         <tr><td><kbd>Esc</kbd></td><td>menu</td></tr>
         <tr><td><kbd>M</kbd></td><td>sound on and off</td></tr></table>`],
-      ["Tactics", `<p><b>Plaza Security</b> are mall cops. They do not know who you are. A gun in plain view earns one warning; keep it out and they open fire, and call their friends. Holster before you walk past them.</p>
-        <p><b>Vesper's crew</b> spot an armed Watcher from across the plaza, an unarmed one only up close. Walk in with your hands empty, and draw at the last moment.</p>
-        <p>Once they make you, <b>Vesper Sly runs for his car</b>. If the car leaves the map, the mission is lost. A car takes a few rounds and then goes up, taking anyone beside it.</p>
-        <p><b>The Purrsuader</b> talks people into following you. Shoppers come at once; Plaza Security once you have 2 followers; Vesper's crew in red at 4, his bodyguards at 6. Followers pick up guns the dead drop, and fight for you.</p>
+      ["Tactics", `<p><b>Local security</b> (Plaza Security, Port Authority, ranch hands) do not know who you are. A gun in plain view earns one warning; keep it out and they open fire, and call their friends. Holster before you walk past them.</p>
+        <p><b>The crew</b> in red spot an armed Watcher from far off, an unarmed one only up close. Walk in with your hands empty, and draw at the last moment.</p>
+        <p>Once they make you, <b>the target runs</b>: for a car, or for a way out on foot (watch the scanner). If they get away, the mission is lost. A car takes a few rounds and then goes up, taking anyone beside it.</p>
+        <p><b>The Purrsuader</b> talks people into following you. Civilians come at once; security once you have 2 followers; the crew in red at 4, bodyguards in black at 6. Followers pick up guns the dead drop, and fight for you.</p>
         <p>Watchers <b>pick up</b> any weapon they walk over. Ammunition is finite; the pistol never runs dry.</p>`],
       ["Stims", `<p>Every Watcher carries three stims, on the bars under the portrait. Click or drag a bar to set the dose. With several Watchers selected, the dose goes to them all.</p>
         <table><tr><td><b>Zoomers</b></td><td>speed and rate of fire</td></tr>
@@ -160,13 +162,28 @@ const Game = W.game = {
     this.ow.open();
   },
 
+  /* ---------------- the map room: skirmishes in any district ---------------- */
+  toMapRoom() {
+    this.closeSheets();
+    if (this.titleUI) { this.titleUI.unmount(); this.titleUI = null; }
+    const host = document.getElementById("title-host");
+    host.hidden = true; host.innerHTML = ""; this.attract = null;
+    document.getElementById("game").hidden = true;
+    W.audio.ambience(false);
+    this.mode = "maproom";
+    if (this.mr) this.mr.close();
+    this.mr = new W.MapRoom(this);
+    this.mr.open();
+  },
+
   /* ---------------- the briefing ----------------
    * contractId: a campaign contract, or null for a skirmish with the
    * standard kit. */
-  toBriefing(contractId) {
+  toBriefing(contractId, level) {
     const c = contractId && W.C.CONTRACTS.find(x => x.id === contractId);
     this.run = { contract: c || null, opts: { roster: c && this.campaign ? W.C.missionRoster(this.campaign) : undefined } };
-    this.level = W.LEVELS[c ? c.level : "plaza"];
+    this.level = level || W.LEVELS[c ? c.level : "plaza"];
+    if (this.mr) { this.mr.close(); this.mr = null; }
     const L = this.level;
     this.world = new W.World(L, this.run.opts);
     if (this.ow) { this.ow.close(); this.ow = null; }
@@ -190,8 +207,8 @@ const Game = W.game = {
           <tr><td>Time</td><td>${c.days} days: the labs keep spending while you are out</td></tr><tr><td>Losses</td><td>Watchers killed are gone for good, with what they carry</td></tr></table></div>` : ""}
       </div>
       <div>
-        <div class="panel"><h3>The plaza</h3><canvas class="map" data-map width="216" height="112"></canvas>
-          <div class="legend"><span><i style="background:#54f2ff"></i>Watchers</span><span><i style="background:#ffb000"></i>Vesper Sly &amp; car</span><span><i style="background:#ff5266"></i>crew</span><span><i style="background:#4c6fd0"></i>security</span></div></div>
+        <div class="panel"><h3>The plaza</h3><canvas class="map" data-map width="300" height="300"></canvas>
+          <div class="legend"><span><i style="background:#54f2ff"></i>Watchers</span><span><i style="background:#ffb000"></i>${W.esc(w.names.target)}</span><span><i style="background:#ff5266"></i>crew</span><span><i style="background:#4c6fd0"></i>security</span></div></div>
         <div class="panel"><h3>Intel</h3><table>${L.briefing.intel.map(([a, b]) => `<tr><td>${W.esc(a)}</td><td>${W.esc(b)}</td></tr>`).join("")}</table></div>
         <div class="panel"><h3>Your squad</h3><div class="squad">${w.agents.map(a => `<div class="agent"><canvas width="40" height="40" data-agent="${a.slot}"></canvas><div><b>${W.esc(a.name)}</b>${a.weapons.map(x => W.WEAPONS[x.type].name).join(", ")}</div></div>`).join("")}</div></div>
       </div>
@@ -200,12 +217,7 @@ const Game = W.game = {
     document.body.appendChild(el);
     this.briefEl = el;
     const mc = el.querySelector("[data-map]");
-    this.renderer.prepare(w.map);
-    const saved = { cam: { ...w.cam } };
-    w.cam.x = -9999; w.cam.y = -9999; // no view box on the briefing map
-    this.renderer.vw = 0; this.renderer.vh = 0;
-    this.renderer.mini(mc.getContext("2d"), w, { noCiv: true });
-    w.cam = saved.cam;
+    this.renderer.scanner(mc.getContext("2d"), w, { full: true, noCiv: true, noView: true });
     this.resize();
     el.querySelectorAll("[data-agent]").forEach(c => W.drawPortrait(c.getContext("2d"), w.agents[+c.dataset.agent].look, 40, 40));
     el.querySelector("[data-go]").addEventListener("click", () => this.beginMission());
@@ -213,7 +225,7 @@ const Game = W.game = {
     el.querySelector("[data-go]").focus();
   },
 
-  backFromBrief() { if (this.run && this.run.contract) this.toOverworld(); else this.toTitle(); },
+  backFromBrief() { if (this.run && this.run.contract) this.toOverworld(); else if (this.fromMapRoom) this.toMapRoom(); else this.toTitle(); },
 
   /* ---------------- the mission ---------------- */
   beginMission() {
@@ -227,13 +239,13 @@ const Game = W.game = {
     if (!this.world || this.world.time > 0 || this.world.status !== "play") this.world = new W.World(this.level, (this.run && this.run.opts) || {});
     this.resize();
     const w = this.world;
-    this.renderer.centerOn(w, this.level.start[0], this.level.start[1]);
+    const st = w.startAt || this.level.start;
+    this.renderer.centerOn(w, st[0], st[1]);
     this.hud.build(w);
     this.cursorMode = null; this.setCursor("move");
     W.audio.ambience(true);
-    w.msg("JOYEUSE: You're on, Watchers. Sly's at the cafe, north-east corner. Keep it quiet.", "#54f2ff");
-    w.msg("Weapons are holstered. Plaza Security will warn anyone with a gun out.", "#94a0c4");
-    this.banner("MARKET PLAZA", "Eliminate Vesper Sly", "#54f2ff");
+    for (const [t, col] of this.level.intro ? this.level.intro(w) : [["JOYEUSE: You're on, Watchers. Sly's at the cafe, north-east corner. Keep it quiet.", "#54f2ff"], ["Weapons are holstered. Plaza Security will warn anyone with a gun out.", "#94a0c4"]]) w.msg(t, col);
+    this.banner(this.level.name.toUpperCase(), `Eliminate ${w.names.target}`, "#54f2ff");
     this.hint(true);
     this.view.focus && this.view.focus();
   },
@@ -277,7 +289,7 @@ const Game = W.game = {
         a.update(dt);
         // a slow figure-of-eight over the plaza
         const t = this.attractT * 0.05;
-        this.attractR.centerOn(a, 30 + Math.sin(t) * 12, 30 + Math.sin(t * 2) * 6);
+        this.attractR.centerOn(a, 74 + Math.sin(t) * 14, 118 + Math.sin(t * 2) * 8);
         this.attractR.frame(a, dt);
       }
       return;
@@ -329,7 +341,7 @@ const Game = W.game = {
     let best = null, bd = -Infinity;
     for (const u of w.units) {
       if (!u.alive || u.inCar) continue;
-      const [sx, sy] = r.toScreen(w, u.x, u.y);
+      const [sx, sy] = r.toScreen(w, u.x, u.y, u.z || 0);
       const X = sx * k, Y = sy * k;
       if (px > X - 7 * k && px < X + 7 * k && py > Y - 25 * k && py < Y + 3 * k) {
         const d = u.x + u.y;
@@ -357,11 +369,12 @@ const Game = W.game = {
   },
   selectedAgents() { return [...this.world.selected].filter(u => u.alive).sort((a, b) => a.slot - b.slot); },
   describe(u) {
-    if (u.kind === "target") return ["Vesper Sly", "#ffb000"];
+    const N = this.world.names;
+    if (u.kind === "target") return [N.target, "#ffb000"];
     if (u.follower) return ["Follower", "#54f2ff"];
-    if (u.kind === "crew") return [u.guard ? "Bodyguard" : "Henchcat", "#ff5266"];
-    if (u.kind === "sec") return [u.angryAt.player ? "Plaza Security (hostile)" : "Plaza Security", "#7aa8ff"];
-    return ["Civilian", "#94a0c4"];
+    if (u.kind === "crew") return [u.guard ? N.guard : N.henchman, "#ff5266"];
+    if (u.kind === "sec") return [u.angryAt.player ? `${N.sec} (hostile)` : N.sec, "#7aa8ff"];
+    return [N.civ, "#94a0c4"];
   },
   updateHover() {
     const ui = this.ui;
@@ -384,7 +397,7 @@ const Game = W.game = {
       }
     } else {
       const c = this.carAt(ui.x, ui.y);
-      if (c) { h.mode = "fire"; h.label = c.escapeCar ? "Vesper's car" : "Car"; h.labelColor = c.escapeCar ? "#ffb000" : "#94a0c4"; }
+      if (c) { h.mode = "fire"; h.label = c.escapeCar ? `${this.world.names.target}'s car` : "Car"; h.labelColor = c.escapeCar ? "#ffb000" : "#94a0c4"; }
       else {
         const it = this.itemAt(ui.x, ui.y);
         if (it) { h.label = W.WEAPONS[it.type].name + (it.ammo != null ? ` (${it.ammo})` : ""); h.labelColor = "#ffb000"; }
@@ -554,6 +567,11 @@ const Game = W.game = {
         if (document.querySelector(".gk-sheet")) return;
         this.toggleSound(); return;
       }
+      if (this.mode === "maproom") {
+        if (document.querySelector(".gk-sheet")) return;
+        if (this.mr && this.mr.onKey(k, ev)) ev.preventDefault();
+        return;
+      }
       if (this.mode === "world") {
         if (document.querySelector(".gk-sheet")) return;
         if (this.ow && this.ow.onKey(k, ev)) ev.preventDefault();
@@ -567,7 +585,7 @@ const Game = W.game = {
       if (this.mode === "debrief") {
         if (this.run && this.run.contract) { if (k === "enter" || k === "escape") { ev.preventDefault(); this.toOverworld(); } return; }
         if (k === "r" || k === "enter") { ev.preventDefault(); this.restartMission(); }
-        if (k === "escape" || k === "t") { ev.preventDefault(); this.toTitle(); }
+        if (k === "escape" || k === "t") { ev.preventDefault(); this.backFromBrief(); }
         return;
       }
       if (this.mode !== "play") return;
@@ -690,7 +708,7 @@ const Game = W.game = {
     }
     const mmss = t => String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(Math.floor(t % 60)).padStart(2, "0");
     const quote = won
-      ? (s.civ > 4 ? `"Sly's done. The tourists are not coming back this week, and that's coming out of your budget." -- Casey Benton` : `"Sly's done, and the shoppers barely noticed. That's how I like it." -- Casey Benton`)
+      ? (s.civ > 4 ? `"That's done. The tourists are not coming back this week, and that's coming out of your budget." -- Casey Benton` : `"Done, and quietly. That's how I like it." -- Casey Benton`)
       : (w.endReason.includes("away") ? `"He walked. You let him walk." -- Casey Benton` : `"I'll need new Watchers. Try not to break these ones." -- Casey Benton`);
     // a contract settles up: the fee, the dead, the days that passed
     const camp = this.run && this.run.contract && this.campaign;
@@ -712,8 +730,8 @@ const Game = W.game = {
       <h3>Report</h3><table>
         <tr><td>Time</td><td>${mmss(s.time)}</td></tr>
         <tr><td>Watchers lost</td><td>${s.lost} of ${w.agents.length}</td></tr>
-        <tr><td>Vesper's crew down</td><td>${s.crew}</td></tr>
-        <tr><td>Plaza Security down</td><td>${s.sec}</td></tr>
+        <tr><td>${W.esc(w.names.crew)} down</td><td>${s.crew}</td></tr>
+        <tr><td>${W.esc(w.names.sec)} down</td><td>${s.sec}</td></tr>
         <tr><td>Civilians lost</td><td>${s.civ}</td></tr>
         <tr><td>Recruited</td><td>${s.recruited}</td></tr>
         <tr><td>Rounds fired</td><td>${s.shots}</td></tr>
@@ -722,12 +740,12 @@ const Game = W.game = {
         <tr class="total"><td>Cash now</td><td>${W.money(this.campaign.cash)}</td></tr></table>` : ""}
       <p class="quote">${W.esc(quote)}</p>
       <div class="acts">${camp ? `<button class="primary" data-a="world"><kbd>Enter</kbd>Back to command</button>`
-        : `<button class="primary" data-a="again"><kbd>R</kbd>${won ? "Play it again" : "Try again"}</button><button data-a="title"><kbd>Esc</kbd>Back to title</button>`}</div>
+        : `<button class="primary" data-a="again"><kbd>R</kbd>${won ? "Play it again" : "Try again"}</button><button data-a="title"><kbd>Esc</kbd>${this.fromMapRoom ? "Back to the map room" : "Back to title"}</button>`}</div>
     </div>`;
     el.addEventListener("click", ev => {
       const b = ev.target.closest("button"); if (!b) return;
       if (b.dataset.a === "again") this.restartMission();
-      if (b.dataset.a === "title") this.toTitle();
+      if (b.dataset.a === "title") this.backFromBrief();
       if (b.dataset.a === "world") this.toOverworld();
     });
     document.body.appendChild(el);

@@ -45,6 +45,19 @@ W.PROPS = {
   watertower: { walk: false, los: true, h: 96 },
   bars:    { walk: false, los: true,  h: 16 },   // cell bars, p.axis
   shelter: { walk: false, los: false, h: 18 },   // a bus or tram shelter
+  // backyards
+  grill:   { walk: false, los: true,  h: 7 },
+  trampoline: { walk: false, los: true, h: 5 },
+  swing:   { walk: false, los: true,  h: 18 },
+  gnome:   { walk: true,  los: true,  h: 4 },
+  flamingo:{ walk: true,  los: true,  h: 8 },
+  cattree: { walk: false, los: true,  h: 26 },
+  dish:    { walk: false, los: true,  h: 12 },
+  hottub:  { walk: false, los: true,  h: 5 },
+  bed:     { walk: false, los: true,  h: 3 },    // a raised garden bed
+  laundry: { walk: true,  los: true,  h: 12 },
+  yarn:    { walk: false, los: true,  h: 12 },
+  rocket:  { walk: false, los: true,  h: 40 },
 };
 
 W.Map = class {
@@ -322,6 +335,21 @@ W.Map = class {
       if ((this.deck[k] || this.deckHi[k]) && this.height[k] === 0) walk = true;
       this.walk[k] = walk ? 1 : 0;
       this.losBlock[k] = los ? 1 : 0;
+    }
+    // fences join up: each runs a rail toward every fence beside it that meets it (corners, tees,
+    // crosses), and out to the cell's edge along its own line where it simply ends
+    const fenceAt = (x, y) => { if (!this.inb(x, y)) return null; const p = this.propAt[this.i(x, y)]; return p >= 0 && this.props[p].type === "fence" && !this.props[p].gone ? this.props[p] : null; };
+    for (const f of this.props) if (f.type === "fence" && !f.gone) {
+      const cx = Math.floor(f.x), cy = Math.floor(f.y);
+      let arms = 0;
+      // bits: 1 north (-y), 2 east (+x), 4 south (+y), 8 west (-x)
+      [[0, -1, "y", 1], [1, 0, "x", 2], [0, 1, "y", 4], [-1, 0, "x", 8]].forEach(([dx, dy, ax, bit]) => {
+        const o = fenceAt(cx + dx, cy + dy);
+        if (o && (o.axis === ax || f.axis === ax)) arms |= bit;
+      });
+      const along = f.axis === "y" ? 5 : 10, across = 15 ^ along;
+      if (!(arms & across)) arms |= along;     // a plain run, or an end: rails edge to edge as before
+      f.arms = arms;
     }
     // junctions, with the halves of a divided road's crossing merged into one
     this.junctions = this.junctionBoxes();

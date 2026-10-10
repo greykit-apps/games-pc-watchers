@@ -736,13 +736,15 @@ W.drawProp = (c, p, sx, sy, t) => {
       break;
     }
     case "fence": {
-      // rails along the cell's edge, on its axis
+      // a post in the middle, rails out to each fence it meets (see Map.finish), a post at each free end
+      const arms = p.arms ?? (p.axis === "y" ? 5 : 10);
+      const ends = [[1, P(0, -0.5, 0)], [2, P(0.5, 0, 0)], [4, P(0, 0.5, 0)], [8, P(-0.5, 0, 0)]].filter(([b]) => arms & b);
       c.strokeStyle = "#5a4a3a"; c.lineWidth = 1;
-      const a = p.axis === "y" ? [P(0, -0.5, 0), P(0, 0.5, 0)] : [P(-0.5, 0, 0), P(0.5, 0, 0)];
       c.beginPath();
-      for (const z of [3, 6]) { c.moveTo(a[0][0], a[0][1] - z); c.lineTo(a[1][0], a[1][1] - z); }
+      for (const [, e] of ends) for (const z of [3, 6]) { c.moveTo(sx, sy - z); c.lineTo(e[0], e[1] - z); }
       c.stroke();
-      c.fillStyle = "#4a3c30"; c.fillRect(a[0][0], a[0][1] - 7, 1, 7); c.fillRect(sx, sy - 7, 1, 7);
+      c.fillStyle = "#4a3c30"; c.fillRect(sx, sy - 7, 1, 7);
+      for (const [b, e] of ends) if (b === 1 || b === 8) c.fillRect(e[0], e[1] - 7, 1, 7);
       break;
     }
     case "hay":
@@ -821,6 +823,99 @@ W.drawProp = (c, p, sx, sy, t) => {
       c.beginPath(); c.moveTo(sx + 3.5, sy - 26); c.lineTo(sx + 3, sy - 31); c.lineTo(sx + 1, sy - 28); c.fill();
       c.strokeStyle = "#8a6a3a"; c.lineWidth = 2; c.beginPath(); c.moveTo(sx + 3, sy - 10); c.quadraticCurveTo(sx + 9, sy - 9, sx + 7, sy - 16); c.stroke();
       break;
+    case "grill": {
+      c.fillStyle = "rgba(0,0,0,.3)"; c.beginPath(); c.ellipse(sx, sy, 4, 2, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = "#2a2a30"; c.lineWidth = 1; c.beginPath(); c.moveTo(sx - 3, sy); c.lineTo(sx, sy - 5); c.lineTo(sx + 3, sy); c.moveTo(sx, sy + 1); c.lineTo(sx, sy - 5); c.stroke();
+      c.fillStyle = "#1c1c22"; c.beginPath(); c.ellipse(sx, sy - 6, 4, 2.2, 0, 0, Math.PI); c.fill();
+      c.fillStyle = "#2a2a32"; c.beginPath(); c.ellipse(sx, sy - 6, 4, 3, 0, Math.PI, 0); c.fill();
+      c.fillStyle = "#ff7a30"; c.fillRect(sx - 1, sy - 6, 2, 1);
+      break;
+    }
+    case "trampoline": {
+      c.fillStyle = "rgba(0,0,0,.3)"; c.beginPath(); c.ellipse(sx, sy + 1, 11, 5.5, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#3a3f4c"; for (const a of [-9, -3, 3, 9]) c.fillRect(sx + a, sy - 4 + Math.abs(a) * 0.1, 1, 4);
+      c.fillStyle = "#15151a"; c.beginPath(); c.ellipse(sx, sy - 5, 10, 5, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = "#3a7ad0"; c.lineWidth = 1.5; c.stroke();
+      break;
+    }
+    case "swing": {
+      c.strokeStyle = "#8a3a2a"; c.lineWidth = 1.5;
+      const L = P(-0.45, 0, 0), R = P(0.45, 0, 0);
+      c.beginPath();
+      for (const [x, y] of [L, R]) { c.moveTo(x - 3, y + 1); c.lineTo(x, y - 18); c.lineTo(x + 3, y - 1); }
+      c.moveTo(L[0], L[1] - 18); c.lineTo(R[0], R[1] - 18); c.stroke();
+      c.strokeStyle = "#9a9aa0"; c.lineWidth = 1; c.beginPath();
+      for (const f of [0.3, 0.7]) { const x = L[0] + (R[0] - L[0]) * f, y = L[1] + (R[1] - L[1]) * f; c.moveTo(x - 1, y - 18); c.lineTo(x - 1, y - 5); c.moveTo(x + 2, y - 18); c.lineTo(x + 2, y - 5); }
+      c.stroke();
+      c.fillStyle = "#ffcf3a"; for (const f of [0.3, 0.7]) { const x = L[0] + (R[0] - L[0]) * f, y = L[1] + (R[1] - L[1]) * f; c.fillRect(x - 2, y - 5, 5, 1); }
+      break;
+    }
+    case "gnome":
+      c.fillStyle = "#3a5aa8"; c.fillRect(sx - 1, sy - 3, 3, 3);
+      c.fillStyle = "#e8e4dc"; c.fillRect(sx - 1, sy - 4, 3, 2);
+      c.fillStyle = "#d83a3a"; c.beginPath(); c.moveTo(sx - 2, sy - 4); c.lineTo(sx + 0.5, sy - 8); c.lineTo(sx + 3, sy - 4); c.closePath(); c.fill();
+      break;
+    case "flamingo":
+      c.strokeStyle = "#2a2a30"; c.lineWidth = 1; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx, sy - 5); c.stroke();
+      c.fillStyle = "#ff6aa8"; c.beginPath(); c.ellipse(sx, sy - 6, 3, 2, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = "#ff6aa8"; c.beginPath(); c.moveTo(sx + 2, sy - 7); c.quadraticCurveTo(sx + 4, sy - 11, sx + 2, sy - 12); c.stroke();
+      c.fillStyle = "#2a2a30"; c.fillRect(sx + 1, sy - 12, 1, 1);
+      break;
+    case "cattree": {
+      // a cat tree: a carpeted base, sisal posts, three platforms and a bed on top
+      const rug = p.color || "#b8a07a";
+      W.box(c, sx, sy, -0.4, -0.4, 0.4, 0.4, 0, 4, W.shade(rug, 1.15), rug, W.shade(rug, 0.7));
+      c.fillStyle = "#c8b080"; c.fillRect(sx - 4, sy - 22, 2, 18); c.fillRect(sx + 3, sy - 14, 2, 10);
+      c.fillStyle = "#8a7050"; for (let i = 0; i < 9; i++) c.fillRect(sx - 4, sy - 21 + i * 2, 2, 1);
+      W.box(c, sx, sy, -0.05, -0.35, 0.4, 0.05, 12, 14, W.shade(rug, 1.15), rug, W.shade(rug, 0.7));
+      W.box(c, sx, sy, -0.4, -0.3, 0, 0.1, 20, 22, W.shade(rug, 1.15), rug, W.shade(rug, 0.7));
+      c.fillStyle = W.shade(rug, 0.8); c.beginPath(); c.ellipse(sx - 3, sy - 25, 5, 2.5, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = W.shade(rug, 0.55); c.beginPath(); c.ellipse(sx - 3, sy - 25, 3, 1.4, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#ff3a6a"; c.fillRect(sx + 4, sy - 13, 1, 4); c.beginPath(); c.arc(sx + 4.5, sy - 8, 1.5, 0, Math.PI * 2); c.fill();   // a toy on a string
+      break;
+    }
+    case "dish":
+      c.fillStyle = "#4a5060"; c.fillRect(sx, sy - 7, 1, 7);
+      c.fillStyle = "#c8ccd4"; c.beginPath(); c.ellipse(sx - 1, sy - 9, 5, 4, -0.5, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#9aa0ac"; c.beginPath(); c.ellipse(sx, sy - 9, 3, 2.5, -0.5, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#2a2a30"; c.fillRect(sx + 3, sy - 12, 1, 4);
+      break;
+    case "hottub":
+      W.box(c, sx, sy, -0.45, -0.45, 0.45, 0.45, 0, 5, "#3ac8d8", "#6a5040", "#4a3a2c");
+      c.fillStyle = "rgba(220,250,255,.35)"; c.beginPath(); c.ellipse(sx, sy - 6, 6, 2.5, 0, 0, Math.PI * 2); c.fill();
+      break;
+    case "bed":
+      W.box(c, sx, sy, -0.45, -0.3, 0.45, 0.3, 0, 3, "#3a2a1e", "#6a5038", "#4a3828");
+      c.fillStyle = p.color || "#4a9a3a";
+      for (const [u, v] of [[-0.3, 0], [0, 0], [0.3, 0], [-0.15, -0.1], [0.15, 0.1]]) { const [x, y] = P(u, v, 4); c.beginPath(); c.arc(x, y - 1, 1.6, 0, Math.PI * 2); c.fill(); }
+      break;
+    case "laundry": {
+      const A = P(-0.45, 0, 0), B = P(0.45, 0, 0);
+      c.fillStyle = "#6a6a70"; c.fillRect(A[0], A[1] - 12, 1, 12); c.fillRect(B[0], B[1] - 12, 1, 12);
+      c.strokeStyle = "#9a9aa0"; c.lineWidth = 1; c.beginPath(); c.moveTo(A[0], A[1] - 11); c.lineTo(B[0], B[1] - 11); c.stroke();
+      const cols = ["#e8e4dc", "#ff8fd8", "#54a8ff", "#ffcf3a"];
+      for (let i = 0; i < 4; i++) { const f = 0.15 + i * 0.22, x = A[0] + (B[0] - A[0]) * f, y = A[1] + (B[1] - A[1]) * f; c.fillStyle = cols[(i + (p.seed || 0)) % 4]; c.fillRect(x - 1, y - 11, 3, 4 + (i % 2) * 2); }
+      break;
+    }
+    case "yarn":
+      c.fillStyle = "rgba(0,0,0,.3)"; c.beginPath(); c.ellipse(sx, sy, 6, 3, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = p.color || "#d83a5a"; c.beginPath(); c.arc(sx, sy - 6, 6, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = W.shade(p.color || "#d83a5a", 0.65); c.lineWidth = 1; c.beginPath();
+      c.ellipse(sx, sy - 6, 6, 2.5, 0.6, 0, Math.PI * 2); c.moveTo(sx + 2, sy - 12); c.quadraticCurveTo(sx - 4, sy - 6, sx + 1, sy); c.stroke();
+      c.strokeStyle = p.color || "#d83a5a"; c.beginPath(); c.moveTo(sx + 5, sy - 3); c.quadraticCurveTo(sx + 9, sy + 1, sx + 12, sy - 1); c.stroke();
+      break;
+    case "rocket": {
+      // somebody's weekend project
+      c.fillStyle = "rgba(0,0,0,.3)"; c.beginPath(); c.ellipse(sx, sy, 7, 3.5, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#c83a3a"; c.beginPath(); c.moveTo(sx - 8, sy); c.lineTo(sx - 4, sy - 10); c.lineTo(sx - 4, sy); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(sx + 8, sy); c.lineTo(sx + 4, sy - 10); c.lineTo(sx + 4, sy); c.closePath(); c.fill();
+      c.fillStyle = "#c8ccd4"; c.fillRect(sx - 4, sy - 30, 8, 30);
+      c.fillStyle = "#9aa0ac"; c.fillRect(sx + 1, sy - 30, 3, 30);
+      c.fillStyle = "#c83a3a"; c.beginPath(); c.moveTo(sx - 4, sy - 30); c.lineTo(sx, sy - 40); c.lineTo(sx + 4, sy - 30); c.closePath(); c.fill();
+      c.fillStyle = "#54f2ff"; c.beginPath(); c.arc(sx, sy - 22, 2, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#2a2a30"; c.fillRect(sx - 2, sy - 12, 4, 1);
+      break;
+    }
     case "trough":
       W.box(c, sx, sy, -0.45, -0.2, 0.45, 0.2, 0, 4, "#2a5a6a", "#4a3c30", "#3a2f26");
       break;

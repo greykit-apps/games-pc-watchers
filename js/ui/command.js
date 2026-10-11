@@ -726,6 +726,18 @@ W.Command = class {
 
   onKey(k, ev) {
     const tag = ev && ev.target && ev.target.tagName;
+    // the Konami code: up up down down left right left right B A
+    const KONAMI = ["arrowup", "arrowup", "arrowdown", "arrowdown", "arrowleft", "arrowright", "arrowleft", "arrowright", "b", "a"];
+    this.konami = (this.konami || 0);
+    this.konami = k === KONAMI[this.konami] ? this.konami + 1 : k === KONAMI[0] ? 1 : 0;
+    if (this.konami === KONAMI.length) {
+      this.konami = 0;
+      const n = W.M.cheat(this.s);
+      W.audio.play("win");
+      this.commit();
+      this.toast(`Konami: $500,000${n ? `, ${n} project${n > 1 ? "s" : ""} finished` : ""}.`);
+      return true;
+    }
     if (k === "escape") {
       if (this.bannerOn) { this.hideBanner(); return true; }
       if (this.untilOpen) { this.untilOpen = false; this.focusTo = "until"; this.draw(); return true; }

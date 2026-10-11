@@ -250,7 +250,8 @@ as they like. That is deliberate.
 **Story missions** make that pushing worth doing, and they are how the game
 is won. Once the city is on war footing, every zone has a chain of three
 story missions: **find the lieutenant** (any level, threat 2), **turn the
-network** (level 2, threat 3), and **lock it down** (control 2.5, threat 4),
+network** (level 2, threat 3, and like any persuade job it needs a
+Purrsuader in the squad), and **lock it down** (control 2.5, threat 4),
 each a step harder for every step Cal arms to match the squad (see Threat
 and the squad). The lockdown of the last zone Cal holds is **his last
 stand**: threat 5, his own people, and where a BanHammer strike counts most.

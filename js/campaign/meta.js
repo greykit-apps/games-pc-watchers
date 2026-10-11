@@ -499,7 +499,7 @@ M.refreshOffers = s => {
   if (!s.offers.some(o => o.threat <= tier)) {
     const z = s.zones.filter(q => !q.lost && !q.locked).sort((a, b) => b.C - a.C)[0];
     if (z) {
-      const D = M.zoneDef(z.id), kind = rnd(s) < 0.5 ? "persuade" : "intel";
+      const D = M.zoneDef(z.id), kind = M.hasTalker(s) && rnd(s) < 0.5 ? "persuade" : "intel";
       s.offers.push({ id: `o${s.day}-${++seq}-${z.id}`, zone: z.id, kind, days: ri(s, ...M.KINDS[kind].days), level: M.level(z.C), seed: Math.floor(rnd(s) * 1e9),
         landmark: D.areas ? pickS(s, D.areas) : null, expires: s.day + ri(s, 5, 9), threat: Math.min(tier, M.threatOf(s, kind, z)), fallback: true });
     }
@@ -508,12 +508,16 @@ M.refreshOffers = s => {
 // every offer's threat for the squad deployed now: offers aren't frozen at the squad that was out when they turned up
 M.liveThreat = (s, o) => { const z = M.zone(s, o.zone), t = M.threatOf(s, o.kind, z, o.step || 0); return o.fallback ? Math.min(M.squadTier(s), t) : t; };
 M.liveThreats = s => { for (const o of s.offers) o.threat = M.liveThreat(s, o); };
-// can this offer be run now? (story steps need the zone at a level)
+// a job that's won by talking someone round (persuade, and the story's second step) can't be done without a Purrsuader
+M.needsTalker = o => o.kind === "persuade" || (o.kind === "story" && o.step === 1);
+M.hasTalker = s => M.squad(s).some(a => a.items.some(i => i.type === "purrsuader" || i.type === "purr2"));
+// can this offer be run now? (story steps need the zone at a level; talking jobs need a Purrsuader)
 M.canRun = (s, o) => {
   const z = M.zone(s, o.zone);
   const need = o.kind === "story" && M.STORY[o.step].needs;
   if (need && z.C < need) return `needs ${M.zoneDef(z.id).name} at ${Number.isInteger(need) ? `level ${need}` : `control ${need}`}`;
   if (!M.squad(s).length) return "no Watchers in the squad: put one in at the Clinic";
+  if (M.needsTalker(o) && !M.hasTalker(s)) return "needs a Purrsuader in the squad: buy one at the Clinic";
   return "";
 };
 // what a money reward is worth now: the dearest single purchase open to the squad

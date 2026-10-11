@@ -260,6 +260,14 @@ everything into production; only Cal's pushes and failed missions take it
 lower. Rolling them out across the city is the cheap way to win the war, and
 the game should make the player feel what it costs.
 
+**There is no clock.** City research (overseers, zone works, requisitions,
+propaganda, mind control) doesn't count toward the war's 30 points, and Cal and
+mission threat scale with the player's upgrades and holdings, not with days. So
+a methodical player chooses when the war comes: pacify the board, roll out the
+propaganda, and only then take the squad's gear past 30 points. A player who
+never does can hold the city as it is for as long as they like. That is
+deliberate.
+
 **Story missions** make that pushing worth doing, and they are how the game
 is won. Once the city is on war footing, every zone has a short chain of
 story missions (several each), and the last of them **locks the zone down**:

@@ -2,8 +2,10 @@
 /* A headless campaign: a bot plays the meta-game (js/campaign/meta.js) from a
  * fresh start. It keeps research running (a weapon, mod or gear project on top,
  * production underneath), kits out the squad, and takes the mission that
- * matters most: a siege, Cal's crew, a story step, then whatever the weakest
- * zone offers. Checks the campaign's invariants after every mission.
+ * matters most within the squad's reach (threat no more than a step over its
+ * tier): a siege, Cal's crew, a story step, then whatever the weakest zone
+ * offers. Never goes out short-handed while there's a Watcher in reserve or
+ * cash for a recruit. Checks the campaign's invariants after every mission.
  *
  *   node tools/campaign.js [missions=60] [--fight] [--quiet] [--seed=N]
  *
@@ -49,8 +51,9 @@ for (let i = 0; i < N && !s.won; i++) {
     const prod = avail.find(a => a.id === "overseers") || avail.find(a => a.id === "works");
     if (prod && s.cash - prod.cost[0] > 60000) M.start(s, prod);
   }
-  // the squad: fill it, arm it, mod it
-  while (M.squad(s).length < M.SQUAD && !M.canHire(s) && s.cash > 120000) M.hire(s);
+  // the squad: fill it from the reserve, then with recruits; arm it, mod it
+  for (const a of s.roster) if (!a.deployed && M.squad(s).length < M.SQUAD) a.deployed = true;
+  while (M.squad(s).length < M.SQUAD && !M.canHire(s) && s.cash >= M.PRICE.recruit + 5000) M.hire(s);
   for (const a of M.squad(s)) {
     for (const it of M.shop(s, a)) if (it.type !== "banhammer" && it.type !== "medikit" && !M.canBuy(s, a, it) && s.cash - it.price > 40000) M.buy(s, a, it);
     const med = M.shop(s, a).find(x => x.type === "medikit");
@@ -65,7 +68,11 @@ for (let i = 0; i < N && !s.won; i++) {
     z.policy = { c: hold, r: Math.ceil(rest / 2), m: Math.floor(rest / 2) };
   }
   // the mission
-  const pri = o => (o.kind === "siege" ? 0 : o.kind === "cal" ? 1 : o.kind === "story" ? 2 : 3) * 10 + Math.max(0, M.level(M.zone(s, o.zone).C));
+  // within reach first (threat at most a step over the squad's tier), then by what matters; failing
+  // that, the easiest thing on offer
+  const tier = M.squadTier(s), short = M.squad(s).length < M.SQUAD;
+  const reach = o => o.threat <= tier + (short ? 0 : 1);
+  const pri = o => (reach(o) ? 0 : 1000 + o.threat * 100) + (o.kind === "siege" ? 0 : o.kind === "cal" ? 1 : o.kind === "story" ? 2 : 3) * 10 + Math.max(0, M.level(M.zone(s, o.zone).C));
   const offer = s.offers.filter(o => !M.canRun(s, o)).sort((a, b) => pri(a) - pri(b))[0];
   if (!offer) { M.advanceDay(s); check(); continue; }
   let res;
@@ -79,6 +86,6 @@ for (let i = 0; i < N && !s.won; i++) {
   }
   const slip = M.settle(s, offer, res);
   check();
-  if (!quiet) console.log(`day ${String(s.day).padStart(3)}  ${(res.won ? "won " : "LOST")} ${M.KINDS[offer.kind].name.padEnd(14)} ${M.zoneDef(offer.zone).name.padEnd(24)} cash ${W.money(s.cash).padStart(10)}  pts ${String(s.research.points).padStart(2)}${s.war ? " WAR" : "    "}  levels ${s.zones.map(z => z.locked ? "X" : z.lost ? "-" : M.level(z.C)).join("")}  roster ${s.roster.length}`);
+  if (!quiet) console.log(`day ${String(s.day).padStart(3)}  ${(res.won ? "won " : "LOST")} t${offer.threat}/${tier} x${res.agents.length} ${M.KINDS[offer.kind].name.padEnd(14)} ${M.zoneDef(offer.zone).name.padEnd(24)} cash ${W.money(s.cash).padStart(10)}  pts ${String(s.research.points).padStart(2)}${s.war ? " WAR" : "    "}  levels ${s.zones.map(z => z.locked ? "X" : z.lost ? "-" : M.level(z.C)).join("")}  roster ${s.roster.length}`);
 }
 console.log(`${s.stats.missions} missions, ${s.stats.won} won, day ${s.day}; research: ${s.research.done.length - M.START_DONE.length} done, ${s.research.points} points${s.war ? ", at war" : ""}; zones ${s.zones.map(z => `${z.id}:${z.locked ? "locked" : z.lost ? "lost" : M.level(z.C)}`).join(" ")}; fallen ${s.fallen.length}${s.won ? "; WON" : ""}`);

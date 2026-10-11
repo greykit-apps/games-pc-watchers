@@ -316,10 +316,20 @@ the squad deployed now, every time it's shown and when the squad goes, not
 frozen when the offer turned up. The **squad's tier** is its power (each of
 the four's best gun, a fifth of a point per mod mark, a hired crew, a
 BanHammer on a siege or lockdown) against 9, 13, 19 and 25 for tiers 2 to 5;
-the hired crew and the BanHammer don't count toward Cal's step. Weapon marks
-don't count toward either until the mission engine fields them. Every
+the hired crew and the BanHammer don't count toward Cal's step. A weapon mark
+counts a quarter more gun, as it does in the field (+25% damage, +15%
+range). Every
 researched mark of a weapon is on the racks, MK1 included, and a BanHammer
 strike takes none of a Watcher's eight slots.
+
+## Balance, measured (2026-10-11, with weapon marks in the field)
+
+Since the engine fields weapon marks and they count toward tier again, the
+same twelve seeds: every strategy above wins 11 or 12 of 12, by mission 94 to
+142 (the default 12/12 by 102, war 43 missions long, 13 Watchers lost); with
+the raw death rates, 7 of 12 by mission 146, with 87 lost. A careful player
+wins about the 100-mission mark whichever way they play; strategy shows in
+the pace and the losses. The table below is from just before marks counted.
 
 ## Balance, measured (2026-10-11, second pass)
 

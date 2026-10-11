@@ -58,16 +58,23 @@ W.lookFor = kind => {
   return { coat: "#1b2130", trim: "#54f2ff", legs: "#10131c", fur, visor: "#54f2ff", long: true };
 };
 
-W.giveWeapon = (u, type, ammo) => {
+W.giveWeapon = (u, type, ammo, mk) => {
   const def = W.WEAPONS[type];
   const have = u.weapons.find(w => w.type === type);
-  if (have) { if (have.ammo != null) have.ammo += ammo ?? def.ammo ?? 0; return have; }
+  if (have) { if (have.ammo != null) have.ammo += ammo ?? def.ammo ?? 0; if (mk > (have.mk || 1)) have.mk = mk; return have; }
   const w = { type, ammo: ammo !== undefined ? ammo : def.ammo };
+  if (mk > 1) w.mk = mk;
   u.weapons.push(w);
   return w;
 };
 W.curWeapon = u => u.cur >= 0 ? u.weapons[u.cur] : null;
 W.curDef = u => { const w = W.curWeapon(u); return w ? W.WEAPONS[w.type] : null; };
+/* A weapon's mark (the campaign's mk, 1 to 3): each over MK1 hits a quarter
+ * harder and reaches a sixth further. */
+W.MARK = { dmg: 0.25, range: 0.15 };
+W.markOf = w => (w && w.mk) || 1;
+W.rangeOf = u => { const d = W.curDef(u); return d ? d.range * (1 + W.MARK.range * (W.markOf(W.curWeapon(u)) - 1)) : 0; };
+W.dmgOf = u => { const d = W.curDef(u); return d ? (d.dmg || 0) * (1 + W.MARK.dmg * (W.markOf(W.curWeapon(u)) - 1)) : 0; };
 W.armed = u => { const d = W.curDef(u); return !!(d && d.gun); };
 W.hasGun = u => u.weapons.some(w => W.WEAPONS[w.type].gun && (w.ammo == null || w.ammo > 0));
 W.drawBest = u => {
@@ -266,7 +273,8 @@ W.tryFire = (world, u, tx, ty, victim) => {
   const d = W.dist(u.x, u.y, tx, ty);
   let acc = def.acc * u.acc;
   if (u.isAgent) acc *= (0.8 + 0.4 * W.eff(u, "dot")) * (1 + 0.06 * W.mod(u, "eyes"));
-  const fall = 1 - (0.45 - 0.08 * W.mod(u, "eyes")) * W.clamp(d / def.range, 0, 1.4);
+  const fall = 1 - (0.45 - 0.08 * W.mod(u, "eyes")) * W.clamp(d / W.rangeOf(u), 0, 1.4);
+  const dmg = W.dmgOf(u), blastMul = 1 + W.MARK.dmg * (W.markOf(w) - 1);
   const mz = 12; // muzzle height
   for (let p = 0; p < (def.pellets || 1); p++) {
     let ang = Math.atan2(ty - u.y, tx - u.x);
@@ -304,17 +312,17 @@ W.tryFire = (world, u, tx, ty, victim) => {
     }
     world.tracer(u.x + Math.cos(ang) * 0.3, u.y + Math.sin(ang) * 0.3, mz, ex, ey, ez, def.tracer, def.beam ? 2 : 1, def.beam ? 0.25 : 0.07);
     if (hit) {
-      if (hit.isCar) world.damageCar(hit, def.dmg, u);
-      else world.damage(hit, def.dmg, u);
+      if (hit.isCar) world.damageCar(hit, dmg, u);
+      else world.damage(hit, dmg, u);
     }
-    if (def.blast) world.explode(ex, ey, def.blast.r, def.blast.dmg, u);
+    if (def.blast) world.explode(ex, ey, def.blast.r, def.blast.dmg * blastMul, u);
   }
   world.noise(u.x, u.y, 9, u);
   return true;
 };
 
 /* ---- the Purrsuader ---- */
-W.squadFollowers = world => world.units.filter(o => o.alive && o.follower && !o.isAgent).length;
+W.squadFollowers = world => world.units.filter(o => o.alive && o.follower && !o.isAgent && !o.merc).length;
 /* how many followers it takes to talk t round (before the brain mods count) */
 W.persuadeNeed = (world, agent, t) => {
   let need = t.kind === "target" ? Infinity : t.kind === "crew" ? (t.guard ? 6 : W.PERSUADE_NEED.crew) : W.PERSUADE_NEED[t.kind];
@@ -326,6 +334,8 @@ W.persuadeNeed = (world, agent, t) => {
 };
 W.canPersuade = (world, agent, t) => {
   if (!t.alive || t.inCar || t.faction === "player" || t.isAgent) return false;
+  // a zone under mind control: nobody there hears the Purrsuader
+  if (world.level.mission && world.level.mission.mindControl) return false;
   const need = W.persuadeNeed(world, agent, t);
   // a better brain counts as followers
   return need !== undefined && W.squadFollowers(world) + W.mod(agent, "brain") >= need;
@@ -370,10 +380,11 @@ W.engage = (world, u, foe, chase = true) => {
   if (!def || !def.gun) return false;
   const d = W.dist(u.x, u.y, foe.x, foe.y);
   const see = world.map.los(u.x, u.y, foe.x, foe.y);
-  if (see && d <= def.range) {
+  const range = W.rangeOf(u);
+  if (see && d <= range) {
     if (u.target !== foe) { u.target = foe; u.aimT = u.react * W.rand(0.8, 1.2); }
     u.seen = [foe.x, foe.y];
-    if (!u.isAgent && d < def.range * 0.8) W.stop(u);
+    if (!u.isAgent && d < range * 0.8) W.stop(u);
     return true;
   }
   if (chase && (!u.path || u.chaseT <= 0)) {
@@ -421,7 +432,7 @@ W.thinkAgent = (world, u) => {
         if (u.manual === pick) u.manual = null;
       } else if (m) {
         if (!W.canPersuade(world, u, m)) {
-          if (!u.denyT) { world.msg(`${u.name}: need ${W.persuadeNeed(world, u, m)} followers to work on that one.`, "#ffb000"); u.denyT = 3; W.audio.play("deny"); }
+          if (!u.denyT) { world.msg(world.level.mission && world.level.mission.mindControl ? `${u.name}: they don't hear it. Nobody here does.` : `${u.name}: need ${W.persuadeNeed(world, u, m)} followers to work on that one.`, "#ffb000"); u.denyT = 3; W.audio.play("deny"); }
           u.manual = null;
         } else if (!u.path || u.chaseT <= 0) { W.goTo(world, u, m.x, m.y); u.chaseT = 1; }
       }
@@ -434,7 +445,7 @@ W.thinkAgent = (world, u) => {
   if (m && (m.isCar ? m.dead : !m.alive || m.faction === "player")) { u.manual = m = null; u.target = null; }
   if (m) {
     const d = W.dist(u.x, u.y, m.x, m.y);
-    if (d <= def.range && world.map.los(u.x, u.y, m.x, m.y)) {
+    if (d <= W.rangeOf(u) && world.map.los(u.x, u.y, m.x, m.y)) {
       if (u.target !== m) { u.target = m; u.aimT = 0.15; }
       W.stop(u);
       return;
@@ -445,7 +456,7 @@ W.thinkAgent = (world, u) => {
   // them think for themselves
   const vine = W.eff(u, "vine");
   if (vine < 0.15) { u.target = null; return; }
-  const range = def.range + W.eff(u, "dot") * 1.5 + 0.6 * W.mod(u, "eyes");
+  const range = W.rangeOf(u) + W.eff(u, "dot") * 1.5 + 0.6 * W.mod(u, "eyes");
   const foe = W.nearestFoe(world, u, range);
   if (foe) {
     if (u.target !== foe) { u.target = foe; u.aimT = Math.max(0.1, (0.95 - 0.65 * vine - 0.2 * W.eff(u, "dot")) * (1 - 0.18 * W.mod(u, "brain"))); }
@@ -461,7 +472,7 @@ W.thinkFollower = (world, u) => {
   // armed followers fight
   if (!W.armed(u) && W.hasGun(u)) W.drawBest(u);
   if (W.armed(u)) {
-    const foe = W.nearestFoe(world, u, W.curDef(u).range);
+    const foe = W.nearestFoe(world, u, W.rangeOf(u));
     if (foe) { W.engage(world, u, foe, false); }
     else u.target = null;
   } else {
@@ -768,7 +779,7 @@ W.updateUnit = (world, u, dt) => {
     if (def && def.gun) {
       const d = W.dist(u.x, u.y, T.x, T.y);
       u.aimT -= dt;
-      if (d <= def.range + 0.5) {
+      if (d <= W.rangeOf(u) + 0.5) {
         u.facingLock = true;
         u.dir = Math.atan2(T.y - u.y, T.x - u.x);
         if (u.aimT <= 0 && world.map.los(u.x, u.y, T.x, T.y)) W.tryFire(world, u, T.x, T.y, T);
@@ -790,7 +801,7 @@ W.updateUnit = (world, u, dt) => {
       if (u.faction === "crew" && !W.WEAPONS[it.type].gun) continue;
       if (!u.isAgent && u.weapons.some(w => W.WEAPONS[w.type].gun)) continue;
       if (u.weapons.length >= 8 && !u.weapons.some(w => w.type === it.type)) continue;
-      W.giveWeapon(u, it.type, it.ammo);
+      W.giveWeapon(u, it.type, it.ammo, it.mk);
       world.items.splice(i, 1);
       W.audio.at("pickup", u.x, u.y);
       if (u.isAgent) world.msg(`${u.name} picked up ${W.WEAPONS[it.type].name}${it.ammo != null ? ` (${it.ammo})` : ""}.`, "#dbe4fb");
@@ -817,6 +828,19 @@ W.spawnGarrisons = (world) => {
     for (const [t, a] of G.guns) W.giveWeapon(u, t, a);
   }
 };
+/* Hired guns (L.mission.hired): a mercenary crew beside the squad for one
+ * mission. They arrive as followers, armed, and fight as followers do. */
+W.mercLook = () => ({ coat: "#2e3440", trim: "#7fd8e0", legs: "#1a1e26", fur: W.pick(W.FURS), visor: "#7fd8e0" });
+W.spawnHired = (world, n) => {
+  const ags = world.agents, at = world.dropAt || (ags[0] ? [ags[0].x, ags[0].y] : null);
+  if (!n || !at || !ags.length) return;
+  for (let i = 0; i < n; i++) {
+    const p = world.map.nearestWalkable(at[0] + (i % 2 ? 1.2 : -1.2), at[1] + (i < 2 ? -1.2 : 1.2), 4) || at;
+    const u = world.add(W.makeUnit("crew", p[0], p[1], { look: W.mercLook(), merc: true, hp: 14, maxHp: 14, armor: 0.85 }));
+    u.faction = "player"; u.follower = true; u.leader = ags[i % ags.length]; u.state = "follow"; u.hostile = false;
+    W.giveWeapon(u, i % 2 ? "shotgun" : "uzi", i % 2 ? 24 : 80); W.giveWeapon(u, "pistol"); W.drawBest(u);
+  }
+};
 W.agentLook = a => ({ coat: "#1b2130", trim: "#54f2ff", legs: "#10131c", fur: a.fur, patch: a.patch || null, visor: "#54f2ff", long: true });
 W.spawnSquad = (world, roster, spots) => {
   world.dropAt = spots[0];   // where the squad came in: where the pickup waits when the job is done
@@ -826,7 +850,7 @@ W.spawnSquad = (world, roster, spots) => {
     // a chest mod: more to hit, and harder to hurt
     u.maxHp = u.hp = 24 + 6 * (mods.chest || 0);
     u.armor = 0.75 * (1 - 0.1 * (mods.chest || 0));
-    a.weapons.forEach(w => W.giveWeapon(u, w.type, w.ammo));
+    a.weapons.forEach(w => W.giveWeapon(u, w.type, w.ammo, w.mk));
     u.ipa = {};
     for (const s of W.STIMS) u.ipa[s.id] = { lvl: 0.5, dep: 0, eff: 0.5 };
     world.selected.add(u);

@@ -173,11 +173,12 @@ M.THREAT = {
 };
 /* What the squad can take on: each Watcher's best gun and mods, summed over
  * the four who go out, and a hired crew if one's paid for. Four new Watchers
- * with pistols are tier 1. Weapon marks don't count yet: the mission engine
- * doesn't field them. The tiers are set from real fights in the engine. */
+ * with pistols are tier 1. A weapon mark counts a quarter more gun, as it
+ * does in the field. The tiers are set from real fights in the engine. */
 M.GUN_POWER = { pistol: 0.5, shotgun: 0.8, uzi: 1, longrange: 1.2, minigun: 1.6, laser: 1.8, gauss: 2 };
 M.agentPower = a => {
-  const gun = Math.max(0, ...a.items.filter(i => M.GUN_POWER[i.type]).map(i => M.GUN_POWER[i.type]));
+  // a mark over MK1 is +25% damage and +15% range in the field (W.MARK): about a quarter more gun
+  const gun = Math.max(0, ...a.items.filter(i => M.GUN_POWER[i.type]).map(i => M.GUN_POWER[i.type] * (1 + 0.25 * ((i.mk || 1) - 1))));
   return 1 + gun + 0.2 * Object.values(a.mods).reduce((t, v) => t + v, 0);
 };
 // the missions the BanHammer is for: taking a zone back, and locking one down

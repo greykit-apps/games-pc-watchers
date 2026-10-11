@@ -76,10 +76,20 @@ What makes them play:
   outside, the roof hides whoever is in there.
 - **Traffic.** Streets with traffic lights, all on one clock: one set per
   approach, and a divided road's crossing counts as one junction. Divided
-  boulevards are one-way each side. Trams and commuter trains stop at their
-  stations, under glass canopies that fade like any roof, and do not stop for
-  anyone on the tracks. Car parks have a loop road, aisles and gates; every
-  driveway runs through the sidewalk to a road.
+  boulevards are one-way each side. Trams (four carriages) and commuter
+  trains (six), one each way per line and a long wait between them, stop at
+  their stations, under glass canopies that fade like any roof. A train stops
+  for nobody, but hurts nobody either: people wait at the tracks for it to
+  pass, and anyone on the line is pushed off ahead of it, to the nearer side
+  (so a squad can be split by one). Cars give way at level crossings. Car
+  parks have a loop road, aisles and gates; every driveway runs through the
+  sidewalk to a road.
+- **Cars and people.** Drivers brake for pedestrians, now and then too late:
+  a knockdown and some damage. A speeding car (a getaway, or a driver
+  panicking away from gunfire) kills whoever it hits. Walking into a car's
+  side knocks you back, dazed. Only the fight's deaths count against the
+  squad: gunfire and blasts, the getaway car, panicked drivers. Other traffic
+  deaths are accidents, and the debrief lists them apart.
 - **Choke points.** Railways are fenced their whole length: the way across
   is a street crossing, a station, or a footbridge, Syndicate-style, whose
   walkers are up out of the trains' way.
@@ -127,13 +137,15 @@ the map.
 
 | | |
 |---|---|
-| `1`–`4` | select a Watcher (`Shift` adds; double-tap centres the view) |
-| `0` or `` ` `` | select the whole squad |
+| `` ` `` `1`–`4` | select the whole squad / a Watcher (`Shift` adds; double-tap centres the view) |
 | Left click / drag | move there / box-select |
 | Right click | fire at a person or car, or at a spot on the ground (hold to keep firing); with the Purrsuader out, persuade |
-| `Q` `E` · `H` | previous / next weapon · holster |
+| `E` | go: every stim to full, guns out, the crew shot on sight |
+| `C` | calm: stims to nothing, guns away, nobody shoots first |
+| `R` · `Q` | guns (each one's last) out or away · the Purrsuader out or away |
+| `F` | first aid: a medikit for each Watcher at half health or worse |
 | `WASD`, arrows, screen edge, middle-drag | scroll |
-| `C` · `Tab` | centre on the selection · next Watcher |
+| `Tab` | next Watcher |
 | `Space` · `Esc` · `M` | pause · menu · sound |
 
 ## How it's built

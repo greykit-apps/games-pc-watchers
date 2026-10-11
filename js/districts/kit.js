@@ -422,7 +422,9 @@ W.jobKind = L => {
 W.populateMission = (world, L, d, opts) => {
   const m = world.map, T = d.theme, rng = W.rng(L.seed + 7);
   const R = () => rng();
-  const near = (x, y, r) => { for (let k = 0; k < 30; k++) { const a = R() * Math.PI * 2, dd = R() * r; const p = m.nearestWalkable(x + Math.cos(a) * dd, y + Math.sin(a) * dd, 4); if (p && W.STROLL.has(m.groundAt(p[0], p[1]))) return p; } return m.nearestWalkable(x, y, 6); };
+  // somewhere near (x, y) to stand: open ground a path reaches (never a walled-in pocket)
+  const reachMap = W.reachable(m), reachable = p => p && reachMap[m.i(Math.floor(p[0]), Math.floor(p[1]))];
+  const near = (x, y, r) => { for (let k = 0; k < 30; k++) { const a = R() * Math.PI * 2, dd = R() * r; const p = m.nearestWalkable(x + Math.cos(a) * dd, y + Math.sin(a) * dd, 4); if (p && W.STROLL.has(m.groundAt(p[0], p[1])) && reachable(p)) return p; } const q = m.nearestWalkable(x, y, 6); return reachable(q) ? q : null; };
   const stroll = (x, y, g) => W.STROLL.has(g);
   // the crowd
   let cells = 0; for (let k = 0; k < m.w * m.h; k++) if (m.walk[k] && W.STROLL.has(m.ground[k])) cells++;
@@ -503,7 +505,8 @@ W.populateMission = (world, L, d, opts) => {
   };
   for (let i = 0; i < nGuards; i++) {
     const a = i / nGuards * Math.PI * 2 + R();
-    const p = m.nearestWalkable(tp[0] + Math.cos(a) * ring, tp[1] + Math.sin(a) * ring, 3) || tp;
+    let p = m.nearestWalkable(tp[0] + Math.cos(a) * ring, tp[1] + Math.sin(a) * ring, 3);
+    if (!reachable(p)) p = near(tp[0], tp[1], ring) || tp;
     const g = toughen(world.add(W.makeUnit("guard", p[0], p[1], { post: [p[0], p[1], a], dir: a, op: true })));
     if (fort) defend(g, i, nGuards + nCrew);
     if (!armedSlots.has(i)) continue;

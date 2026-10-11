@@ -101,7 +101,8 @@ W.populateEncounters = (world, L, d, opts) => {
   // plain clothes, by the threat; roamers in the crowd twice as often
   const undercover = W.UNDERCOVER[L.mission ? L.mission.threat : 3] || 0;
   const plain = (u, k = 1) => { if (R() < undercover * k) W.disguise(u, T.civLook ? T.civLook() : undefined); return u; };
-  const spot = (x, y, r) => { for (let k = 0; k < 12; k++) { const a = R() * Math.PI * 2, dd = R() * r; const p = m.nearestWalkable(x + Math.cos(a) * dd, y + Math.sin(a) * dd, 2); if (p) return p; } return m.nearestWalkable(x, y, 4); };
+  const reach = W.reachable(m), reached = p => p && reach[m.i(Math.floor(p[0]), Math.floor(p[1]))];
+  const spot = (x, y, r) => { for (let k = 0; k < 12; k++) { const a = R() * Math.PI * 2, dd = R() * r; const p = m.nearestWalkable(x + Math.cos(a) * dd, y + Math.sin(a) * dd, 2); if (reached(p)) return p; } const q = m.nearestWalkable(x, y, 4); return reached(q) ? q : null; };
   const facing = (p, x, y) => Math.atan2(y - p[1], x - p[0]);
   const crew = (x, y, r, armed) => {
     const p = spot(x, y, r); if (!p) return null;
@@ -187,11 +188,12 @@ W.populateEncounters = (world, L, d, opts) => {
     }
   }
   // and some of the crew just walk the streets, in among everyone else
-  const stroll = (x, y, g) => W.STROLL.has(g) && W.dist(x, y, sp.x, sp.y) > 18;
+  const stroll = (x, y, g) => W.STROLL.has(g) && W.dist(x, y, sp.x, sp.y) > 18 && reach[m.i(Math.floor(x), Math.floor(y))];
   for (let i = 0, n = count((1 + R() * 3) * hostileScale); i < n; i++) {
     const a = m.randomCell(stroll); if (!a) continue;
     const route = [a];
-    for (let k = 0; k < 3; k++) { const b = m.randomCell((x, y, g) => stroll(x, y, g) && W.dist(x, y, route[k][0], route[k][1]) < 40 && W.dist(x, y, route[k][0], route[k][1]) > 15); if (b) route.push(b); }
+    // each next stop 15 to 40 tiles from the last one found (a search can come up empty)
+    for (let k = 0; k < 3; k++) { const last = route[route.length - 1]; const b = m.randomCell((x, y, g) => stroll(x, y, g) && W.dist(x, y, last[0], last[1]) < 40 && W.dist(x, y, last[0], last[1]) > 15); if (b) route.push(b); }
     const u = plain(toughen(world.add(W.makeUnit("crew", a[0], a[1], { patrol: route, roamer: true }))), 2);
     if (R() < armedShare) { const g = crewGun(); W.giveWeapon(u, g, g === "uzi" ? 60 : undefined); }
   }

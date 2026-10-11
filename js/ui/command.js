@@ -153,7 +153,7 @@ W.Command = class {
   take() {
     const s = this.s, M = W.M;
     let rp = 0, money = 0;
-    for (const z of s.zones) { if (z.lost) continue; const P = M.fitPolicy(s, z), y = M.yieldOf(z); rp += P.r * y; money += P.m * y * M.N.PIP_MONEY; }
+    for (const z of s.zones) { if (z.lost) continue; const P = M.fitPolicy(s, z); rp += P.r * M.yieldOf(z); money += P.m * M.moneyYield(z) * M.N.PIP_MONEY; }
     return { rp, money };
   }
   balanceParts() {
@@ -220,11 +220,13 @@ W.Command = class {
         <button class="x" data-a="zone" data-z="${z.id}" data-fk="close-${z.id}" aria-label="Close the dossier">Close</button>
       </header><p class="blurb">${W.esc(D.blurb)}</p>`;
     // the mission that matters most here, ready to brief; the rest are in the list beside, which narrows to this zone
-    const here = s.offers.filter(o => o.zone === z.id), tier = M.squadTier(s);
-    const top = here.find(o => o.kind === "cal" || o.kind === "siege") || here.slice().sort((a, b) => ((a.threat || 1) > tier) - ((b.threat || 1) > tier) || (a.threat || 1) - (b.threat || 1))[0];
+    const here = s.offers.filter(o => o.zone === z.id), over = o => (o.threat || 1) > M.squadTier(s, o);
+    const top = here.find(o => o.kind === "cal" || o.kind === "siege") || here.slice().sort((a, b) => over(a) - over(b) || (a.threat || 1) - (b.threat || 1))[0];
     const missions = top ? `<h3 class="sub">Best here <span>${here.length > 1 ? `${here.length - 1} more in the list` : "the only one"}</span></h3>${this.offerHTML(top, false, "dz-")}`
       : `<p class="hint">No missions here today.</p>`;
-    const office = `<button class="link" data-a="office" data-z="${z.id}" data-fk="office-${z.id}">Buy for ${W.esc(D.name)} in Casey's Office</button>`;
+    const ready = s.research.worksReady || 0;
+    const office = `${ready && !z.lost ? `<button data-a="works" data-z="${z.id}" data-fk="works-${z.id}">Build zone works here · ${ready} ready</button><small class="hint">A pip more here, for good.</small>` : ""}
+      <button class="link" data-a="office" data-z="${z.id}" data-fk="office-${z.id}">Buy for ${W.esc(D.name)} in Casey's Office</button>`;
     if (z.lost) return `<article class="panel dossier lost">${head}<p class="state bad">Lost to Cal. Nothing comes out of it until a siege takes it back, or an amnesty from the Office.</p>${missions}${office}</article>`;
     if (z.locked) return `<article class="panel dossier locked">${head}<p class="state good">Locked down. It doesn't decay, and every pip it makes comes to the city.</p>${missions}</article>`;
     const f = M.forecast(s, z), net = M.netControl(s, z), P = M.fitPolicy(s, z), p = M.pips(s, z), hold = Math.min(p, M.holdPips(s, z)), y = M.yieldOf(z);
@@ -262,7 +264,7 @@ W.Command = class {
     const d = P.c - hold, cost = P.c * y * W.M.N.PIP_MONEY;
     return `${W.money(cost)} a day · ${d > 0 ? `investing: ${d} pip${d > 1 ? "s" : ""} over what holds it` : d < 0 ? `milking: ${-d} pip${-d > 1 ? "s" : ""} under what holds it` : "holding it steady"}`;
   }
-  dialOut(z, P, y) { return `To the city: <span class="c-m">${W.money(P.m * y * W.M.N.PIP_MONEY)}</span> and <span class="c-r">${(P.r * y).toFixed(1)} RP</span> a day`; }
+  dialOut(z, P, y) { return `To the city: <span class="c-m">${W.money(P.m * W.M.moneyYield(z) * W.M.N.PIP_MONEY)}</span> and <span class="c-r">${(P.r * y).toFixed(1)} RP</span> a day`; }
 
   overviewHTML() {
     const s = this.s, M = W.M, c = s.cal;
@@ -308,7 +310,7 @@ W.Command = class {
     const urgent = s.offers.filter(urgentOf).sort((a, b) => (a.threat || 1) - (b.threat || 1));
     const rest = pool.filter(o => !urgentOf(o));
     // one offer is the one to take: the first urgent one in reach, else the easiest in the weakest zone
-    const reach = o => (o.threat || 1) <= tier && !M.canRun(s, o);
+    const reach = o => (o.threat || 1) <= M.squadTier(s, o) && !M.canRun(s, o);
     const rec = urgent.find(reach) || rest.filter(reach).sort((a, b) => M.zone(s, a.zone).C - M.zone(s, b.zone).C || (a.threat || 1) - (b.threat || 1))[0];
     this.rec = rec && rec.id;
     const byZone = {};
@@ -328,7 +330,7 @@ W.Command = class {
     return Array.from({ length: 5 }, (_, i) => `<i class="${i < threat ? "on" : ""}"></i>`).join("");
   }
   offerHTML(o, urgent, fkp = "") {
-    const s = this.s, M = W.M, D = M.zoneDef(o.zone), K = M.KINDS[o.kind], why = M.canRun(s, o), tier = M.squadTier(s), th = o.threat || 1;
+    const s = this.s, M = W.M, D = M.zoneDef(o.zone), K = M.KINDS[o.kind], why = M.canRun(s, o), tier = M.squadTier(s, o), th = o.threat || 1;
     const risk = th <= tier ? "ok" : th === tier + 1 ? "hard" : "deadly";
     const title = o.kind === "story" ? M.STORY[o.step].name : (o.landmark && o.landmark !== D.name ? o.landmark : D.name);
     const left = o.expires - s.day;
@@ -341,6 +343,7 @@ W.Command = class {
           <span class="kind">${W.esc(K.name)}</span>${K.quiet ? `<span class="quiet-word">quiet</span>` : ""}</p>
         <small>${urgent || this.zoneId !== o.zone ? `${W.esc(D.name)} · ` : ""}${o.days} days away${exp ? ` · ${exp}` : ""} · <span class="t-${risk}">${riskWord}</span></small>
         <p class="o-pay">${W.esc(M.describeReward(s, o))}</p>
+        ${M.bigGun(o) ? `<p class="o-gun">${M.carriesBanhammer(s) ? "A BanHammer strike goes with the squad: it counts here, and it's spent." : "A BanHammer strike would count here, if the squad carried one."}</p>` : ""}
         ${why ? `<p class="why">${W.esc(why)}</p>` : ""}
       </div>
       <button class="${this.rec === o.id || (fkp && risk === "ok") ? "go" : ""}" data-a="deploy" data-o="${o.id}" data-fk="${fkp}deploy-${o.id}" ${why ? "disabled" : ""}>Brief</button>
@@ -374,7 +377,7 @@ W.Command = class {
     const counters = avail.filter(r => r.kind === "counter");
     const runCounters = run.filter(p => p.id.startsWith("counter:"));
     return `<section class="panel lab-war">
-        <div>${this.hx(s.war ? "AT WAR" : "WAR FOOTING", "sub-t", 2)}<p>${s.war ? "Cal has committed. Decay runs half as fast again everywhere. Finish each zone's story and lock it down." : `${pts} of ${war} upgrade points. An MK3, or the BanHammer, counts 2. At ${war}, Cal stops probing and commits.`}</p></div>
+        <div>${this.hx(s.war ? "AT WAR" : "WAR FOOTING", "sub-t", 2)}<p>${s.war ? "Cal has committed. Decay runs faster everywhere. Finish each zone's story and lock it down." : `${pts} of ${war} upgrade points. An MK3, or the BanHammer, counts 2. At ${war}, Cal stops probing and commits.`}</p></div>
         ${s.war ? "" : `<span class="cells big" role="meter" aria-label="Upgrade points toward war" aria-valuemin="0" aria-valuemax="${war}" aria-valuenow="${Math.min(pts, war)}">${cells}</span>`}
       </section>
       <section class="panel lab-run">
@@ -398,10 +401,10 @@ W.Command = class {
     if (r.kind === "mod") return (W.MODS.find(m => m.id === r.line) || {}).what || "";
     if (r.line === "scanner" || r.line === "purrsuader") return M.GEAR_LINES.find(g => g.id === r.line).what[r.mk - 1];
     if (r.id === "banhammer") return "an orbital strike: mark a spot, and everything near it dies";
-    if (r.id === "overseers") return "while the squad is out, zones keep their level";
-    if (r.id === "propaganda") return "a zone it's rolled out in settles back to level 1, never lower by itself";
-    if (r.id === "mindcontrol") return "a zone it's rolled out in settles back to level 2";
-    if (r.id === "works") return "+1 pip, for good, in the zone that makes least";
+    if (r.id === "overseers") return "while the squad is out, zones hold against decay; Cal is still yours to answer";
+    if (r.id === "propaganda") return "a zone it's rolled out in won't decay below level 1; it makes 15% less money";
+    if (r.id === "mindcontrol") return "a zone it's rolled out in won't decay below level 2; it makes 40% less money, and nobody there can be talked round";
+    if (r.id === "works") return "+1 pip, for good, in a zone you choose";
     if (r.id === "requisition") return "a free pip of control a day, wherever control is weakest";
     if (r.kind === "counter") return "control pips there buy full value again";
     return "";
@@ -520,6 +523,7 @@ W.Command = class {
       case "alloffers": this.allOffers = !this.allOffers; return this.draw();
       case "log": this.showLog = !this.showLog; return this.draw();
       case "office": this.officeZone = d.z; return this.go("office");
+      case "works": if (!M.placeWorks(s, M.zone(s, d.z))) return W.audio.play("deny"); W.audio.play("heal"); break;
       case "deploy": return this.game.toBriefing(d.o);
       case "start": { const r = M.available(s).find(x => x.id === d.r); if (!r || !M.start(s, r)) return W.audio.play("deny"); W.audio.play("select"); this.focusTo = `cancel-${r.id}`; break; }
       case "cancel": M.cancel(s, d.r); W.audio.play("deny"); break;
@@ -661,7 +665,7 @@ W.Command = class {
     // the banners: what nobody should miss
     for (const z of s.zones) if (z.lost && !before.zones[z.id].lost) this.banners.push({ tone: "red", big: "ZONE LOST", sub: `${M.zoneDef(z.id).name} has fallen to Cal. A siege takes it back.`, sound: "lose" });
     if (s.cal.zone && s.cal.zone !== before.cal) this.banners.push({ tone: "red", big: "CAL MOVES", sub: `He's pushing ${M.zoneDef(s.cal.zone).name}. A mission against his crew ends it.`, sound: "alarm" });
-    if (s.war && !before.war) this.banners.push({ tone: "red", big: "WAR FOOTING", sub: "Cal has committed. Decay runs half as fast again everywhere.", sound: "alarm" });
+    if (s.war && !before.war) this.banners.push({ tone: "red", big: "WAR FOOTING", sub: "Cal has committed. Decay runs faster everywhere.", sound: "alarm" });
     if (s.won && !before.won) this.banners.push({ tone: "gold", big: "PUMACITY IS HERS", sub: "Every zone is locked down. You win.", sound: "win" });
     W.audio.play("order");
     W.M.save(s);

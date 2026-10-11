@@ -222,6 +222,7 @@
 .cx .o-name{color:var(--t1);font-size:15px}
 .cx .offer small{color:var(--t3)}
 .cx .o-pay{margin:2px 0 0;font-size:13px;color:var(--t2)}
+.cx .o-gun{margin:2px 0 0;font-size:12px;color:var(--cyan)}
 .cx .offer>button{flex:none;align-self:center}
 
 /* ---- the Lab ---- */

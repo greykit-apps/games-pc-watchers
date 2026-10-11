@@ -15,6 +15,8 @@ L.mission = {
   zoneLevel: -1..3,  // the zone's control level (-1: lost to Cal)
   step: 0..2,        // story missions only: which step of the zone's chain
   cal: true|false,   // the crew are Cal's own: his push, a siege, or a zone he holds
+  hired: 0|4,        // a hired mercenary crew to field beside the squad (followers with guns)
+  mindControl: bool, // the zone is under mind control: nobody there can be persuaded
 };
 L.mod = {            // the enemy at this threat, against the district's usual numbers
   crew: 0.35..1.7,   // multiplies theme.crew

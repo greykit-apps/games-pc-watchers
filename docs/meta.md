@@ -108,7 +108,7 @@ until it is countered by research (see Research).
 
 **Intel tells you where he is going next.** Intel missions pay research
 points, and they also reveal Cal's plans: which zone he will push next, and
-when. The more intel you hold, the further ahead you can see. Forewarned, you
+when. Forewarned, you
 can bank control in that zone before he arrives, or go after his gang there
 first.
 
@@ -126,7 +126,7 @@ money.
 
 | What | Price (a first guess) |
 |---|---|
-| A recruit: a new Watcher, a bare chassis | $60,000 |
+| A recruit: a new Watcher, a bare chassis | $45,000 |
 | A weapon from the Armoury, per Watcher (once researched) | MK1 $5,000, MK2 $15,000, MK3 $40,000 |
 | A scanner or a Purrsuader, per Watcher | MK1 $10,000, MK2 $25,000, MK3 $60,000 |
 | A BanHammer strike (once researched): one shot | $250,000 |
@@ -150,11 +150,11 @@ production can't give:
 
 | Event | Effect | Price (a first guess) |
 |---|---|---|
-| A festival | a zone gains 0.5 control over 3 days | $40,000 |
-| Informants | shows Cal's next two pushes, where and when | $30,000 |
+| A festival | a zone gains 0.5 control over 3 days | $15,000 |
+| Informants | shows where and when Cal pushes next | $30,000 |
 | Bribes at City Hall | halves Cal's next push | $60,000 |
-| Martial law | a zone's control can't fall for 3 days, then decays at double for 3 | $80,000 |
-| Hired guns | a mercenary crew fights beside the squad on one mission | $50,000 |
+| Martial law | a zone's control can't fall for 3 days, Cal or no Cal | $60,000 |
+| Hired guns | a mercenary crew fights beside the squad on its next mission (+4 squad power) | $50,000 |
 | An amnesty | a lost zone comes back at level 0 without a siege | $150,000 |
 
 ## Research
@@ -178,8 +178,8 @@ improve it, and each needs the one before.
 | **Scanner** | MK1 its range; MK2 shows armed people apart from unarmed; MK3 shows people through roofs and walls, and Cal's gang in red |
 | **Purrsuader** | MK1 its range and power; MK2 persuades armed people; MK3 holds a bigger following, and they fight better |
 | **BanHammer Orbital Platform** | late-game equipment, one item (needs the scanner at MK2). A Watcher carries the spotter: it fires like a long-range laser, marking a spot, and a few seconds later an orbital energy blast lands there and kills everything in a wide radius. One shot per strike bought, and very dear: a money sink and a siege breaker, made for cracking entrenched positions |
-| **Overseers** | an overseer in every zone who, while the squad is away on a mission, moves pips onto control to stop the zone slipping below its level. They can't stop Cal: a push still takes a zone down |
-| **Propaganda**, then **mind control** | rolled out zone by zone, bought as an event once researched. Under propaganda a zone's control decays to 1.0, not 0, and is drawn back up to it (a quarter a day) when it falls below; under mind control, to 2.0. Cal's pushes and failed missions still drag it down, as far as lost. Framed for what it is, a crime against the people of the city; and it works, which is the worst of it |
+| **Overseers** | an overseer in every zone who, while the squad is away on a mission, moves pips onto control to hold the zone against decay. They don't plan for Cal: his push is still the player's to answer |
+| **Propaganda**, then **mind control** | rolled out zone by zone, bought as an event once researched. Under propaganda decay can't take a zone below 1.0, and it is drawn back up (a quarter a day) when it falls below; under mind control, 2.0. The floor holds against decay only: the wall and the cliff above it stand, and Cal's pushes and failed missions still drag a zone down, as far as lost. It costs Casey too: people watching PVN spend less (a zone makes 15% less money under propaganda), and people who stop wanting anything spend nothing much (40% less under mind control), and can't be talked round by the Purrsuader. Framed for what it is, a crime against the people of the city; and it works, which is the worst of it |
 | **Production** | **zone works:** +1 base pip in a zone of your choice, for good. **Requisition:** a free pip each day, placed wherever control is weakest. Both can be researched again, each time 1.5 times dearer |
 | **Countermeasures** | one for each of Cal's tactics as he uses them: the research sink. However well the city is held, he keeps leaving things that need answering |
 
@@ -234,7 +234,7 @@ production upgrades, the money to start projects).
 
 At that point the game changes from a research balancer to a war of
 attrition. Cal stops probing and commits: **decay everywhere goes up by
-half**, and the city is on war footing.
+30%**, and the city is on war footing.
 
 On war footing a zone can only be held weakly or strongly; the middle is
 gone. For a base-3 zone, from `node tools/metasim.js --war`:
@@ -255,10 +255,9 @@ the city strongly and let the rest go, for a stalemate. **Winning takes
 pushing into more zones, which necessarily weakens others.**
 
 **Propaganda and mind control** change the war: a zone under them can't
-slip below level 1 (or 2) by decay alone, so it needs no pips to hold and puts
-everything into production; only Cal's pushes and failed missions take it
-lower. Rolling them out across the city is the cheap way to win the war, and
-the game should make the player feel what it costs.
+slip below level 1 (or 2) by decay alone; only Cal's pushes and failed
+missions take it lower. It is a way to win the war, and it costs the city
+money while it lasts.
 
 **There is no clock.** City research (overseers, zone works, requisitions,
 propaganda, mind control) doesn't count toward the war's 30 points, and Cal and
@@ -269,10 +268,15 @@ never does can hold the city as it is for as long as they like. That is
 deliberate.
 
 **Story missions** make that pushing worth doing, and they are how the game
-is won. Once the city is on war footing, every zone has a short chain of
-story missions (several each), and the last of them **locks the zone down**:
-Cal's network there is broken for good, and its control no longer decays.
-**When every zone is locked down, the player wins.**
+is won. Once the city is on war footing, every zone has a chain of three
+story missions: **find the lieutenant** (any level, threat 2), **turn the
+network** (level 2, threat 3), and **lock it down** (level 2, threat 4).
+The last **locks the zone down**: Cal's network there is broken for good, its
+control no longer decays, and it drops out of Cal's reckoning, so each
+lockdown weakens his push on what's left. **When every zone is locked down,
+the player wins.** A lost zone has to be taken back by siege first; a
+BanHammer strike carried on a siege or a lockdown counts for 6 squad power
+there, and is spent.
 
 The chains are tied to the zone, and some steps can only be done at a
 particular level: an informant who will only talk once the zone is
@@ -297,14 +301,17 @@ kind depends on the level:
 
 **Rewards are research, money or control**, or a mix of them:
 
-- **research:** the mission completes **half of whatever is left** on each
-  project running. So it is worth most when something big is underway, and
-  worth nothing if the labs are idle: start the expensive project first,
-  then go and get the intel. Intel also shows where Cal will push next;
+- **research:** the mission completes **half of what is left on the first
+  project running**, up to 12 research points for each day the mission
+  takes, and finishes it outright when what would be left is small. So it
+  is worth most when something big is underway, and worth nothing if the labs
+  are idle: start the expensive project first, then go and get the intel.
+  Intel also shows where Cal will push next;
 - **money:** enough to make a real purchase that is open to you now: a mark
   of mod for one Watcher, a new weapon, a recruit. Even if nobody needs it
   today, a new Watcher will need kitting out soon enough;
-- **control:** in the zone the mission was run in;
+- **control:** in the zone the mission was run in, landing as the squad
+  comes home, after the mission's days away;
 - **going after Cal's gang** in the zone he is pushing ends the push;
 - some change the zone for a while: more pips, a cheaper decay, a cheaper pip
   of control, or the opposite if they go badly.
@@ -315,6 +322,37 @@ many days it takes, what it pays. Each mission that spawns is rolled within
 those ranges, so no two are quite the same.
 
 **Story missions** arrive with war footing (see The endgame).
+
+## Threat and the squad
+
+A mission's **threat** (1 to 5) is its kind's base, a step harder where the
+zone's control is low (a step easier at level 3), a step harder at war, and a
+step harder for every 7 squad power past a new squad's 6.6: Cal arms his
+people to match the squad he sees in the field, not the research done. Story
+steps are their own: 2, 3 and 4. The **squad's tier** is its power (each of
+the four's best gun, a fifth of a point per mod mark, a hired crew, a
+BanHammer on a siege or lockdown) against 9, 13, 19 and 25 for tiers 2 to 5.
+Weapon marks don't count toward it until the mission engine fields them.
+
+## Balance, measured (2026-10-11)
+
+`tools/campaign.js` as a bot, its outcomes rolled against the gap between a
+mission's threat and the squad's tier (set from real fights in the engine:
+at its tier a squad wins 9 in 10 and loses a Watcher about one mission in
+twelve). Eight seeds of 200 missions each:
+
+| Strategy | Wins | Won by mission | War at mission | Watchers lost |
+|---|---|---|---|---|
+| The bot as it plays | 5 of 8 | 99 on average (91 to 114) | 59 | 20 |
+| Mind control everywhere, story first | 4 of 8 | 125 | 52 | 24 |
+| Research-heavy (70% to research) | 0 of 8 | | 39 | 25 |
+
+The seeds that don't win went to war early (missions 47 to 52) with a squad
+that wasn't ready, and lost a zone they couldn't take back: the player's
+choice, with no clock. Stacking every project and running intel every few
+days brings war on day 224 (it was 66). A city left alone for 300 days banks
+$2.5 to 3.2 million and loses 2 or 3 zones. Twelve real fights in the engine
+(`--fight`): 12 won, none lost.
 
 ## Open questions
 

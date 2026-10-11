@@ -560,6 +560,17 @@ W.thinkSec = (world, u) => {
 };
 
 W.thinkCrew = (world, u) => {
+  // broken (their boss is dead): away from the Watchers, and no more of it unless shot at
+  if (u.broken) {
+    u.state = "flee";
+    const ag = world.agents.filter(a => a.alive && !a.out);
+    const near = ag.sort((a, b) => W.dist(u.x, u.y, a.x, a.y) - W.dist(u.x, u.y, b.x, b.y))[0];
+    if (near && W.dist(u.x, u.y, near.x, near.y) < 20 && (!u.path || u.chaseT <= 0)) {
+      const a = Math.atan2(u.y - near.y, u.x - near.x) + W.rand(-0.6, 0.6);
+      W.goTo(world, u, u.x + Math.cos(a) * 12, u.y + Math.sin(a) * 12); u.chaseT = 2.5;
+    }
+    return;
+  }
   if (!u.hostile) {
     // who can they see? An armed Watcher at range, anyone of ours up close
     for (const o of world.units) {
@@ -770,6 +781,7 @@ W.spawnGarrisons = (world) => {
 };
 W.agentLook = a => ({ coat: "#1b2130", trim: "#54f2ff", legs: "#10131c", fur: a.fur, patch: a.patch || null, visor: "#54f2ff", long: true });
 W.spawnSquad = (world, roster, spots) => {
+  world.dropAt = spots[0];   // where the squad came in: where the pickup waits when the job is done
   roster.slice(0, spots.length).forEach((a, i) => {
     const mods = Object.assign({}, a.mods || {});
     const u = world.add(W.makeUnit("agent", spots[i][0], spots[i][1], { name: a.name, slot: i, rosterId: a.id, look: W.agentLook(a), dir: -Math.PI / 2, mods, kills: 0 }));

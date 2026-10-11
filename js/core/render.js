@@ -348,8 +348,16 @@ W.Renderer = class {
       const r = 3 + (1 - k) * 6;
       c.beginPath(); c.moveTo(sx + ox, sy + oy - r / 2); c.lineTo(sx + ox + r, sy + oy); c.lineTo(sx + ox, sy + oy + r / 2); c.lineTo(sx + ox - r, sy + oy); c.closePath(); c.stroke();
     }
+    // the ways out, once the job is done: a pulsing cyan pad
+    if (world.phase === "exfil") for (const p of world.exfilPoints || []) {
+      const [sx, sy] = W.proj(p.x, p.y), k = 0.5 + 0.5 * Math.sin(t * 4);
+      for (const [r, a] of [[1.6, 0.9], [1.1 + 0.4 * k, 0.5]]) {
+        c.strokeStyle = W.rgba("#54f2ff", a); c.lineWidth = 1;
+        c.beginPath(); c.ellipse(Math.round(sx + ox), Math.round(sy + oy), r * W.HTW, r * W.HTH, 0, 0, Math.PI * 2); c.stroke();
+      }
+    }
     for (const u of world.units) {
-      if (!u.alive) continue;
+      if (!u.alive || u.out) continue;
       const sel = world.selected && world.selected.has(u);
       const isT = u.kind === "target";
       if (!sel && !isT && !(u.isAgent)) continue;
@@ -446,7 +454,7 @@ W.Renderer = class {
         j++;
         if (b.kind === "unit") {
           const u = b.u;
-          if (!vis(u.x, u.y)) continue;
+          if (u.out || !vis(u.x, u.y)) continue;
           const [px, py] = W.proj(u.x, u.y, u.z || 0);
           if ((u.z || 0) > 3 && u.alive && (world.selected.has(u) || u.isAgent || u.kind === "target")) {
             c.strokeStyle = world.selected.has(u) ? "#54f2ff" : u.kind === "target" ? "#ffb000" : "rgba(84,242,255,.35)"; c.lineWidth = 1;
@@ -580,8 +588,12 @@ W.Renderer = class {
     o.clearRect(0, 0, this.cssW, this.cssH);
     o.font = "11px ui-monospace,Menlo,Consolas,monospace";
     o.textAlign = "center"; o.textBaseline = "bottom";
+    if (world.phase === "exfil") for (const p of world.exfilPoints || []) {
+      const [sx, sy] = this.toScreen(world, p.x, p.y, 0);
+      o.fillStyle = "#54f2ff"; o.fillText("EXFIL", sx * k, sy * k - 14);
+    }
     for (const u of world.units) {
-      if (!u.alive) continue;
+      if (!u.alive || u.out) continue;
       const [sx, sy] = this.toScreen(world, u.x, u.y, u.z || 0);
       const X = sx * k, Y = sy * k;
       if (X < -100 || X > this.cssW + 100 || Y < -60 || Y > this.cssH + 80) continue;
@@ -684,6 +696,7 @@ W.Renderer = class {
       blip(u.x, u.y, col, sz);
     }
     if (!target && world.escapeCar && world.escapeCar.passenger && !world.escapeCar.dead) target = world.escapeCar;
+    if (world.phase === "exfil") for (const p of world.exfilPoints || []) { blip(p.x, p.y, blink ? "#54f2ff" : "#1c6a74", 4); if (!target) target = { x: p.x, y: p.y, exfil: true }; }
     // the target off the edge: an arrow on the rim
     if (target && !opts.full) {
       const [px, py] = P(target.x, target.y);
@@ -692,7 +705,7 @@ W.Renderer = class {
         const rx = Wd / 2 - 9, ry = Ht / 2 - 9, f = Math.min(rx / Math.abs(Math.cos(a) || 1e-6), ry / Math.abs(Math.sin(a) || 1e-6));
         const ax = Wd / 2 + Math.cos(a) * f, ay = Ht / 2 + Math.sin(a) * f;
         c.save(); c.translate(ax, ay); c.rotate(a);
-        c.fillStyle = blink ? "#ffb000" : "#a87400";
+        c.fillStyle = target.exfil ? (blink ? "#54f2ff" : "#1c6a74") : blink ? "#ffb000" : "#a87400";
         c.beginPath(); c.moveTo(7, 0); c.lineTo(-4, -5); c.lineTo(-2, 0); c.lineTo(-4, 5); c.closePath(); c.fill();
         c.restore();
       }

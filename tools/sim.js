@@ -48,6 +48,17 @@ function run(W, seed, attract, quiet, camp, roster, level) {
     orderT -= dt;
     if (orderT <= 0) {
       orderT = 2;
+      // the job done: everyone out by the nearest way
+      // (guns out, returning fire as they go)
+      if (world.phase === "exfil") {
+        for (const a of world.agents) {
+          if (!a.alive || a.out) continue;
+          if (!W.armed(a)) W.drawBest(a);
+          a.manual = null;
+          if (!a.path) { const p = world.exitFor(a); if (p) W.goTo(world, a, p[0], p[1]); }
+        }
+        continue;
+      }
       const T = world.targetUnit;
       const goal = T.inCar ? world.escapeCar : T;
       // the quiet bot's stopping point: the plaza's fountain, or 8 tiles short of a district target

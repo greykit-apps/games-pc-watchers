@@ -140,6 +140,13 @@ the map.
   effect.
 - Bonuses: recruit 5 followers, and lose no more than 4 civilians. The
   debrief grades the run from S to D.
+- **Then get out.** With the target dead the job is not over: every Watcher
+  still standing has to reach the pickup at the drop point, or walk off any
+  edge of the map. Some of the crew lose heart and run when their boss goes
+  down (most of a small outfit, few of an army); the rest keep coming. On the
+  way out, pick over the dead: they drop every gun they had, and sometimes a
+  medikit, and a Watcher carries up to eight things home, guns you have not
+  researched included. Lost if nobody makes it out.
 
 ### Controls
 

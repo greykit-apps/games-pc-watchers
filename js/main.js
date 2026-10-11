@@ -274,7 +274,7 @@ const Game = W.game = {
   hint(show) {
     const h = document.getElementById("hint");
     h.hidden = !show;
-    h.innerHTML = "<b>Left</b> move · <b>Right</b> fire / persuade · <b>1–4</b> select · <b>0</b> squad · <b>Q E</b> weapon · <b>H</b> holster · <b>Space</b> pause";
+    h.innerHTML = "<b>Left</b> move · <b>Right</b> fire / persuade · <b>` 1–4</b> select · <b>E</b> go · <b>C</b> calm · <b>R</b> guns · <b>F</b> first aid · <b>Q</b> Purrsuader · <b>Space</b> pause";
     clearTimeout(this.hintT);
     if (show) this.hintT = setTimeout(() => { h.hidden = true; }, 15000);
   },
@@ -435,7 +435,7 @@ const Game = W.game = {
   /* ---------------- orders ---------------- */
   selectAgent(a, add) {
     const w = this.world;
-    if (!a || !a.alive) return;
+    if (!a || !a.alive || a.out) return;
     if (add) { if (w.selected.has(a)) w.selected.delete(a); else w.selected.add(a); }
     else { w.selected.clear(); w.selected.add(a); }
     W.audio.play("select");
@@ -444,7 +444,7 @@ const Game = W.game = {
   selectAll() {
     const w = this.world;
     w.selected.clear();
-    for (const a of w.agents) if (a.alive) w.selected.add(a);
+    for (const a of w.agents) if (a.alive && !a.out) w.selected.add(a);
     W.audio.play("select");
     this.hud.update(true);
   },

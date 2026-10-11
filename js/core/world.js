@@ -3,6 +3,10 @@
  * and draws it with the renderer; nothing in here touches the DOM. */
 "use strict";
 
+/* when the target dies, the share of the hostile crew that breaks and runs, by threat */
+W.BREAK = { 1: 0.85, 2: 0.75, 3: 0.6, 4: 0.35, 5: 0.15 };
+/* how deep the strip along the map's edge is that a Watcher can leave by */
+W.EDGE = 3;
 /* a train's carriages, nose to nose */
 W.CARRIAGE = 4.1;
 /* over this, a car that hits someone kills them (town traffic tops out at 4.6) */
@@ -89,7 +93,7 @@ W.World = class {
       if (u.kind === "civ" && !u.follower) this.panic(u, src.x, src.y);
       if (u.kind === "sec" && !u.follower) { if (src.faction === "player") W.secCall(this, u, "player"); else if (src.faction === "crew") W.secCall(this, u, "crew"); }
       if (u.faction === "crew") {
-        if (src.faction === "player") { if (!u.hostile) { u.hostile = true; W.drawBest(u); } u.seen = [src.x, src.y]; this.raiseAlarm(u, src); }
+        if (src.faction === "player") { u.broken = false; if (!u.hostile) { u.hostile = true; W.drawBest(u); } u.seen = [src.x, src.y]; this.raiseAlarm(u, src); }
         if (src.faction === "sec") u.angryAt.sec = true;
       }
     }
@@ -104,7 +108,9 @@ W.World = class {
     W.audio.at(u.isAgent ? "meow" : "die", u.x, u.y);
     this.blood(u, 10);
     // what they carried lands on the pavement
-    const guns = u.isAgent ? u.weapons.filter(w => W.WEAPONS[w.type].gun && w.type !== "pistol") : u.weapons.filter(w => W.WEAPONS[w.type].gun).slice(0, 1);
+    // (everything they had: a gun, a spare, and now and then a medikit; the squad can take it home)
+    const guns = u.isAgent ? u.weapons.filter(w => W.WEAPONS[w.type].gun && w.type !== "pistol") : u.weapons.filter(w => W.WEAPONS[w.type].gun);
+    if (!u.isAgent && (u.faction === "crew" || u.kind === "sec") && Math.random() < 0.15) guns.push({ type: "medikit", ammo: 1 });
     guns.forEach((w, i) => this.items.push({ type: w.type, ammo: w.ammo, x: u.x + (i ? W.rand(-0.3, 0.3) : 0), y: u.y + (i ? W.rand(-0.3, 0.3) : 0) }));
     if (src && src.isAgent && !u.isAgent) src.kills = (src.kills || 0) + 1;
     if (u.isAgent) { this.stats.lost++; this.msg(`${u.name} is down.`, "#ff5266"); }
@@ -431,10 +437,74 @@ W.World = class {
     }
   }
 
-  /* ---- the mission ---- */
+  /* ---- the mission ----
+   * The job done (the target dead), the squad still has to get out: to the
+   * pickup at the drop point (or a PumaCity facility, where a district marks
+   * one), or off any edge of the map. Until then it can pick over the dead.
+   * Won when every Watcher still alive is out; lost if none of them make it. */
   objective(o) { o.state = "active"; this.objectives.push(o); return o; }
+  startExfil(why) {
+    this.phase = "exfil";
+    // the boss is dead: some of the crew lose heart and run, the more so the smaller the outfit
+    const mod = this.level.mod, threat = this.level.mission ? this.level.mission.threat : 3;
+    const chance = W.BREAK[threat] ?? 0.4;
+    let broke = 0;
+    for (const u of this.units) {
+      if (!u.alive || u.follower || u.faction !== "crew" || u.kind === "target" || !u.hostile) continue;
+      if (Math.random() < chance) { u.broken = true; u.hostile = false; u.target = null; u.manual = null; u.cur = -1; u.weaponOut = false; u.path = null; broke++; }
+    }
+    if (broke) this.msg(`${this.names.crew}: ${broke > 3 ? "they're running" : "some of them are running"}.`, "#94a0c4");
+    const m = this.map, pts = [];
+    const drop = this.dropAt || this.startAt;
+    if (drop) pts.push({ x: drop[0], y: drop[1], name: "the pickup" });
+    for (const f of (m.points && m.points.facility) || []) pts.push({ x: f.x, y: f.y, name: f.name || "a PumaCity facility" });
+    this.exfilPoints = pts.map(p => { const q = m.nearestWalkable(p.x, p.y, 4) || [p.x, p.y]; return { x: q[0], y: q[1], name: p.name }; });
+    this.stats.out = 0;
+    this.objective({ type: "exfil", text: "Get out: to the pickup at the drop point, or off any edge of the map" });
+    this.msg(`${why} Get out: the pickup at the drop point, or off any edge of the map. Take what the dead dropped.`, "#4ade6a");
+    W.audio.play("order");
+  }
+  /* is (x, y) somewhere a Watcher can leave from? */
+  atExit(x, y) {
+    const m = this.map;
+    if (x < W.EDGE || y < W.EDGE || x > m.w - W.EDGE || y > m.h - W.EDGE) return true;
+    return (this.exfilPoints || []).some(p => W.dist(x, y, p.x, p.y) < 1.6);
+  }
+  /* the nearest way out for u that a path reaches: a pickup, or the nearest point of each map edge */
+  exitFor(u) {
+    const m = this.map, c = (this.exfilPoints || []).map(p => [p.x, p.y]);
+    // each edge: the walkable spot in its band nearest to straight across from u
+    const band = (side) => {
+      for (let k = 0; k < Math.max(m.w, m.h); k++) for (const sg of [1, -1]) for (let dpt = 0.5; dpt < W.EDGE; dpt += 1) {
+        const along = (side < 2 ? u.y : u.x) + sg * k;
+        const x = side === 0 ? dpt : side === 1 ? m.w - dpt : along, y = side === 0 || side === 1 ? along : side === 2 ? dpt : m.h - dpt;
+        if (m.walkable(x, y)) return [x, y];
+      }
+      return null;
+    };
+    for (let side = 0; side < 4; side++) { const q = band(side); if (q) c.push(q); }
+    c.sort((a, b) => W.dist(u.x, u.y, a[0], a[1]) - W.dist(u.x, u.y, b[0], b[1]));
+    for (const p of c) { const path = m.path(u.x, u.y, p[0], p[1]); if (path) return p; }
+    return null;
+  }
   checkMission(dt) {
     if (this.attract || this.status !== "play") return;
+    if (this.phase === "exfil") {
+      for (const a of this.agents) {
+        if (!a.alive || a.out || !this.atExit(a.x, a.y)) continue;
+        a.out = true; a.inCar = true; a.path = null; a.target = null; a.manual = null;
+        this.selected.delete(a); this.stats.out++;
+        this.msg(`${a.name} is out.`, "#4ade6a");
+        if (!this.selected.size) { const next = this.agents.find(b => b.alive && !b.out); if (next) this.selected.add(next); }
+      }
+      for (const o of this.objectives) if (o.state === "active" && o.type === "civcap" && this.stats.civ > o.n) { o.state = "failed"; this.msg(`Bonus lost: ${o.text}.`, "#ffb000"); }
+      for (const o of this.objectives) if (o.state === "active" && o.type === "recruit" && this.stats.recruited >= o.n) { o.state = "done"; this.msg(`Bonus: ${o.text}.`, "#4ade6a"); }
+      if (!this.agents.some(a => a.alive && !a.out)) {
+        if (this.stats.out) this.end("won", `${this.names.target} is dead, and the squad is out.`);
+        else this.end("lost", `${this.names.target} is dead, but nobody got out.`);
+      }
+      return;
+    }
     const T = this.targetUnit;
     for (const o of this.objectives) {
       if (o.state !== "active") continue;
@@ -442,7 +512,7 @@ W.World = class {
       if (o.type === "recruit" && this.stats.recruited >= o.n) { o.state = "done"; this.msg(`Bonus: ${o.text}.`, "#4ade6a"); }
       if (o.type === "civcap" && this.stats.civ > o.n) { o.state = "failed"; this.msg(`Bonus lost: ${o.text}.`, "#ffb000"); }
     }
-    if (T && !T.alive && this.status === "play") this.end("won", `${this.names.target} is dead.`);
+    if (T && !T.alive && this.status === "play") this.startExfil(`${this.names.target} is dead.`);
     else if (!this.units.some(u => u.isAgent && u.alive)) this.end("lost", "Every Watcher is down.");
     else if ((this.escapeCar && this.escapeCar.gone) || this.escaped) this.end("lost", `${this.names.target} got away.`);
   }

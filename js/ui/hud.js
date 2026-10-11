@@ -74,6 +74,7 @@ W.HUD = class {
     for (const c of this.cards) {
       const a = c.a;
       c.el.classList.toggle("sel", w.selected.has(a));
+      c.el.classList.toggle("out", !!a.out);
       if (!a.alive && !c.dead) { c.dead = true; c.el.classList.add("dead"); W.drawPortrait(c.port.getContext("2d"), a.look, 48, 48, true); }
       c.hp.style.width = (100 * Math.max(0, a.hp) / a.maxHp) + "%";
       c.hp.className = a.hp / a.maxHp < 0.35 ? "low" : "";

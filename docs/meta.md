@@ -259,7 +259,8 @@ control no longer decays, and it drops out of Cal's reckoning, so each
 lockdown weakens his push on what's left. **When every zone is locked down,
 the player wins.** A lost zone has to be taken back by siege first; a
 BanHammer strike carried on a siege or a lockdown counts for 6 squad power
-there, and is spent.
+there. It's spent when it's called down in the field (X), and a strike not
+fired comes home.
 
 The chains are tied to the zone, and some steps can only be done at a
 particular level: an informant who will only talk once the zone is

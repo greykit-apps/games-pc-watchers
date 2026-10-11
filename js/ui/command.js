@@ -345,7 +345,7 @@ W.Command = class {
           <span class="kind">${W.esc(K.name)}</span>${K.quiet ? `<span class="quiet-word">quiet</span>` : ""}</p>
         <small>${urgent || this.zoneId !== o.zone ? `${W.esc(D.name)} · ` : ""}${o.days} days away${exp ? ` · ${exp}` : ""} · <span class="t-${risk}">${riskWord}</span></small>
         <p class="o-pay">${W.esc(M.describeReward(s, o))}</p>
-        ${M.bigGun(o) ? `<p class="o-gun">${M.carriesBanhammer(s) ? "A BanHammer strike goes with the squad: it counts here, and it's spent." : "A BanHammer strike would count here, if the squad carried one."}</p>` : ""}
+        ${M.bigGun(o) ? `<p class="o-gun">${M.carriesBanhammer(s) ? "A BanHammer strike goes with the squad: it counts here. X calls it down; a strike not fired comes home." : "A BanHammer strike would count here, if the squad carried one."}</p>` : ""}
         ${why ? `<p class="why">${W.esc(why)}</p>` : ""}
       </div>
       <button class="${this.rec === o.id || (fkp && risk === "ok") ? "go" : ""}" data-a="deploy" data-o="${o.id}" data-fk="${fkp}deploy-${o.id}" ${why ? "disabled" : ""}>Brief</button>

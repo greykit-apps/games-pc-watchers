@@ -107,19 +107,62 @@ M.SQUAD = 4;
 M.NAMES = ["OCELOT", "SERVAL", "MAINE", "BENGAL", "RAGDOLL", "ABBY", "SIAMESE", "CHARTREUX", "KORAT", "BOMBAY", "SOMALI", "TONKINESE", "BIRMAN", "SAVANNAH", "MAU", "PIXIE", "CORNISH", "HAVANA"];
 
 /* ---------------- missions ---------------- */
+/* Mission kinds. `threat` is the kind's base threat (1 to 5); `quiet`
+ * missions can be done without a shot fired, and are what a new squad
+ * starts on. What each kind asks of the squad on the ground is the mission
+ * engine's (see docs/missions.md); here, what it pays and how hard it is. */
 M.KINDS = {
-  intel:     { name: "Intel", days: [3, 5], what: "research: half of what is left on every project running; and where Cal goes next" },
-  job:       { name: "Job", days: [3, 6], what: "money, enough for a real purchase" },
-  crackdown: { name: "Crackdown", days: [4, 7], what: "control in the zone" },
-  cal:       { name: "Hit Cal's crew", days: [3, 5], what: "ends Cal's push here, and some control back" },
-  siege:     { name: "Siege", days: [6, 8], what: "takes the zone back" },
-  story:     { name: "Story", days: [5, 8], what: "the next step toward locking the zone down" },
+  persuade:    { name: "Persuade", threat: 1, quiet: true, days: [3, 4], what: "talk someone round: control in the zone, and a word on Cal" },
+  intel:       { name: "Intel", threat: 1, quiet: true, days: [3, 5], what: "get in, get the data, get out: research, half of what is left on every project running; and where Cal goes next" },
+  job:         { name: "Job", threat: 2, days: [3, 6], what: "a robbery, a shakedown, a delivery: money, enough for a real purchase" },
+  crackdown:   { name: "Crackdown", threat: 2, days: [4, 7], what: "break up a gang's operation: control in the zone" },
+  assassinate: { name: "Assassination", threat: 3, days: [4, 7], what: "a name on Casey Benton's list: money and control" },
+  cal:         { name: "Hit Cal's crew", threat: 3, days: [3, 5], what: "ends Cal's push here, and some control back" },
+  siege:       { name: "Siege", threat: 4, days: [6, 8], what: "the enemy dug in: takes the zone back" },
+  story:       { name: "Story", threat: 3, days: [5, 8], what: "the next step toward locking the zone down" },
 };
-// what a zone's level leans toward: [intel, job, crackdown] weights
-M.MIX = { 0: [0.15, 0.35, 0.5], 1: [0.25, 0.4, 0.35], 2: [0.4, 0.35, 0.25], 3: [0.5, 0.3, 0.2] };
+M.ORDINARY = ["persuade", "intel", "job", "crackdown", "assassinate"];
+// what a zone's level leans toward, over M.ORDINARY: calm streets want talking, rough ones fighting
+M.MIX = {
+  0: [0, 0.1, 0.25, 0.35, 0.3],
+  1: [0.1, 0.2, 0.25, 0.25, 0.2],
+  2: [0.2, 0.3, 0.25, 0.15, 0.1],
+  3: [0.35, 0.35, 0.2, 0.1, 0],
+};
 M.OFFERS = { "-1": 0, 0: 3, 1: 2, 2: 2, 3: 1 };
-// the enemy, by level: more of them where the streets are worse (for the mission engine: L.mod)
-M.DIFFICULTY = { "-1": { crew: 1.6, guards: 1.5, sec: 0.5 }, 0: { crew: 1.4, guards: 1.25, sec: 0.6 }, 1: { crew: 1.1, guards: 1, sec: 0.8 }, 2: { crew: 0.9, guards: 1, sec: 1 }, 3: { crew: 0.7, guards: 0.75, sec: 1.2 } };
+/* Threat, 1 to 5: the kind's base, harder where control is low (easier at
+ * level 3), and creeping up as the campaign goes on (Cal scales with you):
+ * a step every 12 upgrade points, and one more at war. */
+M.threatOf = (s, kind, z, step = 0) => {
+  const L = z.lost ? -1 : M.level(z.C);
+  const lvl = L <= 0 ? 1 : L === 3 ? -1 : 0;
+  const t = M.KINDS[kind].threat + (kind === "siege" ? 0 : lvl) + Math.floor(s.research.points / 12) + (s.war ? 1 : 0) + (kind === "story" ? step : 0);
+  return Math.max(1, Math.min(5, t));
+};
+/* The enemy at each threat, for the mission engine (L.mod): how many of
+ * them, against the district's usual numbers, and what they carry. At
+ * threat 1 most are unarmed: lookouts, minders, people who would rather
+ * talk; by 5 it's rifles and heavy weapons. `armed` is the share carrying
+ * anything; `guns` what the armed ones carry; `armour` multiplies their
+ * hit points. */
+M.THREAT = {
+  1: { crew: 0.35, guards: 0, sec: 1, armed: 0.3, guns: ["pistol"], armour: 1 },
+  2: { crew: 0.6, guards: 0.5, sec: 1, armed: 0.7, guns: ["pistol", "pistol", "shotgun"], armour: 1 },
+  3: { crew: 1, guards: 1, sec: 1, armed: 1, guns: ["pistol", "shotgun", "uzi"], armour: 1.1 },
+  4: { crew: 1.35, guards: 1.25, sec: 0.8, armed: 1, guns: ["shotgun", "uzi", "uzi", "longrange"], armour: 1.25 },
+  5: { crew: 1.7, guards: 1.5, sec: 0.6, armed: 1, guns: ["uzi", "longrange", "minigun", "laser"], armour: 1.5 },
+};
+/* What the squad can take on: each Watcher's best gun (at its mark) and
+ * mods, summed over the four who go out. Four new Watchers with pistols are
+ * tier 1. */
+M.GUN_POWER = { pistol: 0.5, shotgun: 0.8, uzi: 1, longrange: 1.2, minigun: 1.6, laser: 1.8, gauss: 2 };
+M.agentPower = a => {
+  const gun = Math.max(0, ...a.items.filter(i => M.GUN_POWER[i.type]).map(i => M.GUN_POWER[i.type] * (1 + 0.3 * ((i.mk || 1) - 1))));
+  return 1 + gun + 0.2 * Object.values(a.mods).reduce((t, v) => t + v, 0);
+};
+M.squadPower = s => M.squad(s).reduce((t, a) => t + M.agentPower(a), 0);
+M.TIERS = [0, 8, 11.5, 16, 22];       // squad power for tiers 1..5
+M.squadTier = s => { const p = M.squadPower(s); let t = 1; for (let k = 1; k < M.TIERS.length; k++) if (p >= M.TIERS[k]) t = k + 1; return t; };
 // a zone's story chain on war footing: three steps, each needing the zone at a level
 M.STORY = [{ needs: 0, name: "Find the lieutenant" }, { needs: 2, name: "Turn the network" }, { needs: 3, name: "Lock it down" }];
 
@@ -322,15 +365,28 @@ M.refreshOffers = s => {
     const add = (kind, extra = {}) => {
       const K = M.KINDS[kind];
       s.offers.push(Object.assign({ id: `o${s.day}-${++seq}-${z.id}`, zone: z.id, kind, days: ri(s, ...K.days), level: L, seed: Math.floor(rnd(s) * 1e9),
-        landmark: D.areas ? pickS(s, D.areas) : null, expires: s.day + ri(s, 5, 9) }, extra));
+        landmark: D.areas ? pickS(s, D.areas) : null, expires: s.day + ri(s, 5, 9), threat: M.threatOf(s, kind, z, extra.step || 0) }, extra));
     };
     if (z.lost) { if (!mine.some(o => o.kind === "siege")) add("siege", { expires: s.day + 99 }); continue; }
     if (s.cal.zone === z.id && !mine.some(o => o.kind === "cal")) add("cal", { expires: s.day + s.cal.left });
     if (s.war && !mine.some(o => o.kind === "story") && z.story < M.STORY.length) add("story", { step: z.story, expires: s.day + 99 });
-    const want = M.OFFERS[L], ordinary = mine.filter(o => o.kind === "intel" || o.kind === "job" || o.kind === "crackdown").length;
+    const want = M.OFFERS[L], ordinary = mine.filter(o => M.ORDINARY.includes(o.kind)).length;
     for (let k = ordinary; k < want; k++) {
-      const mix = M.MIX[L], r = rnd(s);
-      add(r < mix[0] ? "intel" : r < mix[0] + mix[1] ? "job" : "crackdown");
+      const mix = M.MIX[L];
+      let r = rnd(s), i = 0;
+      while (i < mix.length - 1 && (r -= mix[i]) > 0) i++;
+      add(M.ORDINARY[i]);
+    }
+  }
+  // there is always something the squad can take on: if nothing on offer is within its tier, a
+  // quiet job turns up in the calmest zone that isn't lost or locked
+  const tier = M.squadTier(s);
+  if (!s.offers.some(o => o.threat <= tier)) {
+    const z = s.zones.filter(q => !q.lost && !q.locked).sort((a, b) => b.C - a.C)[0];
+    if (z) {
+      const D = M.zoneDef(z.id), kind = rnd(s) < 0.5 ? "persuade" : "intel";
+      s.offers.push({ id: `o${s.day}-${++seq}-${z.id}`, zone: z.id, kind, days: ri(s, ...M.KINDS[kind].days), level: M.level(z.C), seed: Math.floor(rnd(s) * 1e9),
+        landmark: D.areas ? pickS(s, D.areas) : null, expires: s.day + ri(s, 5, 9), threat: Math.min(tier, M.threatOf(s, kind, z)) });
     }
   }
 };
@@ -349,8 +405,10 @@ M.moneyReward = s => {
 M.reward = (s, o) => {
   const L = Math.max(0, M.level(M.zone(s, o.zone).C));
   switch (o.kind) {
+    case "persuade": return { control: [0.6, 0.5, 0.45, 0.35][L], reveal: true };
     case "intel": return { rp: true, reveal: true };
     case "job": return { money: M.moneyReward(s) };
+    case "assassinate": return { money: Math.round(M.moneyReward(s) * 0.7 / 1000) * 1000, control: [0.5, 0.45, 0.35, 0.25][L] };
     case "crackdown": return { control: [0.9, 0.8, 0.65, 0.5][L], money: Math.round(M.moneyReward(s) * 0.2 / 1000) * 1000 };
     case "cal": return { endPush: true, control: 0.4 };
     case "siege": return { retake: true };
@@ -453,10 +511,15 @@ M.missionRoster = s => M.squad(s).map(a => ({
     type: i.type === "purrsuader" && (i.mk || 1) >= 2 ? "purr2" : i.type, mk: i.mk || 1, ammo: i.type === "medikit" ? i.count : undefined })),
 }));
 /* The mission for an offer: the district, the area, the seed; and how hard the zone's streets are. */
+/* The mission for an offer, as the engine gets it: the district, the area
+ * and the seed pick the ground; L.mission says what kind of job it is and
+ * how hard; L.mod is the enemy at that threat (see M.THREAT). */
 M.missionFor = (s, o) => {
   const D = M.zoneDef(o.zone), z = M.zone(s, o.zone);
   const L = W.missionLevel({ district: D.district, landmark: o.landmark, seed: o.seed });
-  L.mod = Object.assign({}, M.DIFFICULTY[z.lost ? -1 : M.level(z.C)]);
+  const threat = o.threat || M.threatOf(s, o.kind, z, o.step || 0);
+  L.mission = { kind: o.kind, threat, quiet: !!M.KINDS[o.kind].quiet, zoneLevel: z.lost ? -1 : M.level(z.C), step: o.step };
+  L.mod = Object.assign({}, M.THREAT[threat]);
   L.offer = o;
   return L;
 };

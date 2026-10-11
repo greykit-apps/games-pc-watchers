@@ -105,18 +105,24 @@ W.Command = class {
   /* ---------------- missions ---------------- */
   missionsHTML() {
     const s = this.s, M = W.M;
-    const list = s.offers.slice().sort((a, b) => (this.zoneId ? (b.zone === this.zoneId) - (a.zone === this.zoneId) : 0) || ["siege", "cal", "story", "crackdown", "job", "intel"].indexOf(a.kind) - ["siege", "cal", "story", "crackdown", "job", "intel"].indexOf(b.kind));
-    const squad = M.squad(s);
-    return `<p class="note">A mission takes days. The zones' pips stand as you set them until the squad is back${M.isDone(s, "overseers") ? "; the overseers keep each zone from slipping below its level" : ""}. Lower control means more missions, and rougher streets.</p>
+    const list = s.offers.slice().sort((a, b) => (this.zoneId ? (b.zone === this.zoneId) - (a.zone === this.zoneId) : 0) || (a.threat || 1) - (b.threat || 1) || a.kind.localeCompare(b.kind));
+    const squad = M.squad(s), tier = M.squadTier(s);
+    return `<p class="note">The squad can take on threat <b class="tier">${tier}</b> <span class="dots">${this.dots(tier, tier)}</span> (power ${M.squadPower(s).toFixed(1)}; better guns, marks and mods raise it). Above that, expect to lose Watchers. Quiet jobs can be done without a shot fired.</p>
+      <p class="note">A mission takes days. The zones' pips stand as you set them until the squad is back${M.isDone(s, "overseers") ? "; the overseers keep each zone from slipping below its level" : ""}. Lower control means more missions, and rougher streets.</p>
       <p class="note">The squad: ${squad.map(a => `<b>${W.esc(a.name)}</b>`).join(", ")} <button class="mini" data-tab="squad">change</button></p>
       ${list.map(o => this.offerHTML(o)).join("") || "<p>Nothing on offer. Wait a day.</p>"}`;
   }
+  // threat as five pips, lit up to the threat, coloured against what the squad can take on
+  dots(threat, tier) {
+    const cls = threat <= tier ? "ok" : threat === tier + 1 ? "hard" : "deadly";
+    return Array.from({ length: 5 }, (_, i) => `<i class="${i < threat ? cls : ""}"></i>`).join("");
+  }
   offerHTML(o) {
-    const s = this.s, M = W.M, D = M.zoneDef(o.zone), z = M.zone(s, o.zone), K = M.KINDS[o.kind], why = M.canRun(s, o);
+    const s = this.s, M = W.M, D = M.zoneDef(o.zone), z = M.zone(s, o.zone), K = M.KINDS[o.kind], why = M.canRun(s, o), tier = M.squadTier(s), th = o.threat || 1;
     const lvl = z.lost ? "lost" : `level ${M.level(z.C)}`;
     const title = o.kind === "story" ? `${M.STORY[o.step].name}` : K.name;
     return `<div class="offer k-${o.kind} ${this.zoneId === o.zone ? "here" : ""}">
-      <div><span class="kind">${W.esc(K.name)}</span> <b>${W.esc(title === K.name ? (o.landmark || D.name) : title)}</b> <small>${W.esc(D.name)} · ${lvl} · ${o.days} days${o.expires < 90 + s.day ? ` · gone in ${Math.max(0, o.expires - s.day)}d` : ""}</small>
+      <div><span class="dots" title="threat ${th}${th > tier ? ": above what the squad can take on" : ""}">${this.dots(th, tier)}</span> <span class="kind">${W.esc(K.name)}</span>${K.quiet ? ` <i class="quiet" title="can be done without a shot fired">quiet</i>` : ""} <b>${W.esc(title === K.name ? (o.landmark || D.name) : title)}</b> <small>${W.esc(D.name)} · ${lvl} · ${o.days} days${o.expires < 90 + s.day ? ` · gone in ${Math.max(0, o.expires - s.day)}d` : ""}</small>
       <p>${W.esc(M.describeReward(s, o))}</p></div>
       <button class="primary" data-a="deploy" data-o="${o.id}" ${why ? `disabled title="${W.esc(why)}"` : ""}>Brief</button></div>`;
   }

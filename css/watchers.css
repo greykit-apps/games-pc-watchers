@@ -318,3 +318,10 @@ h1,h2,h3{font-weight:600;margin:0}
 .proj .pt{font-style:normal;font-size:10px;color:var(--amber);margin-left:4px}
 .roster li.sel{background:rgba(84,242,255,.05)}
 .roster li canvas,.roster li div[data-a]{cursor:pointer}
+.dots{display:inline-flex;gap:2px;vertical-align:1px}
+.dots i{width:7px;height:7px;border:1px solid var(--line);display:block}
+.dots i.ok{background:var(--good);border-color:var(--good)} .dots i.hard{background:var(--amber);border-color:var(--amber)} .dots i.deadly{background:var(--danger);border-color:var(--danger)}
+.offer .quiet{font-style:normal;font-size:9px;letter-spacing:.1em;color:var(--steel);border:1px solid var(--line);padding:0 3px;text-transform:uppercase}
+.offer.k-persuade{border-left-color:var(--steel)} .offer.k-persuade .kind{color:var(--steel)}
+.offer.k-assassinate{border-left-color:#ff8a5c} .offer.k-assassinate .kind{color:#ff8a5c}
+.cmd b.tier{color:var(--good)}

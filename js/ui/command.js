@@ -110,6 +110,8 @@ W.Command = class {
   }
 
   px(text, cls = "", k = 2) { return W.pix.html(text, cls, k); }
+  // a pixel title that is also a heading
+  hx(text, cls = "", k = 2, level = 2) { return `<h${level} class="hx">${this.px(text, cls, k)}</h${level}>`; }
 
   /* ---- the top bar: readouts, the city split, waiting ---- */
   topHTML() {
@@ -120,16 +122,16 @@ W.Command = class {
     const bal = this.balanceParts();
     const running = s.research.running.length;
     return `<header class="cx-top">
-      <div class="cx-brand">${this.px("WATCHERS", "brand", 3)}<small>PumaCity · Casey Benton's city</small></div>
+      <div class="cx-brand">${this.hx("WATCHERS", "brand", 3, 1)}</div>
       <div class="cx-read">
         <div class="lcd"><small>Day</small>${this.px(String(s.day).padStart(3, "0"), "lcd-t", 2)}</div>
         <div class="lcd"><small>Cash</small>${this.px(W.money(s.cash), "lcd-t", 2)}</div>
-        <div class="lcd take"><small>A day</small><span class="v">${this.takeLCD(take)}</span></div>
+        <div class="lcd take" title="What the city makes a day: money, and research points (RP)"><small>A day<span class="sr">, money and research points (RP)</span></small><span class="v">${this.takeLCD(take)}</span></div>
         <div class="warm ${s.war ? "at" : ""}"><small>${s.war ? "At war" : "War footing"}</small>
           ${s.war ? this.px("AT WAR", "war-t", 2) : `<span class="cells" role="meter" aria-label="Upgrade points toward war" aria-valuemin="0" aria-valuemax="${war}" aria-valuenow="${Math.min(pts, war)}">${cells}</span><b>${pts}/${war}</b>`}</div>
       </div>
       <div class="cx-split">
-        <label for="cx-bal">City split <small>what the zones don't put on control</small></label>
+        <label for="cx-bal" title="What the zones don't spend on control, split between research and money">City split</label>
         <div class="split-row"><span class="c-r">Research <b>${bal.r}</b></span>
           <input id="cx-bal" type="range" min="0" max="${bal.rest}" step="1" value="${bal.r}" data-a="balance" data-fk="balance" ${bal.rest ? "" : "disabled"} aria-valuetext="${bal.r} pips to research, ${bal.rest - bal.r} to money">
           <span class="c-m">Money <b>${bal.rest - bal.r}</b></span></div>
@@ -138,11 +140,11 @@ W.Command = class {
         <button class="go" data-a="wait" data-fk="wait"><kbd>W</kbd>Wait a day</button>
         <div class="until">
           <button data-a="until" data-fk="until" aria-expanded="${!!this.untilOpen}" aria-haspopup="true">Until…</button>
-          ${this.untilOpen ? `<div class="until-menu" role="menu">
+          ${this.untilOpen ? `<div class="until-menu" role="menu" aria-label="Wait until"><small class="mh">Wait until</small>
             <button role="menuitem" data-a="waituntil" data-u="research" data-fk="u-research" ${running ? "" : "disabled"}>Research finishes${running ? "" : `<small>nothing running</small>`}</button>
             <button role="menuitem" data-a="waituntil" data-u="cal" data-fk="u-cal">Cal moves</button>
-            <button role="menuitem" data-a="waituntil" data-u="week" data-fk="u-week">A week</button>
-            <small>Stops early if a zone is lost or Cal arrives.</small></div>` : ""}
+            <button role="menuitem" data-a="waituntil" data-u="week" data-fk="u-week">A week has passed</button>
+            <small>It stops early if a zone is lost or Cal moves in.</small></div>` : ""}
         </div>
       </div>
     </header>`;
@@ -172,14 +174,13 @@ W.Command = class {
       ["office", "OFFICE", "4", "What the Boss can buy", ""],
     ];
     return `<nav class="cx-bar" role="tablist" aria-label="Screens">${tabs.map(([id, label, key, sub, badge]) =>
-      `<button role="tab" id="tab-${id}" data-a="screen" data-screen="${id}" data-fk="screen-${id}" aria-selected="${this.screen === id}" aria-controls="cx-screen">
-        <canvas data-bar="${id}" aria-hidden="true"></canvas><span class="bl">${this.px(label, "bar-t", 2)}<small>${sub}</small></span>${badge}<kbd>${key}</kbd></button>`).join("")}</nav>`;
+      `<button role="tab" id="tab-${id}" title="${sub}" tabindex="${this.screen === id ? 0 : -1}" data-a="screen" data-screen="${id}" data-fk="screen-${id}" aria-selected="${this.screen === id}" aria-controls="cx-screen">
+        <canvas data-bar="${id}" aria-hidden="true"></canvas><span class="bl">${this.px(label, "bar-t", 2)}<span class="sr">: ${sub}</span></span>${badge}<kbd>${key}</kbd></button>`).join("")}</nav>`;
   }
 
   /* ---------------- the City ---------------- */
   cityHTML() {
     const s = this.s;
-    const AT = W.CityMap.AT;
     const zb = s.zones.map(z => {
       const [x, y] = W.CityMap.place(z.id);
       return `<button class="zb" data-a="zone" data-z="${z.id}" data-fk="zone-${z.id}" aria-pressed="${this.zoneId === z.id}" aria-label="${W.esc(this.zoneSay(z))}"
@@ -214,7 +215,7 @@ W.Command = class {
     const DIST = { downtown: "Downtown", suburbs: "The Suburbs", convention: "The Convention Center", starport: "The Starport", ranch: "The Ranch" };
     const pct = v => `${(100 * Math.max(0, Math.min(M.N.CAP, v)) / M.N.CAP).toFixed(1)}%`;
     const head = `<header class="dz-head">
-        <div>${this.px(D.name.toUpperCase().replace(" AND THE MARKET", ""), "dz-t", 2)}<small>${DIST[D.district]} · held by ${W.esc(D.held)}</small></div>
+        <div>${this.hx(D.name.toUpperCase().replace(" AND THE MARKET", ""), "dz-t", 2)}<small>${DIST[D.district]} · held by ${W.esc(D.held)}</small></div>
         <span class="lvl ${z.lost ? "ls" : z.locked ? "lk" : "l" + L}">${z.lost ? "LOST" : z.locked ? "LOCKED" : `LEVEL ${L}`}</span>
         <button class="x" data-a="zone" data-z="${z.id}" data-fk="close-${z.id}" aria-label="Close the dossier">Close</button>
       </header><p class="blurb">${W.esc(D.blurb)}</p>`;
@@ -250,7 +251,7 @@ W.Command = class {
         <div class="dial-track" style="--hold:${p ? 100 * hold / p : 0}%">${ticks}
           <input id="dial-${z.id}" type="range" min="0" max="${p}" step="1" value="${P.c}" data-a="dial" data-z="${z.id}" data-fk="dial-${z.id}" aria-valuetext="${P.c} of ${p} pips on control, ${this.dialHead(z, P, p, hold, y)}">
           <span class="hold ${p && hold / p > 0.8 ? "end" : p && hold / p < 0.2 ? "start" : ""}" title="the pips on control that hold the level where it is">HOLD ${hold}</span></div>
-        <div class="dial-ends"><span>${this.px("◂", "glyph", 2)} Milk it: more to the city, control slips</span><span>Invest: control climbs ${this.px("▸", "glyph", 2)}</span></div>
+        <div class="dial-ends"><span>${this.px("◂", "glyph", 2)} Milk</span><span>Invest ${this.px("▸", "glyph", 2)}</span></div>
         <p class="dial-out" data-live="out">${this.dialOut(z, P, y)}</p>
       </div>
       ${flags ? `<ul class="flags">${flags}</ul>` : ""}
@@ -259,25 +260,24 @@ W.Command = class {
   fcLine(z, f, net) { return `<b>${this.px(f && !f.steady ? (f.lost || f.to < W.M.level(z.C) ? "▼" : "▲") : "■", "glyph", 2)} ${this.fcText(f)}</b> <span>${net >= 0 ? "+" : ""}${net.toFixed(2)} control a day</span>`; }
   dialHead(z, P, p, hold, y) {
     const d = P.c - hold, cost = P.c * y * W.M.N.PIP_MONEY;
-    return `${W.money(cost)} a day · ${d > 0 ? `investing ${d} over hold` : d < 0 ? `milking ${-d} under hold` : "holding"}`;
+    return `${W.money(cost)} a day · ${d > 0 ? `investing: ${d} pip${d > 1 ? "s" : ""} over what holds it` : d < 0 ? `milking: ${-d} pip${-d > 1 ? "s" : ""} under what holds it` : "holding it steady"}`;
   }
-  dialOut(z, P, y) { return `<span class="c-c">C ${P.c}</span><span class="c-r">R ${P.r} · ${(P.r * y).toFixed(1)} rp</span><span class="c-m">$ ${P.m} · ${W.money(P.m * y * W.M.N.PIP_MONEY)}</span><small>a day, at this level</small>`; }
+  dialOut(z, P, y) { return `To the city: <span class="c-m">${W.money(P.m * y * W.M.N.PIP_MONEY)}</span> and <span class="c-r">${(P.r * y).toFixed(1)} RP</span> a day`; }
 
   overviewHTML() {
     const s = this.s, M = W.M, c = s.cal;
-    const calOffer = s.offers.find(o => o.kind === "cal");
+    const calOffer = s.offers.some(o => o.kind === "cal");
     const cal = c.zone
-      ? `<p><b class="bad">Cal is pushing ${W.esc(M.zoneDef(c.zone).name)}</b>, ${c.left} more day${c.left === 1 ? "" : "s"}${c.bribed ? " (half-hearted: City Hall was paid)" : ""}. A mission against his crew there ends it.</p>
-         ${calOffer ? `<button class="hot" data-a="deploy" data-o="${calOffer.id}" data-fk="deploy-${calOffer.id}" ${M.canRun(s, calOffer) ? "disabled" : ""}>Brief: hit Cal's crew</button>` : ""}`
+      ? `<p><b class="bad">Cal is pushing ${W.esc(M.zoneDef(c.zone).name)}</b>, ${c.left} more day${c.left === 1 ? "" : "s"}${c.bribed ? " (half-hearted: City Hall was paid)" : ""}. ${calOffer ? "Hitting his crew there ends it: first under Can't wait." : "A mission against his crew there would end it."}</p>`
       : c.revealed && c.next ? `<p>Cal is resting. <b class="warn">Next: ${W.esc(M.zoneDef(c.next).name)}, in ${c.nextIn} day${c.nextIn === 1 ? "" : "s"}.</b> Bank control there now.</p>`
       : `<p>Cal is resting. Where he goes next is anyone's guess: intel missions, or informants from the Office, would tell you.</p>`;
     const watch = s.zones.filter(z => !z.locked).map(z => ({ z, f: M.forecast(s, z) }))
       .filter(({ z, f }) => z.lost || (f && (f.lost || (f.to != null && f.to < M.level(z.C)))))
       .sort((a, b) => (b.z.lost - a.z.lost) || ((a.f && a.f.days) || 0) - ((b.f && b.f.days) || 0));
-    return `<article class="panel cal ${c.zone ? "on" : ""}">${this.px("CAL", "cal-t", 2)}${cal}</article>
+    return `<article class="panel cal ${c.zone ? "on" : ""}">${this.hx("CAL", "cal-t", 2)}${cal}</article>
       <article class="panel watch"><h3 class="sub">Zones slipping <span>${watch.length || "none"}</span></h3>
         ${watch.length ? `<ul>${watch.map(({ z, f }) => `<li><button data-a="zone" data-z="${z.id}" data-fk="w-${z.id}"><b>${W.esc(M.zoneDef(z.id).name)}</b><span class="${z.lost ? "bad" : "down"}">${z.lost ? "Lost: siege to retake" : this.fcText(f)}</span></button></li>`).join("")}</ul>`
-          : `<p class="quiet">Every zone is holding or climbing. Pick one on the map to turn its tax dial.</p>`}
+          : `<p class="quiet">Every zone is holding or climbing. Pick one on the map to set what it spends on control.</p>`}
       </article>`;
   }
 
@@ -288,8 +288,8 @@ W.Command = class {
     const title = d ? (d.days > 1 ? `DAYS ${d.from}-${d.to - 1}` : `DAY ${d.from}`) : `DAY ${s.log[0] ? s.log[0].day : s.day}`;
     const days = [...new Set(s.log.map(l => l.day))].slice(d ? 0 : 1, 8);
     return `<section class="panel dispatch" aria-live="polite" aria-label="Dispatch">
-      <header>${this.px("DISPATCH", "sub-t", 2)}<small>${title.toLowerCase().replace("day", "Day").replace("days", "Days")}</small></header>
-      <ul>${lines.map(l => `<li class="${l.cls || ""}">${W.esc(l.text)}</li>`).join("") || `<li class="quiet">Quiet.</li>`}</ul>
+      <header>${this.hx("DISPATCH", "sub-t", 2)}<small>${title.toLowerCase().replace("day", "Day").replace("days", "Days")}</small></header>
+      <ul>${lines.map(l => `<li class="${l.cls || ""}">${W.esc(l.text)}</li>`).join("") || `<li class="quiet">A quiet day. Nothing changed.</li>`}</ul>
       ${days.length ? `<button class="link" data-a="log" data-fk="log" aria-expanded="${this.showLog}">${this.showLog ? "Hide" : "Show"} earlier days</button>` : ""}
       ${this.showLog ? days.map(day => `<h4>Day ${day}</h4><ul class="old">${this.logDay(day).map(l => `<li class="${l.kind}">${W.esc(l.text)}</li>`).join("")}</ul>`).join("") : ""}
     </section>`;
@@ -314,10 +314,9 @@ W.Command = class {
     const byZone = {};
     for (const o of rest) (byZone[o.zone] = byZone[o.zone] || []).push(o);
     const order = Object.keys(byZone).sort((a, b) => M.zone(s, a).C - M.zone(s, b).C);
-    return `<header class="ops-head">${this.px("MISSIONS", "sub-t", 2)}
-        <p class="squadline">Squad tier <b>${tier}</b> <span class="dots t-ok" aria-hidden="true">${this.dots(tier, tier)}</span> · ${squad.map(a => W.esc(a.name)).join(", ")}
-          <button class="link" data-a="screen" data-screen="clinic" data-fk="to-clinic">Clinic</button></p>
-        <p class="hint">Threat above the squad's tier costs Watchers. Quiet jobs can be done without a shot fired.</p></header>
+    return `<header class="ops-head">${this.hx("MISSIONS", "sub-t", 2)}
+        <p class="squadline"><span title="Missions above the squad's tier cost Watchers. Quiet ones can be done without a shot fired.">Squad tier <b>${tier}</b><span class="sr">: missions above it cost Watchers; quiet ones can be done without a shot fired</span></span> <span class="dots t-ok" aria-hidden="true">${this.dots(tier, tier)}</span> · ${squad.map(a => W.esc(a.name)).join(", ")}
+          <button class="link" data-a="screen" data-screen="clinic" data-fk="to-clinic">Clinic</button></p></header>
       ${urgent.length ? `<section class="urgent"><h3 class="sub">Can't wait <span>${urgent.length}</span></h3>${urgent.map(o => this.offerHTML(o, true)).join("")}</section>` : ""}
       ${this.zoneId && !this.allOffers ? `<button class="link" data-a="alloffers" data-fk="alloffers">Show missions in every zone (${s.offers.length - urgent.length})</button>` : this.zoneId ? `<button class="link" data-a="alloffers" data-fk="alloffers">Only ${W.esc(M.zoneDef(this.zoneId).name)}</button>` : ""}
       ${order.map(id => { const z = M.zone(s, id), L = M.level(z.C);
@@ -344,7 +343,7 @@ W.Command = class {
         <p class="o-pay">${W.esc(M.describeReward(s, o))}</p>
         ${why ? `<p class="why">${W.esc(why)}</p>` : ""}
       </div>
-      <button class="${this.rec === o.id || fkp ? "go" : ""}" data-a="deploy" data-o="${o.id}" data-fk="${fkp}deploy-${o.id}" ${why ? "disabled" : ""}>Brief</button>
+      <button class="${this.rec === o.id || (fkp && risk === "ok") ? "go" : ""}" data-a="deploy" data-o="${o.id}" data-fk="${fkp}deploy-${o.id}" ${why ? "disabled" : ""}>Brief</button>
     </div>`;
   }
 
@@ -361,7 +360,7 @@ W.Command = class {
       const open = r.needs.every(n => M.isDone(s, n));
       if (!open) return `<span class="node locked"><b>MK${r.mk || 1}</b><small>needs ${W.esc(r.needs.filter(n => !M.isDone(s, n)).map(n => M.item(n).name).join(", "))}</small></span>`;
       const why = M.canStart(s, r);
-      return `<span class="node open"><button data-a="start" data-r="${r.id}" data-fk="start-${r.id}" ${why ? "disabled" : ""} title="${W.esc(this.what(r))}"><b>MK${r.mk || 1}</b><small>${W.money(r.cost[0])} · ${r.cost[1]} rp${r.points === 2 ? " · 2 pts" : ""}</small></button>${why ? `<small class="why">${W.esc(why)}</small>` : ""}</span>`;
+      return `<span class="node open"><button data-a="start" data-r="${r.id}" data-fk="start-${r.id}" ${why ? "disabled" : ""} title="${W.esc(this.what(r))}"><b>MK${r.mk || 1}</b><small>Start · ${W.money(r.cost[0])} · ${r.cost[1]} RP${r.points === 2 ? " · counts 2 to war" : ""}</small></button>${why ? `<small class="why">${W.esc(why)}</small>` : ""}</span>`;
     };
     const lineRow = (lineId, name, what) => {
       const marks = [1, 2, 3].map(k => M.item(`${lineId}:${k}`));
@@ -371,17 +370,17 @@ W.Command = class {
     const single = r => { const a = avail.find(x => x.id === r.id) || r; return `<li><span class="ln"><b>${W.esc(r.name)}</b><small>${W.esc(this.what(r))}</small></span>${node(a)}</li>`; };
     const repeat = id => { const a = avail.find(x => x.id === id), p = run.find(x => x.id === id);
       const name = id === "works" ? "Zone works" : "Requisition", n = s.research[id];
-      return `<li><span class="ln"><b>${name}${n ? ` <small>×${n} done</small>` : ""}</b><small>${W.esc(this.what({ id }))}</small></span>${p ? node({ id, mk: n + 1, needs: [] }) : a ? `<span class="node open"><button data-a="start" data-r="${id}" data-fk="start-${id}" ${M.canStart(s, a) ? "disabled" : ""}><b>#${n + 1}</b><small>${W.money(a.cost[0])} · ${a.cost[1]} rp</small></button>${M.canStart(s, a) ? `<small class="why">${W.esc(M.canStart(s, a))}</small>` : ""}</span>` : ""}</li>`; };
+      return `<li><span class="ln"><b>${name}${n ? ` <small>×${n} done</small>` : ""}</b><small>${W.esc(this.what({ id }))}</small></span>${p ? node({ id, mk: n + 1, needs: [] }) : a ? `<span class="node open"><button data-a="start" data-r="${id}" data-fk="start-${id}" ${M.canStart(s, a) ? "disabled" : ""}><b>#${n + 1}</b><small>Start · ${W.money(a.cost[0])} · ${a.cost[1]} RP</small></button>${M.canStart(s, a) ? `<small class="why">${W.esc(M.canStart(s, a))}</small>` : ""}</span>` : ""}</li>`; };
     const counters = avail.filter(r => r.kind === "counter");
     const runCounters = run.filter(p => p.id.startsWith("counter:"));
     return `<section class="panel lab-war">
-        <div>${this.px(s.war ? "AT WAR" : "WAR FOOTING", "sub-t", 2)}<p>${s.war ? "Cal has committed. Decay runs half as fast again everywhere. Finish each zone's story and lock it down." : `${pts} of ${war} upgrade points. An MK3, or the BanHammer, counts 2. At ${war}, Cal stops probing and commits.`}</p></div>
+        <div>${this.hx(s.war ? "AT WAR" : "WAR FOOTING", "sub-t", 2)}<p>${s.war ? "Cal has committed. Decay runs half as fast again everywhere. Finish each zone's story and lock it down." : `${pts} of ${war} upgrade points. An MK3, or the BanHammer, counts 2. At ${war}, Cal stops probing and commits.`}</p></div>
         ${s.war ? "" : `<span class="cells big" role="meter" aria-label="Upgrade points toward war" aria-valuemin="0" aria-valuemax="${war}" aria-valuenow="${Math.min(pts, war)}">${cells}</span>`}
       </section>
       <section class="panel lab-run">
-        <header>${this.px("RUNNING", "sub-t", 2)}<small>${rate.toFixed(1)} research points a day${run.length > 1 ? `, ${(rate / run.length).toFixed(1)} to each` : ""} · points can't be banked</small></header>
-        ${run.length ? `<ul>${run.map(p => { const pc = Math.round(100 * (1 - p.left / p.total)); return `<li><b>${W.esc(p.name)}</b><span class="bar"><i style="width:${pc}%"></i></span><small>${Math.ceil(p.left)} of ${p.total} rp${rate ? ` · ${Math.ceil(p.left / (rate / run.length))} days` : ""}</small>
-          <button data-a="cancel" data-r="${p.id}" data-fk="cancel-${p.id}" class="${this.armed === "cancel-" + p.id ? "armed" : ""}">${this.armed === "cancel-" + p.id ? "Stop: what was paid is lost" : "Stop"}</button></li>`; }).join("")}</ul>`
+        <header>${this.hx("RUNNING", "sub-t", 2)}<small>${rate.toFixed(1)} research points a day${run.length > 1 ? `, ${(rate / run.length).toFixed(1)} to each` : ""} · points can't be banked</small></header>
+        ${run.length ? `<ul>${run.map(p => { const pc = Math.round(100 * (1 - p.left / p.total)); return `<li><b>${W.esc(p.name)}</b><span class="bar"><i style="width:${pc}%"></i></span><small>${Math.ceil(p.left)} of ${p.total} RP${rate ? ` · ${Math.ceil(p.left / (rate / run.length))} days` : ""}</small>
+          <button data-a="cancel" data-r="${p.id}" data-fk="cancel-${p.id}" class="${this.armed === "cancel-" + p.id ? "armed" : ""}">${this.armed === "cancel-" + p.id ? "Confirm: stop, and lose what was paid" : "Stop"}</button></li>`; }).join("")}</ul>`
           : `<p class="bad idle">Nothing running. Today's research points are wasted. Start something below.</p>`}
       </section>
       <div class="lab-tree" data-scroll="lab">
@@ -411,13 +410,13 @@ W.Command = class {
   /* ---------------- the Clinic and the Armoury ---------------- */
   clinicHTML() {
     const s = this.s, M = W.M, a = M.agentById(s, this.agentId), why = M.canHire(s);
-    const roster = `<section class="panel roster" data-scroll="roster">${this.px("ROSTER", "sub-t", 2)}
+    const roster = `<section class="panel roster" data-scroll="roster">${this.hx("ROSTER", "sub-t", 2)}
       <p class="hint">${s.roster.length} of ${M.ROSTER_MAX} Watchers. ${M.SQUAD} go out; the rest wait in reserve.</p>
       <ul>${s.roster.map(x => `<li class="${x.id === this.agentId ? "sel" : ""} ${x.deployed ? "on" : ""}">
           <button class="who" data-a="agent" data-id="${x.id}" data-fk="agent-${x.id}" aria-pressed="${x.id === this.agentId}"><canvas width="44" height="44" data-port="${x.id}"></canvas>
             <span><b>${W.esc(x.name)}</b><small>${x.missions} mission${x.missions === 1 ? "" : "s"} · ${x.kills} down</small><small>worth ${W.money(M.worth(x))}</small></span>
             <span class="st ${x.deployed ? "in" : ""}">${x.deployed ? "Squad" : "Reserve"}</span></button>
-          <button class="mini" data-a="deploytoggle" data-id="${x.id}" data-fk="dt-${x.id}">${x.deployed ? "To reserve" : "To squad"}</button></li>`).join("")}</ul>
+          <button class="mini" data-a="deploytoggle" data-id="${x.id}" data-fk="dt-${x.id}">${x.deployed ? "Send to reserve" : "Put in the squad"}</button></li>`).join("")}</ul>
       <button data-a="hire" data-fk="hire" ${why ? "disabled" : ""}>Recruit · ${W.money(M.PRICE.recruit)}</button>${why ? `<small class="why">${W.esc(why)}</small>` : ""}
       ${s.fallen.length ? `<div class="fallen"><h4>Fallen</h4><p>${s.fallen.map(W.esc).join(" · ")}</p></div>` : ""}
     </section>`;
@@ -431,18 +430,18 @@ W.Command = class {
     const shop = M.shop(s, a), scan = M.canUpgradeScanner(s);
     const left = ["brain", "eyes", "arms"], right = ["heart", "chest", "legs"];
     const body = `<section class="panel body">
-      <header>${this.px(a.name, "sub-t", 3)}<small>${a.deployed ? "In the squad" : "In reserve"} · ${a.missions} mission${a.missions === 1 ? "" : "s"}</small></header>
+      <header>${this.hx(a.name, "sub-t", 3)}<small>${a.deployed ? "In the squad" : "In reserve"} · ${a.missions} mission${a.missions === 1 ? "" : "s"}</small></header>
       <div class="figure"><div class="slots">${left.map(id => slot(W.MODS.find(m => m.id === id))).join("")}</div>
         <canvas data-figure="${a.id}"></canvas>
         <div class="slots">${right.map(id => slot(W.MODS.find(m => m.id === id))).join("")}</div></div>
     </section>`;
-    const armoury = `<section class="panel armoury" data-scroll="arm">${this.px("ARMOURY", "sub-t", 2)}
+    const armoury = `<section class="panel armoury" data-scroll="arm">${this.hx("ARMOURY", "sub-t", 2)}
       <h3 class="sub">${W.esc(a.name)} carries <span>${a.items.length} of 8 · ammunition topped up free</span></h3>
       <ul class="inv">${a.items.map((it, i) => `<li><canvas width="44" height="22" data-icon="${it.type === "banhammer" ? "laser" : it.type}"></canvas><span>${W.esc(it.type === "banhammer" ? "BanHammer strike" : (W.WEAPONS[it.type] || {}).name || it.type)}${it.mk ? ` MK${it.mk}` : ""}${it.count > 1 ? ` ×${it.count}` : ""}</span>
         <button class="mini ${this.armed === "sell-" + i ? "armed" : ""}" data-a="sell" data-i="${i}" data-fk="sell-${i}">${this.armed === "sell-" + i ? `Confirm: sell for ${W.money(M.sellPrice(it))}` : "Sell for half"}</button></li>`).join("") || `<li class="quiet">Nothing.</li>`}</ul>
       <h3 class="sub">On the racks</h3>
       <ul class="inv shop">${shop.map(it => { const why2 = M.canBuy(s, a, it); return `<li><canvas width="44" height="22" data-icon="${it.type === "banhammer" ? "laser" : it.type}"></canvas><span>${W.esc(it.name)}${it.upgrade ? "<small>replaces the one carried</small>" : ""}${why2 ? `<small class="why">${W.esc(why2)}</small>` : ""}</span>
-        <button data-a="buy" data-k="${it.key}" data-fk="buy-${it.key}" ${why2 ? "disabled" : ""} class="${this.armed === "buy-" + it.key ? "armed" : ""}">${this.armed === "buy-" + it.key ? `Confirm ${W.money(it.price)}` : W.money(it.price)}</button></li>`; }).join("")}</ul>
+        <button data-a="buy" data-k="${it.key}" data-fk="buy-${it.key}" ${why2 ? "disabled" : ""} class="${this.armed === "buy-" + it.key ? "armed" : ""}">${this.armed === "buy-" + it.key ? `Confirm: pay ${W.money(it.price)}` : `Buy · ${W.money(it.price)}`}</button></li>`; }).join("")}</ul>
       <h3 class="sub">The squad's scanner <span>${s.scannerMk ? `MK${s.scannerMk}` : "standard issue"}</span></h3>
       ${s.scannerMk < 3 ? `<button data-a="scanner" data-fk="scanner" ${scan ? "disabled" : ""}>Fit MK${s.scannerMk + 1} · ${W.money(M.PRICE.scanner[s.scannerMk + 1])}</button>${scan ? `<small class="why">${W.esc(scan)}</small>` : ""}` : `<p class="quiet">The best there is.</p>`}
     </section>`;
@@ -474,12 +473,12 @@ W.Command = class {
     this.officeZone = zid;
     return `<section class="scene"><canvas data-office aria-hidden="true"></canvas>
         <blockquote><p>${W.esc(this.caseySays())}</p><cite>Casey Benton</cite></blockquote></section>
-      <section class="panel desk" data-scroll="desk">${this.px("THE BOSS'S DESK", "sub-t", 2)}
+      <section class="panel desk" data-scroll="desk">${this.hx("THE BOSS'S DESK", "sub-t", 2)}
         <p class="hint">Money buys what production can't.</p>
         <label class="zpick">For the zone <select data-a="ozone" data-fk="ozone">${s.zones.map(q => `<option value="${q.id}" ${q.id === zid ? "selected" : ""}>${W.esc(M.zoneDef(q.id).name)}${q.lost ? " (lost)" : q.locked ? " (locked)" : ` (L${M.level(q.C)})`}</option>`).join("")}</select></label>
         <ul class="events">${M.EVENTS.map(e => { const why = M.canEvent(s, e, z), key = "event-" + e.id;
           return `<li class="${e.floor ? "dark" : ""}"><span><b>${W.esc(e.name)}</b>${e.zone ? `<small class="for">in ${W.esc(M.zoneDef(zid).name)}</small>` : `<small class="for">city-wide</small>`}<small>${W.esc(e.what)}</small>${why ? `<small class="why">${W.esc(why)}</small>` : ""}</span>
-            <button data-a="event" data-e="${e.id}" data-fk="${key}" ${why ? "disabled" : ""} class="${this.armed === key ? "armed" : ""}">${this.armed === key ? `Confirm ${W.money(e.price)}` : W.money(e.price)}</button></li>`; }).join("")}</ul>
+            <button data-a="event" data-e="${e.id}" data-fk="${key}" ${why ? "disabled" : ""} class="${this.armed === key ? "armed" : ""}">${this.armed === key ? `Confirm: pay ${W.money(e.price)}` : `Buy · ${W.money(e.price)}`}</button></li>`; }).join("")}</ul>
         <h3 class="sub">On Cal</h3>
         <p>${s.cal.zone ? `Pushing ${W.esc(M.zoneDef(s.cal.zone).name)}, ${s.cal.left} more day${s.cal.left === 1 ? "" : "s"}.` : s.cal.revealed && s.cal.next ? `Resting. Next: ${W.esc(M.zoneDef(s.cal.next).name)}, in ${s.cal.nextIn} day${s.cal.nextIn === 1 ? "" : "s"}.` : "Resting. Nobody knows where he goes next."}</p>
       </section>`;
@@ -510,7 +509,12 @@ W.Command = class {
     switch (d.a) {
       case "screen": return this.go(d.screen);
       case "wait": return this.wait(1);
-      case "until": this.untilOpen = !this.untilOpen; W.audio.play("click"); return this.draw();
+      case "until": {
+        this.untilOpen = !this.untilOpen; W.audio.play("click"); this.draw();
+        const first = this.untilOpen && this.el.querySelector('.until-menu [role="menuitem"]:not(:disabled)');
+        if (first) first.focus(); else if (!this.untilOpen) this.el.querySelector('[data-fk="until"]').focus();
+        return;
+      }
       case "waituntil": this.untilOpen = false; return this.wait(d.u);
       case "zone": return this.pickZone(d.z, !b.classList.contains("zb"));
       case "alloffers": this.allOffers = !this.allOffers; return this.draw();
@@ -574,7 +578,22 @@ W.Command = class {
   }
   // arrow keys walk the map from zone to zone
   onZoneKey(ev) {
-    const b = ev.target.closest && ev.target.closest(".zb");
+    const t = ev.target;
+    // the Until menu: up and down, Home and End
+    const mi = t.closest && t.closest('.until-menu [role="menuitem"]');
+    if (mi && /^(ArrowUp|ArrowDown|Home|End)$/.test(ev.key)) {
+      const items = [...this.el.querySelectorAll('.until-menu [role="menuitem"]:not(:disabled)')], i = items.indexOf(mi);
+      const next = ev.key === "Home" ? 0 : ev.key === "End" ? items.length - 1 : (i + (ev.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+      ev.preventDefault(); items[next].focus(); return;
+    }
+    // the screen tabs: left and right move along them and open the screen
+    const tab = t.closest && t.closest('[role="tab"]');
+    if (tab && /^(ArrowLeft|ArrowRight|Home|End)$/.test(ev.key)) {
+      const ids = ["city", "lab", "clinic", "office"], i = ids.indexOf(tab.dataset.screen);
+      const next = ev.key === "Home" ? 0 : ev.key === "End" ? 3 : (i + (ev.key === "ArrowRight" ? 1 : -1) + 4) % 4;
+      ev.preventDefault(); return this.go(ids[next]);
+    }
+    const b = t.closest && t.closest(".zb");
     if (!b || !/^Arrow/.test(ev.key)) return;
     const AT = W.CityMap.AT, [cx, cy] = AT[b.dataset.z];
     const dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key];
@@ -701,7 +720,7 @@ W.Command = class {
     const tag = ev && ev.target && ev.target.tagName;
     if (k === "escape") {
       if (this.bannerOn) { this.hideBanner(); return true; }
-      if (this.untilOpen) { this.untilOpen = false; this.draw(); return true; }
+      if (this.untilOpen) { this.untilOpen = false; this.focusTo = "until"; this.draw(); return true; }
       if (this.armed) { this.armed = null; this.draw(); return true; }
       if (this.zoneId) { this.zoneId = null; this.draw(); return true; }
       if (this.screen !== "city") { this.go("city"); return true; }

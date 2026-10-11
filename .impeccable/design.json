@@ -1,0 +1,879 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-11T10:26:55.483Z",
+  "title": "Design System: PumaCity: Watchers",
+  "extensions": {
+    "colorMeta": {
+      "steel-face": {
+        "role": "neutral",
+        "displayName": "Steel Face",
+        "canonical": "#2b3447",
+        "oklch": "oklch(32.5% 0.036 264.8)",
+        "purpose": "Raised panel face.",
+        "tonalRamp": [
+          "#050a1a",
+          "#1c2537",
+          "#384256",
+          "#576176",
+          "#788299",
+          "#9aa5bc",
+          "#bec9e2",
+          "#e7efff"
+        ]
+      },
+      "steel-face-deep": {
+        "role": "neutral",
+        "displayName": "Steel Face Deep",
+        "canonical": "#232b3b",
+        "oklch": "oklch(28.9% 0.032 263.9)",
+        "purpose": "Inset sub-panels inside panels: dials, slots, roster cards, flag rows.",
+        "tonalRamp": [
+          "#050b18",
+          "#1d2535",
+          "#394253",
+          "#586174",
+          "#798396",
+          "#9ba5b9",
+          "#bfc9de",
+          "#e7efff"
+        ]
+      },
+      "bevel-light": {
+        "role": "neutral",
+        "displayName": "Bevel Light",
+        "canonical": "#5a6a88",
+        "oklch": "oklch(52.3% 0.051 262.8)",
+        "purpose": "Top-left edge of raised surfaces; bottom-right of sunk ones.",
+        "tonalRamp": [
+          "#020920",
+          "#17243e",
+          "#33425e",
+          "#52617f",
+          "#7283a2",
+          "#94a6c6",
+          "#b8caec",
+          "#e7effe"
+        ]
+      },
+      "bevel-dark": {
+        "role": "neutral",
+        "displayName": "Bevel Dark",
+        "canonical": "#0c1018",
+        "oklch": "oklch(17.3% 0.018 263.9)",
+        "purpose": "Bottom-right edge of raised surfaces; top-left of sunk ones.",
+        "tonalRamp": [
+          "#070b13",
+          "#21252e",
+          "#3d424c",
+          "#5c616c",
+          "#7d828d",
+          "#9fa5b1",
+          "#c3c9d5",
+          "#e8effb"
+        ]
+      },
+      "slate-ground": {
+        "role": "neutral",
+        "displayName": "Slate Ground",
+        "canonical": "#0b0f17",
+        "oklch": "oklch(16.8% 0.018 263.9)",
+        "purpose": "The screen behind the panels.",
+        "tonalRamp": [
+          "#070b13",
+          "#21252e",
+          "#3d424c",
+          "#5c616c",
+          "#7d828e",
+          "#9fa5b1",
+          "#c3c9d5",
+          "#e8effb"
+        ]
+      },
+      "inset": {
+        "role": "neutral",
+        "displayName": "Inset Slate",
+        "canonical": "#121822",
+        "oklch": "oklch(20.8% 0.022 260.5)",
+        "purpose": "Scrollbar track; figure backdrop.",
+        "tonalRamp": [
+          "#060b14",
+          "#1f2530",
+          "#3b424e",
+          "#5a626e",
+          "#7b8390",
+          "#9da6b3",
+          "#c1cad8",
+          "#e6effe"
+        ]
+      },
+      "well": {
+        "role": "neutral",
+        "displayName": "Black Well",
+        "canonical": "#070a10",
+        "oklch": "oklch(14.4% 0.014 262.1)",
+        "purpose": "Sunk readouts: LCDs, gauge and slider tracks, selects, progress bars.",
+        "tonalRamp": [
+          "#080b11",
+          "#21252c",
+          "#3e424a",
+          "#5d616a",
+          "#7e838b",
+          "#a0a5ae",
+          "#c4c9d3",
+          "#e9eff8"
+        ]
+      },
+      "steel-button": {
+        "role": "neutral",
+        "displayName": "Steel Plate",
+        "canonical": "#3a4660",
+        "oklch": "oklch(39.5% 0.047 265.2)",
+        "purpose": "Default button face.",
+        "tonalRamp": [
+          "#03091f",
+          "#1a243c",
+          "#36425b",
+          "#54617d",
+          "#75829f",
+          "#97a5c3",
+          "#bac9e9",
+          "#e7effe"
+        ]
+      },
+      "steel-button-hover": {
+        "role": "neutral",
+        "displayName": "Steel Plate Lit",
+        "canonical": "#46546f",
+        "oklch": "oklch(44.5% 0.048 263.2)",
+        "purpose": "Default button hover.",
+        "tonalRamp": [
+          "#030a1f",
+          "#19253c",
+          "#35425c",
+          "#53617d",
+          "#7383a0",
+          "#95a5c4",
+          "#b9cae9",
+          "#e6efff"
+        ]
+      },
+      "steel-button-bevel": {
+        "role": "neutral",
+        "displayName": "Steel Plate Edge",
+        "canonical": "#6d7d9c",
+        "oklch": "oklch(58.8% 0.051 263.5)",
+        "purpose": "Light edge of the default button bevel.",
+        "tonalRamp": [
+          "#020920",
+          "#18243e",
+          "#34425e",
+          "#52617f",
+          "#7283a2",
+          "#95a5c6",
+          "#b8caec",
+          "#e7effe"
+        ]
+      },
+      "steel-disabled": {
+        "role": "neutral",
+        "displayName": "Dead Steel",
+        "canonical": "#262e3e",
+        "oklch": "oklch(30.1% 0.031 263.9)",
+        "purpose": "Disabled button face.",
+        "tonalRamp": [
+          "#050b18",
+          "#1d2534",
+          "#3a4253",
+          "#586174",
+          "#798396",
+          "#9ba5b9",
+          "#bfc9de",
+          "#e7effe"
+        ]
+      },
+      "divider": {
+        "role": "neutral",
+        "displayName": "Row Rule",
+        "canonical": "#3a4558",
+        "oklch": "oklch(38.9% 0.036 261.3)",
+        "purpose": "1px rules between list rows.",
+        "tonalRamp": [
+          "#040b1a",
+          "#1b2536",
+          "#374255",
+          "#566276",
+          "#778398",
+          "#99a6bc",
+          "#bccae1",
+          "#e6efff"
+        ]
+      },
+      "chip-dark": {
+        "role": "neutral",
+        "displayName": "Chip Slate",
+        "canonical": "#151a24",
+        "oklch": "oklch(21.8% 0.021 264.0)",
+        "purpose": "Neutral badges, empty cells, reserve chips.",
+        "tonalRamp": [
+          "#070b14",
+          "#202530",
+          "#3c424e",
+          "#5b616e",
+          "#7c838f",
+          "#9ea5b3",
+          "#c2c9d7",
+          "#e7effd"
+        ]
+      },
+      "text-bright": {
+        "role": "neutral",
+        "displayName": "Bright Text",
+        "canonical": "#eef2f8",
+        "oklch": "oklch(96.0% 0.009 258.3)",
+        "purpose": "Names, values, button labels, white pixel headings.",
+        "tonalRamp": [
+          "#090b0f",
+          "#22252a",
+          "#3f4247",
+          "#5e6166",
+          "#7f8388",
+          "#a2a5ab",
+          "#c5c9cf",
+          "#ebeff5"
+        ]
+      },
+      "text-body": {
+        "role": "neutral",
+        "displayName": "Body Text",
+        "canonical": "#c3cbdb",
+        "oklch": "oklch(84.1% 0.024 264.4)",
+        "purpose": "Running prose.",
+        "tonalRamp": [
+          "#060b15",
+          "#1f2531",
+          "#3c424f",
+          "#5a616f",
+          "#7b8291",
+          "#9ea5b5",
+          "#c1c9d9",
+          "#e6efff"
+        ]
+      },
+      "text-quiet": {
+        "role": "neutral",
+        "displayName": "Quiet Text",
+        "canonical": "#9aa6bd",
+        "oklch": "oklch(72.3% 0.036 263.5)",
+        "purpose": "Metadata, hints, captions, LCD labels.",
+        "tonalRamp": [
+          "#040a1a",
+          "#1c2537",
+          "#384256",
+          "#576176",
+          "#778399",
+          "#99a5bc",
+          "#bdcae1",
+          "#e6efff"
+        ]
+      },
+      "live-orange": {
+        "role": "primary",
+        "displayName": "Live Orange",
+        "canonical": "#ff9a2e",
+        "oklch": "oklch(77.5% 0.164 61.6)",
+        "purpose": "Anything the player can press now; LCD digits; panel heading titles.",
+        "tonalRamp": [
+          "#150700",
+          "#381e03",
+          "#623500",
+          "#8c510e",
+          "#ba6d16",
+          "#ec890c",
+          "#fcb97f",
+          "#feeada"
+        ]
+      },
+      "live-orange-hover": {
+        "role": "primary",
+        "displayName": "Live Orange Lit",
+        "canonical": "#ffab50",
+        "oklch": "oklch(80.7% 0.144 65.2)",
+        "purpose": "Go button hover.",
+        "tonalRamp": [
+          "#140800",
+          "#371e02",
+          "#5d380c",
+          "#89530d",
+          "#b66f15",
+          "#e29030",
+          "#feb974",
+          "#ffebd8"
+        ]
+      },
+      "live-orange-hi": {
+        "role": "primary",
+        "displayName": "Orange Edge Light",
+        "canonical": "#ffc27a",
+        "oklch": "oklch(85.4% 0.113 69.9)",
+        "purpose": "Light edge of orange bevels; link hover.",
+        "tonalRamp": [
+          "#140800",
+          "#362002",
+          "#5b3a0c",
+          "#86550c",
+          "#ad7529",
+          "#d29850",
+          "#f9bc74",
+          "#ffebd5"
+        ]
+      },
+      "live-orange-lo": {
+        "role": "primary",
+        "displayName": "Orange Edge Dark",
+        "canonical": "#7a4008",
+        "oklch": "oklch(43.6% 0.101 56.6)",
+        "purpose": "Dark edge of orange bevels.",
+        "tonalRamp": [
+          "#160700",
+          "#3a1c03",
+          "#653301",
+          "#8c501f",
+          "#b07242",
+          "#d69464",
+          "#fcb887",
+          "#feeadc"
+        ]
+      },
+      "ink-on-orange": {
+        "role": "primary",
+        "displayName": "Ink on Orange",
+        "canonical": "#1c0d00",
+        "oklch": "oklch(17.7% 0.039 67.6)",
+        "purpose": "Text on orange plates and badges.",
+        "tonalRamp": [
+          "#140800",
+          "#32210f",
+          "#503e2b",
+          "#705d4a",
+          "#937e6a",
+          "#b6a18c",
+          "#dbc5af",
+          "#ffebd6"
+        ]
+      },
+      "benton-gold": {
+        "role": "secondary",
+        "displayName": "Benton Gold",
+        "canonical": "#f2c230",
+        "oklch": "oklch(83.4% 0.158 89.0)",
+        "purpose": "Casey Benton's control; dial hold marker; quote attribution.",
+        "tonalRamp": [
+          "#5c4426",
+          "#8a6a3e",
+          "#8f6a22",
+          "#b8862a",
+          "#c7921c",
+          "#dda21f",
+          "#f2c230",
+          "#ffd95a"
+        ]
+      },
+      "control-l0": {
+        "role": "secondary",
+        "displayName": "Control L0 Ochre",
+        "canonical": "#8a6a3e",
+        "oklch": "oklch(54.6% 0.073 74.1)",
+        "purpose": "Level 0 chips and gauge start.",
+        "tonalRamp": [
+          "#5c4426",
+          "#8a6a3e",
+          "#8f6a22",
+          "#b8862a",
+          "#c7921c",
+          "#dda21f",
+          "#f2c230",
+          "#ffd95a"
+        ]
+      },
+      "control-l1": {
+        "role": "secondary",
+        "displayName": "Control L1 Amber",
+        "canonical": "#b8862a",
+        "oklch": "oklch(65.4% 0.121 78.3)",
+        "purpose": "Level 1 chips.",
+        "tonalRamp": [
+          "#5c4426",
+          "#8a6a3e",
+          "#8f6a22",
+          "#b8862a",
+          "#c7921c",
+          "#dda21f",
+          "#f2c230",
+          "#ffd95a"
+        ]
+      },
+      "control-l2": {
+        "role": "secondary",
+        "displayName": "Control L2 Gold",
+        "canonical": "#dda21f",
+        "oklch": "oklch(74.9% 0.148 80.9)",
+        "purpose": "Level 2 chips.",
+        "tonalRamp": [
+          "#5c4426",
+          "#8a6a3e",
+          "#8f6a22",
+          "#b8862a",
+          "#c7921c",
+          "#dda21f",
+          "#f2c230",
+          "#ffd95a"
+        ]
+      },
+      "control-l3": {
+        "role": "secondary",
+        "displayName": "Control L3 Bright Gold",
+        "canonical": "#f2c230",
+        "oklch": "oklch(83.4% 0.158 89.0)",
+        "purpose": "Level 3 chips and gauge end.",
+        "tonalRamp": [
+          "#5c4426",
+          "#8a6a3e",
+          "#8f6a22",
+          "#b8862a",
+          "#c7921c",
+          "#dda21f",
+          "#f2c230",
+          "#ffd95a"
+        ]
+      },
+      "control-locked": {
+        "role": "secondary",
+        "displayName": "Locked Gold",
+        "canonical": "#ffd95a",
+        "oklch": "oklch(89.5% 0.149 92.4)",
+        "purpose": "Locked zones: chips, map crosshatch, map outline.",
+        "tonalRamp": [
+          "#5c4426",
+          "#8a6a3e",
+          "#8f6a22",
+          "#b8862a",
+          "#c7921c",
+          "#dda21f",
+          "#f2c230",
+          "#ffd95a"
+        ]
+      },
+      "cal-red": {
+        "role": "tertiary",
+        "displayName": "Cal Red",
+        "canonical": "#ff4552",
+        "oklch": "oklch(66.6% 0.221 22.1)",
+        "purpose": "Cal and lost ground: hazard stripes, front, war cells, urgent strip.",
+        "tonalRamp": [
+          "#1d0102",
+          "#4c010b",
+          "#7d0a1b",
+          "#b01f2f",
+          "#e92c40",
+          "#fa7676",
+          "#fcb3b0",
+          "#ffe9e7"
+        ]
+      },
+      "cal-red-text": {
+        "role": "tertiary",
+        "displayName": "Cal Red Text",
+        "canonical": "#ff8a8f",
+        "oklch": "oklch(76.3% 0.142 18.3)",
+        "purpose": "Red text on dark panels.",
+        "tonalRamp": [
+          "#1f0003",
+          "#4b0210",
+          "#7c0d23",
+          "#a23641",
+          "#c95a61",
+          "#f17d83",
+          "#fbb4b4",
+          "#fee9e8"
+        ]
+      },
+      "armed-red": {
+        "role": "tertiary",
+        "displayName": "Armed Red",
+        "canonical": "#7a1a22",
+        "oklch": "oklch(38.4% 0.130 21.7)",
+        "purpose": "Button armed for a destructive confirm.",
+        "tonalRamp": [
+          "#1d0103",
+          "#4c010b",
+          "#781821",
+          "#9e3c3f",
+          "#c45f5f",
+          "#eb8280",
+          "#fcb4b1",
+          "#ffe9e7"
+        ]
+      },
+      "watcher-cyan": {
+        "role": "tertiary",
+        "displayName": "Watcher Cyan",
+        "canonical": "#5ff0ff",
+        "oklch": "oklch(88.3% 0.124 204.8)",
+        "purpose": "Selection, focus, the squad, running research.",
+        "tonalRamp": [
+          "#000e10",
+          "#022b2f",
+          "#0d4b51",
+          "#0c6e77",
+          "#13939f",
+          "#33b9c6",
+          "#4be0ef",
+          "#caf9fe"
+        ]
+      },
+      "money-green": {
+        "role": "tertiary",
+        "displayName": "Money Green",
+        "canonical": "#9be36a",
+        "oklch": "oklch(84.2% 0.170 134.2)",
+        "purpose": "Money output; good outcomes; safe threat; control gained.",
+        "tonalRamp": [
+          "#040f00",
+          "#152c02",
+          "#294d0a",
+          "#3d7108",
+          "#53970e",
+          "#75bb41",
+          "#99e168",
+          "#d3feb9"
+        ]
+      },
+      "research-blue": {
+        "role": "tertiary",
+        "displayName": "Research Blue",
+        "canonical": "#6fd8ff",
+        "oklch": "oklch(83.4% 0.111 224.9)",
+        "purpose": "Research output on LCDs and the split slider.",
+        "tonalRamp": [
+          "#000d14",
+          "#022a36",
+          "#0d495c",
+          "#0c6b88",
+          "#1290b4",
+          "#47b3d9",
+          "#7cd7fa",
+          "#d9f4ff"
+        ]
+      },
+      "dark-corner": {
+        "role": "tertiary",
+        "displayName": "Dark Corner Violet",
+        "canonical": "#6a4a78",
+        "oklch": "oklch(46.2% 0.082 315.2)",
+        "purpose": "Bevel of the dark-corner research tree; dark options only.",
+        "tonalRamp": [
+          "#16001f",
+          "#341640",
+          "#523360",
+          "#735281",
+          "#9573a4",
+          "#b996c9",
+          "#debaee",
+          "#f8e8ff"
+        ]
+      },
+      "dark-corner-text": {
+        "role": "tertiary",
+        "displayName": "Dark Corner Pink",
+        "canonical": "#ffb0e8",
+        "oklch": "oklch(84.9% 0.116 337.9)",
+        "purpose": "Dark events and dark flags text.",
+        "tonalRamp": [
+          "#1a0114",
+          "#450038",
+          "#672457",
+          "#8a4478",
+          "#ae669a",
+          "#d488be",
+          "#faace4",
+          "#fee7f6"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Pixel Display",
+        "purpose": "Brand mark and the selected Watcher's name: pixel face at scale 3 (21px). Banners use scale 4 (28px).",
+        "source": "js/ui/pixfont.js: 5x7 bitmap, capitals only, proportional, 1px drop shadow from --px-shadow."
+      },
+      "headline": {
+        "displayName": "Pixel Headline",
+        "purpose": "Panel headings, zone names, screen-bar labels, map labels and tags: scale 2 (14px)."
+      },
+      "lcd": {
+        "displayName": "Pixel LCD",
+        "purpose": "Day, cash, the day's take: scale 2 with unlit 8s ghosted behind each digit (--px-ghost)."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Mission names in offers."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default command-screen text, tabular figures."
+      },
+      "body-small": {
+        "displayName": "Body Small",
+        "purpose": "Rows, hints, blurbs, list items."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Every button label."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase tracked list subheads, dial labels, level chips."
+      },
+      "label-lcd": {
+        "displayName": "LCD Caption",
+        "purpose": "Uppercase caption over an LCD readout."
+      }
+    },
+    "goldStops": {
+      "purpose": "The satellite map's control ramp (js/ui/citymap.js STOPS): zone fill blends continuously between stops by control 0 to 4; the last stop is locked. Darker than the chip ramp so the satellite ground shows through.",
+      "values": [
+        "#5c4426",
+        "#8f6a22",
+        "#c7921c",
+        "#f2c230",
+        "#ffd95a"
+      ]
+    },
+    "bevels": [
+      {
+        "name": "raised",
+        "value": "border:2px solid; border-color: var(--hi) var(--lo) var(--lo) var(--hi)",
+        "purpose": "Panels, buttons, tabs, offers, slots, toast."
+      },
+      {
+        "name": "sunk",
+        "value": "border:2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo)",
+        "purpose": "LCDs, tracks, map slot, figure, scene, selected tab, pressed button."
+      },
+      {
+        "name": "orange",
+        "value": "border-color: #ffc27a #7a4008 #7a4008 #ffc27a",
+        "purpose": "Go buttons, slider thumbs, recommended offer."
+      },
+      {
+        "name": "cal",
+        "value": "border-color: #7a3a42 #200a0e #200a0e #7a3a42",
+        "purpose": "Cal's panel."
+      },
+      {
+        "name": "armed",
+        "value": "border-color: #ff7a84 #3a060a #3a060a #ff7a84",
+        "purpose": "Armed button; red banner."
+      },
+      {
+        "name": "dark-corner",
+        "value": "border-color: #6a4a78 #120816 #120816 #6a4a78",
+        "purpose": "Dark-corner research panel."
+      }
+    ],
+    "patterns": [
+      {
+        "name": "hazard-stripes",
+        "value": "repeating-linear-gradient(45deg,#ff4552 0 2px,#3a0a10 2px 4px)",
+        "purpose": "Lost zones (legend swatch; the map draws the same diagonal)."
+      },
+      {
+        "name": "gold-crosshatch",
+        "value": "repeating-linear-gradient(45deg,#ffd95a 0 2px,#8a6a10 2px 4px)",
+        "purpose": "Locked zones."
+      },
+      {
+        "name": "gauge-fill",
+        "value": "linear-gradient(90deg,#8a6a3e,#b8862a 30%,#dda21f 60%,#f2c230)",
+        "purpose": "Control gauge in the dossier."
+      }
+    ],
+    "shadows": [
+      {
+        "name": "floating-menu",
+        "value": "0 10px 24px rgba(0,0,0,.5)",
+        "purpose": "The Until menu only."
+      },
+      {
+        "name": "banner",
+        "value": "0 18px 40px rgba(0,0,0,.6)",
+        "purpose": "Red and gold announcement banners."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(.16,1,.3,1)",
+        "purpose": "Banner entry, toast, new war-meter cells."
+      },
+      {
+        "name": "banner-in",
+        "value": ".35s, scaleY(.6) and opacity 0 to rest",
+        "purpose": "Banners open like a CRT line."
+      },
+      {
+        "name": "cell-flash",
+        "value": "1.2s, white to red, scaleY 1.6 to 1",
+        "purpose": "A war-meter cell earned today."
+      },
+      {
+        "name": "toast",
+        "value": ".2s opacity and a 20px rise",
+        "purpose": "Toast in and out."
+      },
+      {
+        "name": "press",
+        "value": "translateY(1px) with the bevel flipped",
+        "purpose": "Button held down. All of these are removed under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "narrow-desktop",
+        "value": "1180px",
+        "purpose": "City folds to two columns, the Clinic drops the armoury below, screens scroll. Desktop only: no phone or tablet breakpoints."
+      }
+    ],
+    "constraints": [
+      "Desktop only, mouse and keyboard, by the author's decision (2026-10-10).",
+      "Nothing is downloaded at play time: no web fonts, images or icon packages. The pixel face and screen-bar icons are bitmaps in js/ui/pixfont.js; the map, the Clinic figure and the office scene are canvas drawings.",
+      "Scope: the command screens under .cx and .cx-layer. The mission HUD, title, briefing and debrief still use css/gk-tokens.css and css/watchers.css and have not been moved to this system."
+    ]
+  },
+  "components": [
+    {
+      "name": "Steel Button",
+      "kind": "button",
+      "refersTo": "button-steel",
+      "description": "Default action: a steel plate that presses in.",
+      "html": "<button class=\"ds-btn\">Close</button>",
+      "css": ".ds-btn{font:600 13px/1.2 \"Segoe UI Variable Text\",\"Segoe UI\",system-ui,-apple-system,\"Helvetica Neue\",Roboto,sans-serif;letter-spacing:.02em;color:#eef2f8;background:#3a4660;border:2px solid;border-color:#6d7d9c #0c1018 #0c1018 #6d7d9c;border-radius:0;padding:6px 12px;min-height:34px;cursor:pointer}.ds-btn:hover{background:#46546f}.ds-btn:active{border-color:#0c1018 #6d7d9c #6d7d9c #0c1018;transform:translateY(1px)}.ds-btn:focus-visible{outline:2px solid #5ff0ff;outline-offset:2px}"
+    },
+    {
+      "name": "Go Button",
+      "kind": "button",
+      "refersTo": "button-go",
+      "description": "The thing to do next: one per context.",
+      "html": "<button class=\"ds-btn-go\">Wait a day</button>",
+      "css": ".ds-btn-go{font:600 14px/1.2 \"Segoe UI Variable Text\",\"Segoe UI\",system-ui,-apple-system,\"Helvetica Neue\",Roboto,sans-serif;letter-spacing:.02em;color:#1c0d00;background:#ff9a2e;border:2px solid;border-color:#ffc27a #7a4008 #7a4008 #ffc27a;border-radius:0;padding:6px 16px;min-height:42px;cursor:pointer}.ds-btn-go:hover{background:#ffab50}.ds-btn-go:active{border-color:#7a4008 #ffc27a #ffc27a #7a4008;transform:translateY(1px)}.ds-btn-go:focus-visible{outline:2px solid #5ff0ff;outline-offset:2px}"
+    },
+    {
+      "name": "Link Button",
+      "kind": "button",
+      "refersTo": "button-link",
+      "description": "Secondary navigation inside a panel.",
+      "html": "<button class=\"ds-link\">Show missions in every zone (15)</button>",
+      "css": ".ds-link{font:600 13px/1.2 \"Segoe UI Variable Text\",\"Segoe UI\",system-ui,-apple-system,\"Helvetica Neue\",Roboto,sans-serif;background:none;border:0;color:#ff9a2e;padding:4px 0;min-height:28px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}.ds-link:hover{color:#ffc27a}.ds-link:focus-visible{outline:2px solid #5ff0ff;outline-offset:2px}"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Raised steel panel with a pixel heading. In the build the pixel face is a canvas bitmap (js/ui/pixfont.js); this snippet approximates it with tracked bold capitals.",
+      "html": "<section class=\"ds-panel\"><h2 class=\"ds-px\">MISSIONS</h2><p>Squad tier 1. Lynx, Manx, Sphynx, Calico.</p></section>",
+      "css": ".ds-panel{background:#2b3447;border:2px solid;border-color:#5a6a88 #0c1018 #0c1018 #5a6a88;padding:12px 14px;color:#c3cbdb;font:14px/1.45 \"Segoe UI Variable Text\",\"Segoe UI\",system-ui,-apple-system,\"Helvetica Neue\",Roboto,sans-serif;font-variant-numeric:tabular-nums;border-radius:0}.ds-panel p{margin:6px 0 0;font-size:13px}.ds-px{margin:0;font:700 14px/1 \"Segoe UI Variable Text\",\"Segoe UI\",system-ui,-apple-system,\"Helvetica Neue\",Roboto,sans-serif;letter-spacing:.14em;color:#ff9a2e;text-shadow:1px 1px 0 #140800}"
+    },
+    {
+      "name": "LCD Readout",
+      "kind": "custom",
+      "refersTo": "lcd",
+      "description": "Sunk black well with a caption over orange pixel digits. In the build the pixel face is a canvas bitmap (js/ui/pixfont.js); this snippet approximates it with tracked bold capitals.",
+      "html": "<div class=\"ds-lcd\"><small>Cash</small><b>$187,250</b></div>",
+      "css": ".ds-lcd{display:inline-flex;flex-direction:column;justify-content:center;gap:4px;background:#070a10;border:2px solid;border-color:#0c1018 #5a6a88 #5a6a88 #0c1018;padding:5px 10px;min-height:48px}.ds-lcd small{font:11px \"Segoe UI Variable Text\",\"Segoe UI\",system-ui,-apple-system,\"Helvetica Neue\",Roboto,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#9aa6bd}.ds-lcd b{font:700 16px/1 \"Segoe UI Variable Text\",\"Segoe UI\",system-ui,-apple-system,\"Helvetica Neue\",Roboto,sans-serif;letter-spacing:.08em;color:#ff9a2e;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Screen Tab",
+      "kind": "nav",
+      "refersTo": "screen-tab",
+      "description": "Screen bar tab: raised at rest, sunk with an orange label when selected. In the build the pixel face is a canvas bitmap (js/ui/pixfont.js); this snippet approximates it with tracked bold capitals.",
+      "html": "<nav class=\"ds-bar\" role=\"tablist\"><button class=\"ds-tab\" role=\"tab\" aria-selected=\"true\">CITY <kbd>1</kbd></button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">LAB <kbd>2</kbd></button></nav>",
+      "css": ".ds-bar{display:grid;grid-template-columns:repeat(2,1fr);gap:4px;padding:6px;background:#161c28}.ds-tab{display:flex;justify-content:space-between;align-items:center;min-height:50px;padding:6px 12px;font:700 14px/1 \"Segoe UI Variable Text\",\"Segoe UI\",system-ui,-apple-system,\"Helvetica Neue\",Roboto,sans-serif;letter-spacing:.12em;color:#eef2f8;background:#2b3447;border:2px solid;border-color:#5a6a88 #0c1018 #0c1018 #5a6a88;border-radius:0;cursor:pointer}.ds-tab:hover{background:#323d53}.ds-tab[aria-selected=true]{background:#45536e;color:#ff9a2e;border-color:#0c1018 #5a6a88 #5a6a88 #0c1018}.ds-tab:focus-visible{outline:2px solid #5ff0ff;outline-offset:2px}.ds-tab kbd{font:700 11px/1 \"Segoe UI Variable Text\",\"Segoe UI\",system-ui,-apple-system,\"Helvetica Neue\",Roboto,sans-serif;border:1px solid currentColor;padding:2px 4px;opacity:.7}"
+    },
+    {
+      "name": "Level Chip",
+      "kind": "chip",
+      "refersTo": "level-chip",
+      "description": "Zone control level on the gold ramp; red when lost.",
+      "html": "<span class=\"ds-lvl ds-l2\">LEVEL 2</span> <span class=\"ds-lvl ds-ls\">LOST</span>",
+      "css": ".ds-lvl{font:700 12px \"Segoe UI Variable Text\",\"Segoe UI\",system-ui,-apple-system,\"Helvetica Neue\",Roboto,sans-serif;letter-spacing:.06em;padding:3px 7px;color:#1a1204}.ds-l2{background:#dda21f}.ds-ls{background:#ff4552;color:#fff}"
+    },
+    {
+      "name": "Slider Bar",
+      "kind": "input",
+      "refersTo": "select",
+      "description": "Syndicate's slider: a sunk well track and an orange bevelled thumb.",
+      "html": "<input class=\"ds-range\" type=\"range\" min=\"0\" max=\"10\" value=\"4\" aria-label=\"City split\">",
+      "css": ".ds-range{-webkit-appearance:none;appearance:none;width:240px;height:22px;background:transparent;margin:0}.ds-range::-webkit-slider-runnable-track{height:10px;background:#070a10;border:2px solid;border-color:#0c1018 #5a6a88 #5a6a88 #0c1018}.ds-range::-moz-range-track{height:10px;background:#070a10;border:2px solid;border-color:#0c1018 #5a6a88 #5a6a88 #0c1018}.ds-range::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:22px;margin-top:-8px;background:#ff9a2e;border:2px solid;border-color:#ffc27a #7a4008 #7a4008 #ffc27a;cursor:grab}.ds-range::-moz-range-thumb{width:16px;height:22px;border-radius:0;background:#ff9a2e;border:2px solid;border-color:#ffc27a #7a4008 #7a4008 #ffc27a;cursor:grab}.ds-range:focus-visible{outline:2px solid #5ff0ff;outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Syndicate Console",
+    "overview": "The campaign command screens are an operator's console from 1993, rebuilt in the browser: bevelled steel-blue panels lit from the top left, sitting on a near-black slate ground, with orange marking anything you can press now. The city is the board. A satellite map of PumaCity fills the left of the City screen at full height, its zones tinted Benton gold as control rises and cut by Cal's red where ground is lost. Everything else on the screen is a panel bolted beside it: the dossier, the dial, the missions, the dispatch.\n\nThe display voice is a 5x7 pixel face drawn from a bitmap in code. It carries the brand, panel headings, the screen bar and the LCD readouts, where unlit 8s sit behind every digit like a segment display. Data, prose and controls are in a plain system sans with tabular figures, so numbers line up and long text stays readable. Density is high and deliberate: the target player is a Syndicate veteran who is at home in tight tactical UI, on a desktop, with a mouse and keyboard.\n\nScope. This system governs the command screens (City, Lab, Clinic and Armoury, Casey's Office, the top bar, banners and toast), scoped under `.cx` and `.cx-layer` in `css/command.css`. It is the game's design direction. The mission HUD, title, briefing and debrief screens are pre-existing and still use the older greykit Tactical tokens (`css/gk-tokens.css`, `css/watchers.css`: monospace, navy, cyan); they have not been moved to this system yet, and nothing here describes them.",
+    "keyCharacteristics": [
+      "Bevel, not shadow: every surface is either raised (light top-left edge, dark bottom-right) or sunk (the reverse).",
+      "Square corners everywhere (0px).",
+      "Orange means \"press this\"; gold means control; red means Cal; cyan means selected or ours.",
+      "Pixel capitals for titles and readouts, system sans with tabular figures for data.",
+      "Desktop only, by the author's decision. No phone or tablet layout exists or is planned.",
+      "Self-contained: no web fonts, images or other assets are fetched at play time. The pixel face, the screen-bar icons, the map, the Clinic figure and Casey's office are all drawn in code."
+    ],
+    "rules": [
+      {
+        "name": "The One Meaning Rule",
+        "body": "Each signal colour keeps its meaning. Orange is live: what you can press now, and the console's own voice in headings and LCDs; as a status it means caution (hard threat, warnings). Gold is Benton control and what it buys. Red is Cal, loss and deadly. Cyan is selection, the squad and what is running. Never use red for an ordinary action, or cyan for a button.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Golds Rule",
+        "body": "The map tints zones with a darker ramp blended continuously from control (sidecar `goldStops`), so the satellite ground shows through; chips and gauges use the brighter control-l0 to control-l3 so labels on them stay legible. Both ramps end at the same benton-gold.",
+        "section": "colors"
+      },
+      {
+        "name": "The Pixel Is Voice, Not Data Rule",
+        "body": "The pixel face is for headings, tab labels, LCD numbers and map labels, never for paragraphs, lists or anything the player must read at length. Every pixel heading carries its real text for screen readers (a visually hidden span beside an aria-hidden canvas).",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "All command-screen text uses tabular figures, so money, days and points line up in columns.",
+        "section": "typography"
+      },
+      {
+        "name": "The Light From Top-Left Rule",
+        "body": "Raised is light top-left, dark bottom-right; sunk is the reverse; pressed flips a raised control to sunk. Never mix the directions on one screen.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Floating Only Rule",
+        "body": "Soft drop shadows appear only on layers that float over the screen (menu, banners). Panels sitting in the layout never cast one.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** bevel every surface with a 2px border, light top-left and dark bottom-right; flip it to show sunk or pressed.",
+      "**Do** keep orange for things the player can press now, and give each panel one orange \"go\" button at most.",
+      "**Do** set headings, tab labels, LCD numbers and map labels in the pixel face, at scale 2 (scale 3 for the brand and a Watcher's name), with real text beside the canvas for readers.",
+      "**Do** set data in the system sans with tabular figures, 13 to 14px.",
+      "**Do** use the gold ramp for control level only, and red with hazard stripes for anything Cal holds or has taken.",
+      "**Do** draw any new glyph, icon or illustration in code (bitmap or canvas); nothing is fetched at play time."
+    ],
+    "donts": [
+      "**Don't** round corners; everything is 0px.",
+      "**Don't** put soft drop shadows on panels that sit in the layout; shadows are for floating layers only.",
+      "**Don't** load web fonts, image files or icon packages; the pixel face lives in `js/ui/pixfont.js`.",
+      "**Don't** set paragraphs or long lists in the pixel face.",
+      "**Don't** design phone or tablet layouts; the game is desktop only.",
+      "**Don't** restyle the mission, title, briefing or debrief screens by borrowing tokens from here piecemeal; moving them is a separate, whole-screen job."
+    ]
+  }
+}

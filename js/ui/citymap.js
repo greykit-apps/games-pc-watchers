@@ -19,7 +19,7 @@
 
 (() => {
   // the zones are planned on 400x500; the view takes in the country round them, the sea and the hills
-  const VX = -90, VY = -40, VW = 640, VH = 650;
+  const VX = -150, VY = -80, VW = 700, VH = 700;
   // the zones, along the roads, the creek and the coast
   const ZP = {
     expo: [[110, 30], [170, 22], [222, 30], [234, 70], [232, 106], [200, 115], [170, 120], [150, 130], [118, 133], [98, 122], [90, 98], [96, 62]],
@@ -38,11 +38,11 @@
   };
   // each zone's pin, and where its name goes: on it, or out in the hills or the bay on a leader line where it's too small
   const AT = { expo: [162, 74], ranch: [318, 66], vault: [136, 222], maple: [240, 206], juniper: [348, 214], starport: [140, 398], lantern: [228, 372], towers: [326, 334], oldtown: [316, 440] };
-  const TAG = Object.assign({}, AT, { vault: [10, 238], maple: [228, 210], juniper: [356, 214], starport: [12, 398], lantern: [226, 560], towers: [436, 318] });
+  const TAG = Object.assign({}, AT, { expo: [-10, 40], vault: [-40, 232], juniper: [480, 196], starport: [-40, 410], lantern: [210, 572], towers: [480, 322], oldtown: [440, 520] });
   LABEL.towers = ["THE", "TOWERS"];
 
   // the coast, north to south, and the creek, east to west
-  const COAST = [[150, -60], [136, -30], [124, 0], [106, 30], [88, 62], [80, 98], [92, 126], [86, 160], [74, 200], [80, 240], [96, 270], [108, 300], [98, 330], [84, 360], [68, 392], [82, 420], [106, 442], [114, 470], [104, 500], [92, 540], [86, 580], [96, 620], [108, 680]];
+  const COAST = [[170, -100], [150, -60], [136, -30], [124, 0], [106, 30], [88, 62], [80, 98], [92, 126], [86, 160], [74, 200], [80, 240], [96, 270], [108, 300], [98, 330], [84, 360], [68, 392], [82, 420], [106, 442], [114, 470], [104, 500], [92, 540], [86, 580], [96, 620], [108, 680], [120, 740]];
   const CREEK = [[400, 292], [362, 298], [330, 290], [300, 302], [262, 299], [230, 310], [196, 305], [160, 314], [128, 308], [104, 300]];
   const coastX = y => { for (let i = 1; i < COAST.length; i++) if (y <= COAST[i][1]) { const [x0, y0] = COAST[i - 1], [x1, y1] = COAST[i]; return x0 + (x1 - x0) * (y - y0) / (y1 - y0); } return COAST[COAST.length - 1][0]; };
 
@@ -135,7 +135,8 @@
       }
       const fresh = now - this.flashT < 1400 || (this.calIn && now - this.calIn.t < 1000);
       const live = !reduced() && (this.s.cal.zone || (this.s.cal.revealed && this.s.cal.next));
-      if (moving || fresh || live || this.dirty) { this.draw(now); this.dirty = false; }
+      // the dispatch and the easing run every frame; Cal's pulse alone gets 30 a second
+      if (moving || fresh || this.dirty || (live && now - (this.lastDraw || 0) > 33)) { this.draw(now); this.dirty = false; this.lastDraw = now; }
       if (moving || fresh || live) this.raf = requestAnimationFrame(this.loop);
     }
 
@@ -290,12 +291,27 @@
         R(140, 330, 50, 10, "#55565a");
         c.fillStyle = "#e8e6e0"; c.beginPath(); c.moveTo(142, 335); c.lineTo(178, 331); c.lineTo(186, 335); c.lineTo(178, 339); c.closePath(); c.fill();   // the Moonsugar
         R(180, 332, 5, 6, "#9aa0aa");
-        for (let y = 350; y < 470; y += 16) for (let x = 146; x < 190; x += 14) { R(x, y, 10, 11, "#9a9a96"); R(x, y + 11, 10, 2, "rgba(0,0,0,.3)"); }
+        for (let y = 350; y < 470; y += 15) for (let x = 146; x < 192; x += 12 + Math.floor(rnd() * 6)) { if (rnd() < 0.15) continue; const w = 7 + rnd() * 7, h = 8 + rnd() * 5; R(x, y, w, h, pick(["#9a9a96", "#a8a49a", "#8a8e94", "#b0aca2"])); R(x, y + h, w, 1.6, "rgba(0,0,0,.3)"); }
       });
       R(80, 370, 14, 3, "#8a8070");                                               // a pier into the bay
 
-      // the country round it: a few farms in the hills, and tracks out to them
-      for (const [fx, fy, n] of [[430, 30, 6], [420, 560, 5], [250, 590, 4], [-10, -30, 0], [440, 200, 4]]) {
+      // where two zones meet, a street: every shared edge drawn as one
+      for (const [ia, A] of Object.entries(ZP)) for (let i = 0; i < A.length; i++) {
+        const a = A[i], b = A[(i + 1) % A.length], key = `${a}|${b}`;
+        for (const [ib, B] of Object.entries(ZP)) {
+          if (ib <= ia) continue;
+          const has = q => B.some(v => v[0] === q[0] && v[1] === q[1]);
+          if (has(a) && has(b)) { line([a, b], 8, "rgba(30,30,32,.6)"); line([a, b], 6.6, "#aaa596"); }
+        }
+        void key;
+      }
+
+      // the country round it: a few farms in the hills, a reservoir, a village up the valley, and tracks out to them
+      c.fillStyle = "#2f5f6c"; c.beginPath(); c.ellipse(470, 120, 26, 12, -0.5, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = "rgba(200,200,190,.35)"; c.lineWidth = 1; c.stroke();
+      for (let i = 0; i < 40; i++) { const a = rnd() * Math.PI * 2, r = rnd() * 16; R(500 + Math.cos(a) * r * 1.4, 470 + Math.sin(a) * r, 2.6, 2.6, pick(["#a8664a", "#c9c2b2", "#8a8682"])); }
+      line([[430, 570], [470, 520], [500, 470], [540, 440]], 1.2, "#c9c4b6");
+      for (const [fx, fy, n] of [[430, 30, 6], [420, 560, 5], [250, 590, 4], [440, 200, 4], [300, -40, 5], [520, 300, 5], [80, 600, 4]]) {
         for (let i = 0; i < n; i++) {
           c.save(); c.translate(fx + (rnd() - 0.5) * 70, fy + (rnd() - 0.5) * 60); c.rotate((rnd() - 0.5) * 0.5);
           c.fillStyle = pick(["#6a7a3e", "#8a8a4a", "#a49452", "#5a6a36"]); c.globalAlpha = 0.85; c.fillRect(0, 0, 14 + rnd() * 18, 10 + rnd() * 14); c.globalAlpha = 1;
@@ -347,7 +363,7 @@
           c.strokeStyle = "rgba(255,69,82,.45)"; c.lineWidth = 3;
           for (let i = x0 - (y1 - y0); i < x1; i += 10) { c.beginPath(); c.moveTo(i, y1); c.lineTo(i + (y1 - y0), y0); c.stroke(); }
         } else {
-          c.globalAlpha = z.locked ? 0.4 : 0.16 + 0.08 * Math.min(3, C);
+          c.globalAlpha = z.locked ? 0.46 : 0.07 + 0.13 * Math.min(3, C);
           c.fillStyle = z.locked ? STOPS[4] : gold(C); c.fillRect(x0, y0, x1 - x0, y1 - y0);
           c.globalAlpha = 1;
           if (z.locked) {
@@ -367,8 +383,8 @@
         // the boundary: dark under, the zone's level in gold over; red where it's lost
         const L = M.level(z.C);
         path(pts); c.lineJoin = "round";
-        c.strokeStyle = "rgba(6,8,14,.8)"; c.lineWidth = 3.2; c.stroke();
-        c.strokeStyle = z.lost ? RED : z.locked ? STOPS[4] : gold(Math.max(0.2, L + 0.5)); c.lineWidth = 1.5; c.stroke();
+        c.strokeStyle = "rgba(6,8,14,.8)"; c.lineWidth = 3.4 + 0.5 * Math.max(0, L); c.stroke();
+        c.strokeStyle = z.lost ? RED : z.locked ? STOPS[4] : gold(Math.max(0.2, L + 0.5)); c.lineWidth = z.lost || z.locked ? 2 : 1 + 0.55 * Math.max(0, L); c.stroke();
         if (s.cal.revealed && s.cal.next === z.id && !s.cal.zone) { c.setLineDash([3, 3]); c.strokeStyle = RED; c.lineWidth = 2; c.stroke(); c.setLineDash([]); }
         if (this.ui.hover === z.id && this.ui.sel !== z.id) { c.strokeStyle = "rgba(238,242,248,.9)"; c.lineWidth = 2; c.stroke(); }
         const ch = this.changes[z.id], fa = (now - this.flashT) / 1400;
@@ -408,10 +424,12 @@
           subCol = f && (f.lost || (f.to != null && f.to < L)) ? "#ff8a8f" : f && f.to > L ? "#9be36a" : "#e9d9a8";
         }
         const rows = LABEL[id].map(l => [l, z ? "#f4f1e8" : "#9aa6bd"]).concat([[sub, subCol]]);
-        const lh = 9 * pk, bw = Math.max(...rows.map(([l]) => W.pix.width(l, pk))) + 6 * pk, bh = rows.length * lh + 3 * pk;
-        const bx = Math.round(ax * kx - bw / 2), by = Math.round(ay * ky - bh / 2);
-        c.fillStyle = "rgba(8,11,18,.82)"; c.fillRect(bx, by, bw, bh);
-        rows.forEach(([l, col], i) => W.pix.draw(c, l, Math.round(ax * kx - W.pix.width(l, pk) / 2), by + 2 * pk + i * lh, { scale: pk, color: col }));
+        const lh = 9 * pk, bw = Math.max(...rows.map(([l]) => W.pix.width(l, pk))) + 4 * pk, bh = rows.length * lh + 2 * pk;
+        const room = 14 * pk;    // the count badge's overhang
+        const bx = Math.max(4 * pk, Math.min(this.cv.width - bw - room, Math.round(ax * kx - bw / 2))), by = Math.max(14 * pk, Math.min(this.cv.height - bh - 4 * pk, Math.round(ay * ky - bh / 2)));
+        const cx = bx + bw / 2;
+        c.fillStyle = "rgba(8,11,18,.74)"; c.fillRect(bx, by, bw, bh);
+        rows.forEach(([l, col], i) => W.pix.draw(c, l, Math.round(cx - W.pix.width(l, pk) / 2), by + pk + i * lh, { scale: pk, color: col }));
         if (!z) continue;
         // offers: a count on the tag's top-right corner, red when one can't wait
         const offers = s.offers.filter(o => o.zone === id), n = offers.length;
@@ -419,17 +437,39 @@
           const urgent = offers.some(o => o.kind === "cal" || o.kind === "siege" || o.expires <= s.day);
           const txt = String(n), tw = W.pix.width(txt, pk) + 6 * pk, th = 11 * pk, rx = bx + bw - pk, ry = by - Math.round(th / 2);
           c.fillStyle = urgent ? RED : "#ff9a2e"; c.fillRect(rx, ry, tw, th);
-          W.pix.draw(c, txt, rx + 3 * pk, ry + 2 * pk, { scale: pk, color: "#140a04" });
+          W.pix.draw(c, txt, rx + 3 * pk, ry + 2 * pk, { scale: pk, color: "#1c0d00" });
         }
         // what the dispatch moved: a tag over the name, until the next action
         const ch = this.changes[id];
         if (ch) {
-          const tw = W.pix.width(ch.text, pk) + 6 * pk, th = 11 * pk, rx = bx - Math.round(tw / 3), ry = by - th - pk;
+          const tw = W.pix.width(ch.text, pk) + 6 * pk, th = 11 * pk, rx = bx + Math.round((bw - tw) / 2), ry = by - th - pk;
           c.fillStyle = ch.up ? "#9be36a" : "#ff4552"; c.fillRect(rx, ry, tw, th);
-          W.pix.draw(c, ch.text, rx + 3 * pk, ry + 2 * pk, { scale: pk, color: ch.up ? "#0d1f06" : "#ffffff" });
+          W.pix.draw(c, ch.text, rx + 3 * pk, ry + 2 * pk, { scale: pk, color: ch.up ? "#0d1f06" : "#eef2f8" });
         }
       }
+      this.chrome(pk);
     }
+    // the photograph's frame: ticks and sector letters round the edge, north, and a scale
+    chrome(pk) {
+      const c = this.c, w = this.cv.width, h = this.cv.height, sk = Math.max(1, pk / 2), tick = "rgba(220,226,236,.6)";
+      c.fillStyle = tick;
+      for (let i = 0; i <= 8; i++) {
+        const x = Math.round(i * w / 8), y = Math.round(i * h / 8);
+        c.fillRect(x - sk / 2, 0, sk, 8 * sk); c.fillRect(x - sk / 2, h - 8 * sk, sk, 8 * sk);
+        c.fillRect(0, y - sk / 2, 8 * sk, sk); c.fillRect(w - 8 * sk, y - sk / 2, 8 * sk, sk);
+      }
+      // north, in the top right
+      const nx = w - 14 * pk, ny = 8 * pk;
+      c.fillStyle = "rgba(8,11,18,.74)"; c.fillRect(nx - 6 * pk, ny - 2 * pk, 12 * pk, 20 * pk);
+      c.fillStyle = "#eef2f8"; c.beginPath(); c.moveTo(nx, ny); c.lineTo(nx + 4 * pk, ny + 9 * pk); c.lineTo(nx, ny + 7 * pk); c.lineTo(nx - 4 * pk, ny + 9 * pk); c.closePath(); c.fill();
+      W.pix.draw(c, "N", nx - 2 * pk, ny + 10 * pk, { scale: pk, color: "#eef2f8" });
+      // a scale: a hundred units of the plan is about a mile
+      const sx = 8 * pk, sy = h - 8 * pk, len = Math.round(100 * this.kx);
+      c.fillStyle = "rgba(8,11,18,.74)"; c.fillRect(sx - 3 * pk, sy - 12 * pk, Math.max(len, W.pix.width("1 MILE", pk)) + 6 * pk, 15 * pk);
+      c.fillStyle = "#eef2f8"; c.fillRect(sx, sy, len, pk); c.fillRect(sx, sy - 3 * pk, pk, 4 * pk); c.fillRect(sx + len - pk, sy - 3 * pk, pk, 4 * pk);
+      W.pix.draw(c, "1 MILE", sx, sy - 10 * pk, { scale: pk, color: "#eef2f8" });
+    }
+
   }
   CityMap.gold = gold;
   CityMap.STOPS = STOPS;

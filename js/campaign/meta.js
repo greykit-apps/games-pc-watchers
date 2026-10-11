@@ -324,7 +324,9 @@ M.available = s => {
   for (const z of s.zones) if (z.tactic && !M.isRunning(s, `counter:${z.id}`)) out.push({ id: `counter:${z.id}`, kind: "counter", name: `Counter ${z.tactic} (${M.zoneDef(z.id).name})`, cost: M.COST.counter, points: 0 });
   return out;
 };
-M.canStart = (s, r) => s.cash < r.cost[0] ? "not enough cash" : "";
+// why something can't be bought yet: how far short the cash is
+M.short = (s, price) => s.cash < price ? `${W.money(price - s.cash)} short` : "";
+M.canStart = (s, r) => M.short(s, r.cost[0]);
 M.start = (s, r) => {
   if (M.canStart(s, r)) return false;
   s.cash -= r.cost[0];
@@ -448,7 +450,7 @@ M.refreshOffers = s => {
 M.canRun = (s, o) => {
   const z = M.zone(s, o.zone);
   if (o.kind === "story" && M.level(z.C) < M.STORY[o.step].needs) return `needs ${M.zoneDef(z.id).name} at level ${M.STORY[o.step].needs}`;
-  if (!M.squad(s).length) return "no Watchers in the squad";
+  if (!M.squad(s).length) return "no Watchers in the squad: put one in at the Clinic";
   return "";
 };
 // what a money reward is worth now: the dearest single purchase open to the squad
@@ -489,7 +491,7 @@ M.toggleDeploy = (s, a) => {
   if (a.deployed) { if (M.squad(s).length > 1) a.deployed = false; }
   else if (M.squad(s).length < M.SQUAD) a.deployed = true;
 };
-M.canHire = s => s.roster.length >= M.ROSTER_MAX ? "the barracks are full" : s.cash < M.PRICE.recruit ? "not enough cash" : "";
+M.canHire = s => s.roster.length >= M.ROSTER_MAX ? `the barracks hold ${M.ROSTER_MAX}, and they're full` : M.short(s, M.PRICE.recruit);
 M.hire = (s, free = false) => {
   if (!free && M.canHire(s)) return null;
   if (!free) s.cash -= M.PRICE.recruit;
@@ -516,9 +518,9 @@ M.shop = (s, a) => {
   return out;
 };
 M.canBuy = (s, a, it) => {
-  if (s.cash < it.price) return "not enough cash";
-  if (it.type === "medikit") { const m = a.items.find(i => i.type === "medikit"); if (m && m.count >= 4) return "carries 4 already"; }
-  if (!it.upgrade && it.type !== "medikit" && a.items.length >= 8) return "no free slot";
+  if (s.cash < it.price) return M.short(s, it.price);
+  if (it.type === "medikit") { const m = a.items.find(i => i.type === "medikit"); if (m && m.count >= 4) return "carries the most there is room for: 4"; }
+  if (!it.upgrade && it.type !== "medikit" && a.items.length >= 8) return "all 8 slots full: sell something first";
   return "";
 };
 M.buy = (s, a, it) => {
@@ -541,8 +543,8 @@ M.sell = (s, a, idx) => {
 M.canInstall = (s, a, part) => {
   const v = (a.mods[part] || 0) + 1;
   if (v > 3) return "fully modded";
-  if (!M.isDone(s, `${part}:${v}`)) return "research it first";
-  if (s.cash < M.PRICE.mod[v]) return "not enough cash";
+  if (!M.isDone(s, `${part}:${v}`)) return `research ${M.item(`${part}:${v}`).name} in the Lab first`;
+  if (s.cash < M.PRICE.mod[v]) return M.short(s, M.PRICE.mod[v]);
   return "";
 };
 M.install = (s, a, part) => {
@@ -553,7 +555,7 @@ M.install = (s, a, part) => {
   return true;
 };
 // the squad's scanner is one piece of kit, fitted a mark at a time once the mark is researched
-M.canUpgradeScanner = s => { const k = s.scannerMk + 1; if (k > 3) return "at MK3"; if (!M.isDone(s, `scanner:${k}`)) return "research it first"; return s.cash < M.PRICE.scanner[k] ? "not enough cash" : ""; };
+M.canUpgradeScanner = s => { const k = s.scannerMk + 1; if (k > 3) return "already MK3"; if (!M.isDone(s, `scanner:${k}`)) return `research Scanner MK${k} in the Lab first`; return M.short(s, M.PRICE.scanner[k]); };
 M.upgradeScanner = s => { if (M.canUpgradeScanner(s)) return false; s.scannerMk++; s.cash -= M.PRICE.scanner[s.scannerMk]; return true; };
 // what the squad has sunk into a Watcher: how much it hurts to lose them
 M.worth = a => M.PRICE.recruit + Object.values(a.mods).reduce((t, v) => t + [1, 2, 3].slice(0, v).reduce((x, k) => x + M.PRICE.mod[k], 0), 0)
@@ -583,12 +585,12 @@ M.missionFor = (s, o) => {
 
 /* ---------------- events ---------------- */
 M.canEvent = (s, e, z) => {
-  if (s.cash < e.price) return "not enough cash";
-  if (e.zone && !z) return "pick a zone";
-  if (e.lost && !(z && z.lost)) return "only for a lost zone";
-  if (e.zone && !e.lost && z && (z.lost || z.locked)) return "not in a lost or locked zone";
-  if (e.id === "bribes" && s.cal.bribed) return "already paid";
-  if (e.needs && !M.isDone(s, e.needs)) return "research it first";
+  if (s.cash < e.price) return M.short(s, e.price);
+  if (e.zone && !z) return "choose a zone above";
+  if (e.lost && !(z && z.lost)) return "only for a zone lost to Cal";
+  if (e.zone && !e.lost && z && (z.lost || z.locked)) return "not in a zone that's lost or locked down";
+  if (e.id === "bribes" && s.cal.bribed) return "already paid for this push";
+  if (e.needs && !M.isDone(s, e.needs)) return `research ${M.item(e.needs).name} in the Lab first`;
   if (e.floor && z && (z.floor || 0) >= e.floor) return "already running there";
   return "";
 };

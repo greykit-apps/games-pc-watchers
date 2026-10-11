@@ -43,6 +43,10 @@ W.WEAPONS = {
   medikit: {
     name: "Medikit", short: "MEDI", gun: false, heal: true, ammo: 1, sound: "heal", desc: "Patches one Watcher to full. One use."
   },
+  goods: {
+    name: "The goods", short: "GOOD", gun: false, ammo: null, sound: "pickup",
+    desc: "What the job was for. Whoever carries it out wins the job; drop it (die) and someone else can pick it up."
+  },
   banhammer: {
     name: "BanHammer", short: "BANH", gun: false, strike: { r: 6, dmg: 999, delay: 4 }, range: 30, ammo: 1, sound: "boom",
     desc: "The orbital platform. X, then click a spot the Watcher can see: the laser paints it, and a few seconds later everything in the circle dies. One shot each."
@@ -83,6 +87,7 @@ W.drawWeaponIcon = (c, type, cx, cy, col = "#dbe4fb") => {
       c.beginPath(); c.moveTo(0, -6); c.lineTo(3, -10); c.lineTo(4, -4); c.fill();
       R(-12, 7, 3, 3); R(-8, 7, 3, 3);
       break;
+    case "goods": R(-8, -4, 16, 9); c.fillStyle = "#05070f"; R(-3, -6, 6, 2); R(-8, 0, 16, 1); break;
     case "banhammer": R(-11, -7, 12, 9); R(1, -4, 13, 3); c.fillStyle = "#ff3048"; R(-8, -4, 6, 3); break;
     case "medikit":
       c.strokeRect(-9, -6, 18, 13); R(-2, -4, 4, 9); R(-6, -1, 12, 3); break;

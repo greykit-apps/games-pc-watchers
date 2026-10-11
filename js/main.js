@@ -95,6 +95,8 @@ const Game = W.game = {
         <tr><td><kbd>R</kbd></td><td>guns out (the one each last had) or away; <kbd>H</kbd> also holsters</td></tr>
         <tr><td><kbd>F</kbd></td><td>first aid: a medikit for each Watcher at half health or worse</td></tr>
         <tr><td><kbd>Q</kbd></td><td>the Purrsuader, out or away</td></tr>
+        <tr><td><kbd>Z</kbd></td><td>followers of the selected Watchers hold where they stand (still firing), or come again</td></tr>
+        <tr><td><kbd>V</kbd></td><td>the scanner view, over the city: the better the scanner, the more ground it covers and the more it shows</td></tr>
         <tr><td><kbd>X</kbd></td><td>the BanHammer: click a spot a Watcher can see, and a few seconds later the orbital platform clears it. Everything in the circle dies. <kbd>Esc</kbd> stands it down</td></tr>
         <tr><td>Weapon panel</td><td>click a weapon to draw it</td></tr>
         </table><h3>The view</h3><table>
@@ -255,6 +257,7 @@ const Game = W.game = {
     this.renderer.centerOn(w, st[0], st[1]);
     this.hud.build(w);
     this.cursorMode = null; this.ui.aim = null; this.setCursor("move");
+    this.bigScan = false; { const c = document.getElementById("bigscan"); if (c) c.hidden = true; }
     W.audio.ambience(true);
     for (const [t, col] of this.level.intro ? this.level.intro(w) : [["JOYEUSE: You're on, Watchers. Sly's at the cafe, north-east corner. Keep it quiet.", "#54f2ff"], ["Weapons are holstered. Plaza Security will warn anyone with a gun out.", "#94a0c4"]]) w.msg(t, col);
     // the title card names the job: the first objective, which follows the kind
@@ -278,7 +281,7 @@ const Game = W.game = {
   hint(show) {
     const h = document.getElementById("hint");
     h.hidden = !show;
-    h.innerHTML = "<b>Left</b> move · <b>Right</b> fire / persuade · <b>` 1–4</b> select · <b>E</b> go · <b>C</b> calm · <b>R</b> guns · <b>F</b> first aid · <b>Q</b> Purrsuader · <b>X</b> BanHammer · <b>Space</b> pause";
+    h.innerHTML = "<b>Left</b> move · <b>Right</b> fire / persuade · <b>` 1–4</b> select · <b>E</b> go · <b>C</b> calm · <b>R</b> guns · <b>F</b> first aid · <b>Q</b> Purrsuader · <b>X</b> BanHammer · <b>Z</b> hold · <b>V</b> scanner · <b>Space</b> pause";
     clearTimeout(this.hintT);
     if (show) this.hintT = setTimeout(() => { h.hidden = true; }, 15000);
   },
@@ -421,7 +424,7 @@ const Game = W.game = {
       }
     } else {
       const c = this.carAt(ui.x, ui.y);
-      if (c) { h.mode = "fire"; h.label = c.escapeCar ? `${this.world.names.target}'s car` : "Car"; h.labelColor = c.escapeCar ? "#ffb000" : "#94a0c4"; }
+      if (c) { h.mode = "fire"; h.label = c.stash ? "The stash" : c.escapeCar ? `${this.world.names.target}'s car` : "Car"; h.labelColor = c.stash ? "#7dffb0" : c.escapeCar ? "#ffb000" : "#94a0c4"; }
       else {
         const it = this.itemAt(ui.x, ui.y);
         if (it) { h.label = W.WEAPONS[it.type].name + (it.ammo != null ? ` (${it.ammo})` : ""); h.labelColor = "#ffb000"; }
@@ -581,6 +584,23 @@ const Game = W.game = {
     }
     W.audio.play("click");
     this.hud.update(true);
+  },
+  /* Z: the selected Watchers' followers hold where they stand, or come again. */
+  toggleHold() {
+    const sel = new Set(this.selectedAgents());
+    const mine = this.world.units.filter(u => u.alive && u.follower && !u.isAgent && sel.has(u.leader));
+    if (!mine.length) { W.audio.play("deny"); this.world.msg("No followers to give orders to.", "#ffb000"); return; }
+    const hold = mine.some(u => !u.hold);
+    for (const u of mine) { u.hold = hold; if (hold) W.stop(u); }
+    W.audio.play("click");
+    this.world.msg(hold ? `${mine.length} follower${mine.length > 1 ? "s" : ""}: holding here.` : `${mine.length} follower${mine.length > 1 ? "s" : ""}: with you again.`, "#54f2ff");
+  },
+  /* V: the scanner view, big, over the city. Its reach is the scanner's mark. */
+  toggleScan() {
+    this.bigScan = !this.bigScan;
+    const c = document.getElementById("bigscan");
+    if (c) c.hidden = !this.bigScan;
+    W.audio.play("click");
   },
   /* X: the BanHammer. The first selected Watcher carrying a strike paints the
    * target; X again, Esc or a right click stands it down. */
@@ -748,9 +768,11 @@ const Game = W.game = {
         case "f": this.patchUp(); break;
         case "q": this.togglePurr(); break;
         case "x": this.armStrike(); break;
+        case "z": this.toggleHold(); break;
+        case "v": this.toggleScan(); break;
         case "h": this.holster(); break;
         case " ": case "p": ev.preventDefault(); this.paused = !this.paused; this.showPause(); break;
-        case "escape": ev.preventDefault(); if (this.ui.aim) this.standDownStrike(); else this.openMenu(); break;
+        case "escape": ev.preventDefault(); if (this.ui.aim) this.standDownStrike(); else if (this.bigScan) this.toggleScan(); else this.openMenu(); break;
         case "?": case "/": this.openMenu(); break;
       }
     });

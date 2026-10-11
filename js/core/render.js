@@ -366,8 +366,14 @@ W.Renderer = class {
     const D = world.terminal;
     if (D) {
       const [sx, sy] = W.proj(D.x, D.y);
-      W.box(c, ox, oy, D.x - 0.3, D.y - 0.2, D.x + 0.3, D.y + 0.2, 0, 9, "#1d3346", "#2a3a52", "#1a2638");
-      W.box(c, ox, oy, D.x - 0.24, D.y - 0.14, D.x + 0.24, D.y + 0.14, 9, 10, D.done ? "#2a6a4a" : (Math.sin(t * 6) > 0 ? "#7dffb0" : "#3aa070"), "#1d3346", "#1d3346");
+      if (D.safe) {
+        // a safe: squat steel, its dial lit until it opens
+        W.box(c, ox, oy, D.x - 0.32, D.y - 0.32, D.x + 0.32, D.y + 0.32, 0, 10, "#4a4f5a", "#3a3f48", "#2e323a");
+        W.box(c, ox, oy, D.x - 0.08, D.y + 0.32, D.x + 0.08, D.y + 0.36, 4, 6, D.done ? "#2a6a4a" : (Math.sin(t * 6) > 0 ? "#7dffb0" : "#3aa070"), "#1d3346", "#1d3346");
+      } else {
+        W.box(c, ox, oy, D.x - 0.3, D.y - 0.2, D.x + 0.3, D.y + 0.2, 0, 9, "#1d3346", "#2a3a52", "#1a2638");
+        W.box(c, ox, oy, D.x - 0.24, D.y - 0.14, D.x + 0.24, D.y + 0.14, 9, 10, D.done ? "#2a6a4a" : (Math.sin(t * 6) > 0 ? "#7dffb0" : "#3aa070"), "#1d3346", "#1d3346");
+      }
       if (!D.done) {
         c.strokeStyle = W.rgba("#7dffb0", 0.5); c.lineWidth = 1;
         c.beginPath(); c.ellipse(Math.round(sx + ox), Math.round(sy + oy), 1.4 * W.HTW, 1.4 * W.HTH, 0, 0, Math.PI * 2); c.stroke();
@@ -625,7 +631,15 @@ W.Renderer = class {
     o.textAlign = "center"; o.textBaseline = "bottom";
     if (world.terminal && !world.terminal.done) {
       const D = world.terminal, [sx, sy] = this.toScreen(world, D.x, D.y, 0);
-      o.fillStyle = "#7dffb0"; o.fillText(D.t > 0 ? `COPYING ${Math.floor(100 * Math.min(1, D.t / D.need))}%` : "TERMINAL", sx * k, sy * k - 24 * k);
+      o.fillStyle = "#7dffb0"; o.fillText(D.t > 0 ? `${D.safe ? "CRACKING" : "COPYING"} ${Math.floor(100 * Math.min(1, D.t / D.need))}%` : D.safe ? "SAFE" : "TERMINAL", sx * k, sy * k - 24 * k);
+    }
+    if (world.stash && !world.stash.dead) {
+      const [sx, sy] = this.toScreen(world, world.stash.x, world.stash.y, 0);
+      o.fillStyle = "#7dffb0"; o.fillText("STASH", sx * k, sy * k - 20 * k);
+    }
+    if (world.siege && world.siege.left) {
+      const [sx, sy] = this.toScreen(world, world.siege.x, world.siege.y, 0);
+      o.fillStyle = "#ff5266"; o.fillText(`${world.siege.left} INSIDE`, sx * k, sy * k - 30 * k);
     }
     if (world.phase === "exfil") for (const p of world.exfilPoints || []) {
       const [sx, sy] = this.toScreen(world, p.x, p.y, 0);
@@ -657,6 +671,7 @@ W.Renderer = class {
         o.beginPath(); o.moveTo(X, Y - 25 * k); o.lineTo(X + 6, Y - 25 * k - 8); o.lineTo(X - 6, Y - 25 * k - 8); o.closePath(); o.fill();
       }
       if (u.carries === "data" && !u.out) { o.fillStyle = "#7dffb0"; o.fillText("DATA", X, Y - 36 * k); }
+      if (u.isAgent && !u.out && u.weapons.some(w => w.type === "goods")) { o.fillStyle = "#7dffb0"; o.fillText("GOODS", X, Y - 36 * k); }
       if (u.kind === "target") {
         const b = Math.sin(world.time * 6) > 0;
         o.fillStyle = b ? "#ffb000" : "#a87400";
@@ -768,6 +783,8 @@ W.Renderer = class {
     const S = world.subjectUnit;
     if (S && S.alive && !S.follower && !S.inCar) { blip(S.x, S.y, blink ? "#7dffb0" : "#2a6a4a", 4); if (!target) target = { x: S.x, y: S.y, mark: true }; }
     if (world.terminal && !world.terminal.done) { blip(world.terminal.x, world.terminal.y, blink ? "#7dffb0" : "#2a6a4a", 4); if (!target) target = { x: world.terminal.x, y: world.terminal.y, mark: true }; }
+    if (world.stash && !world.stash.dead) { blip(world.stash.x, world.stash.y, blink ? "#7dffb0" : "#2a6a4a", 4); if (!target) target = { x: world.stash.x, y: world.stash.y, mark: true }; }
+    if (world.siege && world.siege.left && world.phase !== "exfil" && !target) target = { x: world.siege.x, y: world.siege.y, mark: true };
     if (world.phase === "exfil") for (const p of world.exfilPoints || []) { blip(p.x, p.y, blink ? "#54f2ff" : "#1c6a74", 4); if (!target) target = { x: p.x, y: p.y, exfil: true }; }
     // the target off the edge: an arrow on the rim
     if (target && !opts.full) {

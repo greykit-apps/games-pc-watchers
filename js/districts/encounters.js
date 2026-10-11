@@ -15,9 +15,29 @@ W.NO_GANG = /precinct|police|hospital|cathedral|church|chapel|mausoleum|city hal
 W.HANGOUT = /club|bar\b|karaoke|lantern|litter|purrcade|diner|union|bunkhouse|saloon|lounge|kaboodle|imports|freight|warehouse|storage|shed/i;
 
 /* The places of interest on a map, found once and kept with it. */
+/* Where on a map can be walked to from the street: a flood fill from a drop
+ * point over the walkable grid, kept with the map. A room nobody can reach
+ * (walled in, no door) is no place to put anyone. */
+W.reachable = m => {
+  if (m._reach) return m._reach;
+  const r = new Uint8Array(m.w * m.h), q = [];
+  const sp = (m.points && m.points.spawn && m.points.spawn[0]) || null;
+  const start = sp ? m.nearestWalkable(sp.x, sp.y, 6) : null;
+  if (start) { const k = m.i(Math.floor(start[0]), Math.floor(start[1])); r[k] = 1; q.push(k); }
+  while (q.length) {
+    const k = q.pop(), x = k % m.w, y = (k / m.w) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= m.w || ny >= m.h) continue;
+      const nk = ny * m.w + nx;
+      if (!r[nk] && m.walk[nk]) { r[nk] = 1; q.push(nk); }
+    }
+  }
+  return (m._reach = r);
+};
 W.encounterSites = m => {
   if (m._sites) return m._sites;
-  const G = W.G, sites = [];
+  const G = W.G, sites = [], reach = W.reachable(m);
   const open = g => g === G.PLAZA || g === G.PARK || g === G.GRASS || g === G.DIRT;
   const at = (x, y) => m.inb(x, y) ? m.ground[m.i(x, y)] : -1;
   const outside = (x, y) => m.roofOf[m.i(x, y)] < 0;
@@ -25,7 +45,7 @@ W.encounterSites = m => {
   for (const s of m.structures) {
     const cells = [];
     for (let y = s.y + 1; y < s.y + s.d - 1; y++) for (let x = s.x + 1; x < s.x + s.w - 1; x++)
-      if (m.inb(x, y) && m.walk[m.i(x, y)] && W.FLOORS.has(m.ground[m.i(x, y)]) && m.roofOf[m.i(x, y)] === s.id) cells.push([x + 0.5, y + 0.5]);
+      if (m.inb(x, y) && m.walk[m.i(x, y)] && reach[m.i(x, y)] && W.FLOORS.has(m.ground[m.i(x, y)]) && m.roofOf[m.i(x, y)] === s.id) cells.push([x + 0.5, y + 0.5]);
     if (cells.length < 24) continue;
     const cx = s.x + s.w / 2, cy = s.y + s.d / 2;
     cells.sort((a, b) => W.dist(a[0], a[1], cx, cy) - W.dist(b[0], b[1], cx, cy));
@@ -34,7 +54,7 @@ W.encounterSites = m => {
   // open spaces and big back alleys: a grid of samples, kept where there is room
   const roomy = (x, y, r, test) => { let n = 0; for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { const X = x + i, Y = y + j; if (m.inb(X, Y) && m.walk[m.i(X, Y)] && outside(X, Y) && test(at(X, Y))) n++; } return n; };
   for (let y = 4; y < m.h - 4; y += 7) for (let x = 4; x < m.w - 4; x += 7) {
-    if (!m.walk[m.i(x, y)] || !outside(x, y)) continue;
+    if (!m.walk[m.i(x, y)] || !reach[m.i(x, y)] || !outside(x, y)) continue;
     const g = at(x, y);
     if (open(g) && roomy(x, y, 3, open) >= 34) sites.push({ kind: "open", x: x + 0.5, y: y + 0.5 });
     else if (g === G.ALLEY && roomy(x, y, 3, h => h === G.ALLEY) >= 16) sites.push({ kind: "alley", x: x + 0.5, y: y + 0.5 });

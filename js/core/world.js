@@ -111,7 +111,7 @@ W.World = class {
     this.blood(u, 10);
     // what they carried lands on the pavement
     // (everything they had: a gun, a spare, and now and then a medikit; the squad can take it home)
-    const guns = u.isAgent ? u.weapons.filter(w => W.WEAPONS[w.type].gun && w.type !== "pistol") : u.weapons.filter(w => W.WEAPONS[w.type].gun);
+    const guns = u.isAgent ? u.weapons.filter(w => (W.WEAPONS[w.type].gun && w.type !== "pistol") || w.type === "goods") : u.weapons.filter(w => W.WEAPONS[w.type].gun);
     if (!u.isAgent && (u.faction === "crew" || u.kind === "sec") && Math.random() < 0.15) guns.push({ type: "medikit", ammo: 1 });
     guns.forEach((w, i) => this.items.push({ type: w.type, ammo: w.ammo, mk: w.mk, x: u.x + (i ? W.rand(-0.3, 0.3) : 0), y: u.y + (i ? W.rand(-0.3, 0.3) : 0) }));
     if (src && src.isAgent && !u.isAgent) src.kills = (src.kills || 0) + 1;
@@ -535,11 +535,15 @@ W.World = class {
       }
       if (S && !S.alive) { this.end("lost", `${S.name} is dead.`); return; }
       if (this.carrier && !this.carrier.alive) { this.end("lost", `The data died with ${this.carrier.name}.`); return; }
+      if (this.terminal && this.terminal.safe && !this.goodsOut && !this.agents.some(a => a.alive && !a.out)) { this.end("lost", "The goods never left."); return; }
       for (const a of this.agents) {
         if (!a.alive || a.out || !this.atExit(a.x, a.y)) continue;
         a.out = true; a.inCar = true; a.path = null; a.target = null; a.manual = null;
         this.selected.delete(a); this.stats.out++;
-        this.msg(`${a.name} is out${a === this.carrier ? ", with the data" : ""}.`, "#4ade6a");
+        // the goods are handed over at the way out: they are the job's, not the Watcher's kit
+        const goods = a.weapons.some(w => w.type === "goods");
+        if (goods) { this.goodsOut = true; a.weapons = a.weapons.filter(w => w.type !== "goods"); a.cur = -1; a.weaponOut = false; }
+        this.msg(`${a.name} is out${a === this.carrier ? ", with the data" : goods ? ", with the goods" : ""}.`, "#4ade6a");
         // the subject, right behind them, comes too
         if (S && S.alive && !S.out && S.follower && W.dist(a.x, a.y, S.x, S.y) < 3) { S.out = true; S.inCar = true; S.path = null; this.msg(`${S.name} is out.`, "#4ade6a"); }
         if (!this.selected.size) { const next = this.agents.find(b => b.alive && !b.out); if (next) this.selected.add(next); }
@@ -556,6 +560,8 @@ W.World = class {
         }
         if (S) S.out ? this.end("won", `${S.name} is out, and talking.`) : this.end("lost", `The squad got out, and left ${S.name} behind.`);
         else if (this.carrier) this.carrier.out ? this.end("won", "The data is out.") : this.end("lost", "The data never left.");
+        else if (this.terminal && this.terminal.safe) this.goodsOut ? this.end("won", "The goods are out.") : this.end("lost", "The goods never left.");
+        else if (this.stash || this.siege) this.stats.out ? this.end("won", this.stash ? "The operation is broken, and the squad is out." : `${this.siege.name} is taken, and the squad is out.`) : this.end("lost", "The job was done, but nobody got out.");
         else if (this.stats.out) this.end("won", `${this.names.target} is dead, and the squad is out.`);
         else this.end("lost", `${this.names.target} is dead, but nobody got out.`);
       }
@@ -573,12 +579,49 @@ W.World = class {
       }
     }
     // an intel job: a Watcher stands at the terminal while it copies; whoever finishes carries the data
+    // a crackdown: the stash burned, and most of the operation's crew down or run off
+    const ST = this.stash;
+    if (ST) {
+      if (ST.dead && !this.stashGone) {
+        this.stashGone = true;
+        for (const o of this.objectives) if (o.type === "crackdown" && o.state === "active") o.stash = true;
+        this.msg("The stash is burning.", "#ffb000");
+        // and some of them have had enough
+        const chance = W.BREAK[this.level.mission ? this.level.mission.threat : 3] ?? 0.4;
+        for (const u of this.units) if (u.alive && u.op && u.faction === "crew" && !u.follower && Math.random() < chance * 0.6) { u.broken = true; u.hostile = false; u.target = null; u.cur = -1; u.weaponOut = false; u.path = null; }
+      }
+      const op = this.units.filter(u => u.op && u.faction !== "player"), down = op.filter(u => !u.alive || u.broken).length;
+      if (this.stashGone && down >= Math.ceil(op.length * 0.7)) {
+        for (const o of this.objectives) if (o.type === "crackdown" && o.state === "active") { o.state = "done"; this.msg(`Objective complete: ${o.text}.`, "#4ade6a"); }
+        for (const u of this.units) if (u.alive && u.op && u.faction === "crew" && !u.follower) { u.broken = true; u.hostile = false; u.target = null; u.cur = -1; u.weaponOut = false; }
+        this.startExfil("The operation is broken.");
+        return;
+      }
+    }
+    // a siege: every defender down
+    if (this.siege) {
+      const left = this.units.filter(u => u.defender && u.alive && u.faction !== "player").length;
+      this.siege.left = left;
+      if (!left) {
+        for (const o of this.objectives) if (o.type === "siege" && o.state === "active") { o.state = "done"; this.msg(`Objective complete: ${o.text}.`, "#4ade6a"); }
+        this.startExfil(`${this.siege.name} is taken.`);
+        return;
+      }
+    }
     const D = this.terminal;
     if (D && !D.done) {
       const at = this.agents.find(a => a.alive && !a.out && W.dist(a.x, a.y, D.x, D.y) < 1.4);
       if (at) {
-        if (!D.t) this.msg(`${at.name}: on the terminal. Copying.`, "#54f2ff");
+        if (!D.t) this.msg(D.safe ? `${at.name}: on the safe.` : `${at.name}: on the terminal. Copying.`, "#54f2ff");
         D.t += dt; D.by = at;
+        if (D.t >= D.need && D.safe) {
+          // the goods: a case, carried like anything else (and dropped like it)
+          D.done = true; W.giveWeapon(at, "goods");
+          for (const o of this.objectives) if (o.type === "job" && o.state === "active") { o.state = "done"; this.msg(`Objective complete: ${o.text}.`, "#4ade6a"); }
+          W.audio.play("order");
+          this.startExfil(`${at.name} has the goods.`, "Get the goods out: to the pickup at the drop point, or off any edge of the map");
+          return;
+        }
         if (D.t >= D.need) {
           D.done = true; this.carrier = at; at.carries = "data";
           for (const o of this.objectives) if (o.type === "intel" && o.state === "active") { o.state = "done"; this.msg(`Objective complete: ${o.text}.`, "#4ade6a"); }
@@ -589,7 +632,7 @@ W.World = class {
       }
     }
     if (!this.agents.some(u => u.alive)) { this.end("lost", "Every Watcher is down."); return; }
-    if (S || D) {
+    if (S || D || ST || this.siege) {
       for (const o of this.objectives) {
         if (o.state !== "active") continue;
         if (o.type === "recruit" && this.stats.recruited >= o.n) { o.state = "done"; this.msg(`Bonus: ${o.text}.`, "#4ade6a"); }

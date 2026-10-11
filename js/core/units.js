@@ -497,7 +497,10 @@ W.thinkFollower = (world, u) => {
     const foe = W.nearestFoe(world, u, W.rangeOf(u));
     if (foe) { W.engage(world, u, foe, false); }
     else u.target = null;
-  } else {
+  }
+  // told to hold (Z): they stay put, firing on anyone in range, until told to come
+  if (u.hold) { if (u.path) W.stop(u); return; }
+  if (!W.armed(u)) {
     // unarmed: go for a gun lying nearby
     const it = world.items.filter(i => W.WEAPONS[i.type].gun && W.dist(u.x, u.y, i.x, i.y) < 7).sort((a, b) => W.dist(u.x, u.y, a.x, a.y) - W.dist(u.x, u.y, b.x, b.y))[0];
     if (it) { if (!u.path) W.goTo(world, u, it.x, it.y); return; }
@@ -664,6 +667,12 @@ W.thinkCrew = (world, u) => {
   if (!W.hasGun(u)) return W.thinkUnarmed(world, u);
   if (!W.armed(u)) W.drawBest(u);
   const foe = W.nearestFoe(world, u, u.sight + 2);
+  // a siege's defenders hold their posts: they fire from cover, and do not come out hunting
+  if (u.defender) {
+    if (foe) W.engage(world, u, foe, false); else u.target = null;
+    if (!u.path && u.post && W.dist(u.x, u.y, u.post[0], u.post[1]) > 0.6) W.goTo(world, u, u.post[0], u.post[1]);
+    return;
+  }
   if (foe) { W.engage(world, u, foe, true); return; }
   u.target = null;
   // bodyguards stick with the boss
@@ -849,6 +858,7 @@ W.updateUnit = (world, u, dt) => {
       const it = world.items[i];
       if (W.dist(u.x, u.y, it.x, it.y) > 0.55) continue;
       if (u.faction === "crew" && !W.WEAPONS[it.type].gun) continue;
+      if (it.type === "goods" && !u.isAgent) continue;   // only a Watcher carries the job's goods
       if (!u.isAgent && u.weapons.some(w => W.WEAPONS[w.type].gun)) continue;
       if (u.weapons.length >= 8 && !u.weapons.some(w => w.type === it.type)) continue;
       W.giveWeapon(u, it.type, it.ammo, it.mk);

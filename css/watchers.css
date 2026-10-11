@@ -25,6 +25,7 @@ h1,h2,h3{font-weight:600;margin:0}
   padding:8px 8px 10px;display:flex;flex-direction:column;gap:6px;user-select:none}
 #view{position:relative;flex:1;min-width:0;overflow:hidden;touch-action:none}
 #view canvas{position:absolute;left:0;top:0;display:block}
+#view canvas#bigscan{left:50%;top:50%;transform:translate(-50%,-50%);width:min(86%,86vh);height:min(86%,86vh);aspect-ratio:1;border:1px solid #54f2ff;box-shadow:0 0 0 1px #05070f,0 0 24px rgba(84,242,255,.25);image-rendering:pixelated;pointer-events:none;opacity:.94}
 #cv{image-rendering:pixelated;image-rendering:crisp-edges}
 #ov{pointer-events:none}
 

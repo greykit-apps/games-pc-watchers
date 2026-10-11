@@ -62,6 +62,8 @@ function run(W, seed, attract, quiet, camp, roster, level) {
       }
       // a persuade job: whoever has the Purrsuader talks the subject round, the rest stay close
       const S = world.subjectUnit;
+      // nobody to do the talking: a player would abort
+      if (S && world.noPurr) { world.end("lost", "Mission aborted."); continue; }
       if (S) {
         const talker = world.agents.find(a => a.alive && a.weapons.some(w => W.WEAPONS[w.type].persuade));
         for (const a of world.agents) {
@@ -78,7 +80,22 @@ function run(W, seed, attract, quiet, camp, roster, level) {
         }
         continue;
       }
-      // an intel job: everyone to the terminal
+      // a crackdown: guns out, burn the stash, shoot back
+      if (world.stash && !world.stash.dead) {
+        for (const a of world.agents) { if (!a.alive) continue; if (!W.armed(a)) W.drawBest(a); a.manual = world.stash; if (!a.path) W.goTo(world, a, world.stash.x + (a.slot % 2) * 2 - 1, world.stash.y + (a.slot >> 1) * 2 - 1); }
+        continue;
+      }
+      // after the stash, or a siege: the nearest of the operation still standing
+      if (world.stash || world.siege) {
+        for (const a of world.agents) {
+          if (!a.alive) continue;
+          if (!W.armed(a)) W.drawBest(a);
+          const left = world.units.filter(u => u.alive && u.faction === "crew" && (world.siege ? u.defender : u.op && !u.broken)).sort((p, q) => W.dist(a.x, a.y, p.x, p.y) - W.dist(a.x, a.y, q.x, q.y))[0];
+          if (left) { a.manual = left; if (!a.path) W.goTo(world, a, left.x, left.y); }
+        }
+        continue;
+      }
+      // an intel job, or a safe: everyone to it
       if (world.terminal) {
         for (const a of world.agents) {
           if (!a.alive) continue;

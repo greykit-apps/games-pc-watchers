@@ -122,6 +122,16 @@ W.HUD = class {
     if (!this.world) return;
     const L = this.lead();
     renderer.scanner(this.miniC, this.world, { center: L ? [L.x, L.y] : renderer.viewCenter(this.world), k: this.zoom || 3, ping: true });
+    // V: the scanner view over the city; the better the scanner, the more ground it covers
+    const big = this.game && this.game.bigScan && document.getElementById("bigscan");
+    if (big && !big.hidden) {
+      const px = Math.round(big.clientWidth) || 400;
+      if (big.width !== px) { big.width = px; big.height = px; }
+      const mk = W.scanMk(this.world);
+      renderer.scanner(big.getContext("2d"), this.world, { center: L ? [L.x, L.y] : renderer.viewCenter(this.world), k: (px / 400) * [0, 2.6, 1.9, 1.3][mk], ping: true });
+      // the scanner's own state has to be the minimap's again for its clicks
+      renderer.scanner(this.miniC, this.world, { center: L ? [L.x, L.y] : renderer.viewCenter(this.world), k: this.zoom || 3, ping: true });
+    }
   }
 
   onClick(ev) {

@@ -166,6 +166,27 @@ the map.
   medikit, and a Watcher carries up to eight things home, guns you have not
   researched included. Lost if nobody makes it out.
 
+### The jobs
+
+The campaign says what kind of job it is (`L.mission.kind`), and the
+briefing, the opening radio and the title card follow it. Every job ends the
+same way: get out, to the pickup at the drop point or off any edge of the map.
+
+| Job | At the mark | Done when | Lost when |
+|---|---|---|---|
+| **Assassination** | the target, with bodyguards | the target dies | the target gets away |
+| **Persuade** (quiet) | someone to talk round, minders watching from further out | they are walked out | they die, or run off once the alarm is up |
+| **Intel** (quiet) | a terminal: stand at it 6 seconds | the data's carrier is out | the carrier dies |
+| **Job** | a safe: stand at it 3 seconds | the goods are out | nobody gets them out (a fallen carrier drops them) |
+| **Crackdown** (and a hit on Cal's crew) | the operation's stash, among its crew | the stash is burned and most of the crew are down or run off | the squad is wiped out |
+| **Siege** | the crew dug in, in the building nearest the mark, holding their posts | every defender is down | the squad is wiped out |
+| **Story** | step 1 a hit, step 2 a persuade, step 3 a siege | as those | as those |
+
+An empty-handed Watcher close to the crew is only suspicious at first ("Hey.
+Who are you?"); linger about two seconds and they work it out. A gun, or the
+alarm, gives you away at once. The following the squad can hold is set by
+its best Purrsuader (6, 10 or 16); a persuade job's subject never counts.
+
 ### Controls
 
 | | |
@@ -177,6 +198,9 @@ the map.
 | `C` | calm: stims to nothing, guns away, nobody shoots first |
 | `R` · `Q` | guns (each one's last) out or away · the Purrsuader out or away |
 | `F` | first aid: a medikit for each Watcher at half health or worse |
+| `X` | the BanHammer: click a spot a Watcher can see; four seconds later everything within 6 tiles dies |
+| `Z` | the selected Watchers' followers hold where they stand (still firing), or come again |
+| `V` | the scanner view, over the city: the better the scanner, the more ground it covers |
 | `WASD`, arrows, screen edge, middle-drag | scroll |
 | `Tab` | next Watcher |
 | `Space` · `Esc` · `M` | pause · menu · sound |

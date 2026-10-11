@@ -1555,6 +1555,13 @@ W.drawCar = (c, car, ox, oy) => {
     return;
   }
   if (car.train) { W.drawCarriage(c, car, ox, oy); return; }
+  if (car.stash) {
+    // a crackdown's stash: crates, stacked; burnt black once it goes up
+    const x = car.x, y = car.y, dead = car.dead;
+    const box = (dx, dy, z0, z1, s) => W.box(c, ox, oy, x + dx - s, y + dy - s, x + dx + s, y + dy + s, z0, z1, dead ? "#1c1814" : "#8a6a42", dead ? "#141210" : "#6a5236", dead ? "#100e0c" : "#4e3c28");
+    box(-0.3, -0.25, 0, 7, 0.32); box(0.32, -0.2, 0, 6, 0.3); box(-0.2, 0.3, 0, 6, 0.3); box(0.05, -0.05, 7, 13, 0.28);
+    return;
+  }
   // shadow
   c.fillStyle = "rgba(0,0,0,.45)";
   const sh = [P(x0 - 0.1, y0 - 0.1, 0), P(x1 + 0.1, y0 - 0.1, 0), P(x1 + 0.1, y1 + 0.1, 0), P(x0 - 0.1, y1 + 0.1, 0)];

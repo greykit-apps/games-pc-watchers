@@ -81,14 +81,15 @@ W.Command = class {
     const pips = ["r", "m", "c"].flatMap(k => Array.from({ length: P[k] }, () => `<button class="pip p-${k}" data-a="pip" data-z="${z.id}" data-k="${k}" title="${{ r: "Research", m: "Money", c: "Control" }[k]}: click to move it on"></button>`)).join("");
     const offers = s.offers.filter(o => o.zone === z.id).length;
     const flags = [s.cal.zone === z.id ? `<i class="f-cal" title="Cal is pushing here">CAL</i>` : "", s.cal.revealed && s.cal.next === z.id && !s.cal.zone ? `<i class="f-next" title="Cal comes here next">CAL ${s.cal.nextIn}d</i>` : "",
-      z.tactic ? `<i class="f-tac" title="${W.esc(z.tactic)}: control pips buy less until it's countered">TACTIC</i>` : "", z.martial > 0 ? `<i class="f-ev">MARTIAL</i>` : "", z.festival > 0 ? `<i class="f-ev">FESTIVAL</i>` : ""].join("");
+      z.tactic ? `<i class="f-tac" title="${W.esc(z.tactic)}: control pips buy less until it's countered">TACTIC</i>` : "",
+      z.floor ? `<i class="f-floor" title="${z.floor === 2 ? "Mind control: the zone settles back to level 2" : "Propaganda: the zone settles back to level 1"}">${z.floor === 2 ? "MIND" : "PROP"}</i>` : "", z.martial > 0 ? `<i class="f-ev">MARTIAL</i>` : "", z.festival > 0 ? `<i class="f-ev">FESTIVAL</i>` : ""].join("");
     // the control bar: 0..3.95, ticks at each level, the plateau from 3.5 shaded
     const pct = Math.max(0, Math.min(1, z.C / M.N.CAP)) * 100;
     const DIST = { downtown: "Downtown", suburbs: "Suburbs", convention: "Convention Center", starport: "Starport", ranch: "The Ranch" };
     return `<div class="zone d-${D.district} ${this.zoneId === z.id ? "sel" : ""} ${z.lost ? "lost" : ""} ${z.locked ? "locked" : ""} ${s.cal.zone === z.id ? "cal" : ""}" style="grid-area:${z.id}" data-a="zone" data-z="${z.id}" title="${W.esc(D.blurb)}">
       <div class="zd">${DIST[D.district]}</div>
       <div class="zh">${status}<span class="zn">${W.esc(D.name)}</span>${offers ? `<i class="f-off" title="missions on offer">${offers}</i>` : ""}</div>
-      <div class="cbar" title="control ${z.C.toFixed(2)} of ${M.N.CAP}"><i style="width:${pct}%" class="l${Math.max(0, L)}"></i><u style="left:${100 / M.N.CAP}%"></u><u style="left:${200 / M.N.CAP}%"></u><u style="left:${300 / M.N.CAP}%"></u><s style="left:${350 / M.N.CAP}%"></s></div>
+      <div class="cbar" title="control ${z.C.toFixed(2)} of ${M.N.CAP}"><i style="width:${pct}%" class="l${Math.max(0, L)}"></i><u style="left:${100 / M.N.CAP}%"></u><u style="left:${200 / M.N.CAP}%"></u><u style="left:${300 / M.N.CAP}%"></u><s style="left:${350 / M.N.CAP}%"></s>${z.floor ? `<b class="floor" style="left:${100 * z.floor / M.N.CAP}%"></b>` : ""}</div>
       <div class="zs">${z.lost ? `<em>siege to retake</em>` : z.locked ? `<em>no decay</em>` : `<em class="${net >= 0 ? "up" : "down"}">${net >= 0 ? "+" : ""}${net.toFixed(2)}/day</em>`}<em>${z.lost ? "" : `${(P.r * y).toFixed(1)}rp ${W.money(P.m * y * M.N.PIP_MONEY)}`}</em></div>
       <div class="pipz">${pips || "<em>no production</em>"}</div>
       ${flags ? `<div class="fl">${flags}</div>` : ""}
@@ -153,6 +154,8 @@ W.Command = class {
     if (r.line === "scanner" || r.line === "purrsuader") return M.GEAR_LINES.find(g => g.id === r.line).what[r.mk - 1];
     if (r.id === "banhammer") return "an orbital strike: mark a spot, and everything near it dies";
     if (r.id === "overseers") return "while the squad is out, zones keep their level";
+    if (r.id === "propaganda") return "a zone it's rolled out in settles back to level 1, never lower by itself. It works";
+    if (r.id === "mindcontrol") return "a zone it's rolled out in settles back to level 2. It works. That is the worst of it";
     if (r.id === "works") return "+1 pip, for good, in the zone that makes least";
     if (r.id === "requisition") return "a free pip of control a day, wherever control is weakest";
     if (r.kind === "counter") return "control pips there buy full value again";

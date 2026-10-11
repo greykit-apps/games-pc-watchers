@@ -26,6 +26,7 @@ M.N = {
   WAR: 1.5, WAR_AT: 30, INTEL: 0.5,
   PIP_MONEY: 1000,
   TACTIC_GAIN: 0.75,                    // control pips buy this much while one of Cal's tactics stands
+  PULL: 0.25,                           // how fast propaganda or mind control draws a zone back up to its floor
 };
 M.decay = (C, war) => {
   const T = M.N.DECAY, w = war ? M.N.WAR : 1;
@@ -66,7 +67,7 @@ M.zoneDef = id => M.ZONES.find(z => z.id === id);
 M.TACTICS = ["a new drug on the streets", "a bought official", "an informer network", "a protection racket", "a pirate radio station", "a gun shop in a back room"];
 
 /* ---------------- research ---------------- */
-M.COST = { MK1: [4000, 30], MK2: [12000, 72], MK3: [30000, 136], banhammer: [60000, 160], overseers: [80000, 290], works: [100000, 380], requisition: [160000, 580], counter: [5000, 45] };
+M.COST = { MK1: [4000, 30], MK2: [12000, 72], MK3: [30000, 136], banhammer: [60000, 160], overseers: [80000, 290], propaganda: [120000, 400], mindcontrol: [250000, 700], works: [100000, 380], requisition: [160000, 580], counter: [5000, 45] };
 M.WEAPON_LINES = [
   { id: "pistol", name: "Pistol", start: 1 }, { id: "shotgun", name: "Shotgun", start: 1 }, { id: "uzi", name: "Uzi" },
   { id: "longrange", name: "Longwhisker rifle" }, { id: "minigun", name: "Minigun", needs: "uzi:1" }, { id: "laser", name: "Laser", needs: "longrange:1" },
@@ -84,6 +85,9 @@ M.catalogue = () => {
   for (const g of M.GEAR_LINES) marks(g.id, "gear", g.name);
   out.push({ id: "banhammer", line: "banhammer", mk: 1, kind: "gear", name: "BanHammer Orbital Platform", needs: ["scanner:2"], cost: M.COST.banhammer, points: 2 });
   out.push({ id: "overseers", line: "overseers", kind: "city", name: "Overseers", needs: [], cost: M.COST.overseers, points: 0 });
+  // what the Watchers are not proud of: a zone that settles back to level 1, or level 2, on its own
+  out.push({ id: "propaganda", line: "propaganda", kind: "city", name: "Propaganda", needs: [], cost: M.COST.propaganda, points: 0 });
+  out.push({ id: "mindcontrol", line: "mindcontrol", kind: "city", name: "Mind control", needs: ["propaganda"], cost: M.COST.mindcontrol, points: 0 });
   return out;
 };
 M.CATALOGUE = M.catalogue();
@@ -101,6 +105,8 @@ M.EVENTS = [
   { id: "bribes", name: "Bribes at City Hall", what: "halves Cal's next push", price: 60000 },
   { id: "martial", name: "Martial law", what: "the zone's control can't fall for 3 days, then decays at double for 3", price: 80000, zone: true },
   { id: "amnesty", name: "An amnesty", what: "a lost zone comes back at level 0, without a siege", price: 150000, zone: true, lost: true },
+  { id: "propaganda", name: "Propaganda in the zone", what: "PVN on every screen, every hour: the zone settles back to level 1 by itself, never below", price: 50000, zone: true, needs: "propaganda", floor: 1 },
+  { id: "mindcontrol", name: "Mind control in the zone", what: "the signal under the broadcasts. People stop wanting to fight. Some stop wanting anything: the zone settles back to level 2", price: 150000, zone: true, needs: "mindcontrol", floor: 2 },
 ];
 M.ROSTER_MAX = 8;
 M.SQUAD = 4;
@@ -176,7 +182,7 @@ M.agent = (id, name, fur, items, patch) => ({ id, name, fur, patch: patch || nul
 M.fresh = (seed = Date.now() % 100000) => {
   const s = {
     v: 2, day: 1, cash: 80000, nextId: 5, rng: seed % 233280,
-    zones: M.ZONES.map(z => ({ id: z.id, C: z.start, lost: z.start <= 0, locked: false, works: 0, tactic: null, policy: null, story: 0, martial: 0, festival: 0 })),
+    zones: M.ZONES.map(z => ({ id: z.id, C: z.start, lost: z.start <= 0, locked: false, works: 0, tactic: null, policy: null, story: 0, martial: 0, festival: 0, floor: 0 })),
     research: { done: M.START_DONE.slice(), running: [], points: 0, works: 0, requisition: 0, counters: 0 },
     scannerMk: 0, war: false, won: false,
     cal: { zone: null, left: 0, rest: 4, next: null, nextIn: 0, revealed: false, bribed: false },
@@ -205,9 +211,17 @@ M.zone = (s, id) => s.zones.find(z => z.id === id);
 M.pips = (s, z) => z.lost ? 0 : M.zoneDef(z.id).base + z.works + (z.locked ? 3 : M.level(z.C));
 M.gainOf = (s, z) => M.N.GAIN[Math.max(0, M.level(z.C))] * (z.tactic ? M.N.TACTIC_GAIN : 1);
 M.calPressure = (s, z) => s.cal.zone === z.id ? (M.N.CAL.base + M.N.CAL.perPacified * s.zones.filter(q => !q.lost && M.level(q.C) >= 2).length) * (s.cal.bribed ? 0.5 : 1) : 0;
-M.decayOf = (s, z) => z.locked ? 0 : M.decay(z.C, s.war) * (z.martial < 0 ? 2 : 1) + M.calPressure(s, z);
+M.naturalDecay = (s, z) => z.locked ? 0 : M.decay(z.C, s.war) * (z.martial < 0 ? 2 : 1);
+M.decayOf = (s, z) => M.naturalDecay(s, z) + M.calPressure(s, z);
+// a day's drift in control before any pips: decay down to the zone's floor (0, or 1 or 2 under
+// propaganda or mind control), a pull back up to it from below, and Cal's push on top
+M.drift = (s, z) => {
+  if (z.locked) return 0;
+  const F = z.floor || 0, nat = z.C > F ? -Math.min(M.naturalDecay(s, z), z.C - F) : Math.min(M.N.PULL, F - z.C);
+  return nat - M.calPressure(s, z);
+};
 // pips on control that keep the zone where it is
-M.holdPips = (s, z) => Math.ceil(M.decayOf(s, z) / M.gainOf(s, z) - 1e-9);
+M.holdPips = (s, z) => Math.max(0, Math.ceil(-M.drift(s, z) / M.gainOf(s, z) - 1e-9));
 M.defaultPolicy = (s, z) => {
   const p = M.pips(s, z), c = Math.min(p, Math.max(1, M.holdPips(s, z)));
   const rest = p - c, r = Math.ceil(rest / 2);
@@ -229,7 +243,7 @@ M.cyclePip = (s, z, from) => {
   P[from]--; P[next]++;
 };
 // a day's net change in control, as the policy stands
-M.netControl = (s, z) => z.lost || z.locked ? 0 : M.fitPolicy(s, z).c * M.gainOf(s, z) - M.decayOf(s, z) + (z.festival > 0 ? 0.5 / 3 : 0);
+M.netControl = (s, z) => z.lost || z.locked ? 0 : M.fitPolicy(s, z).c * M.gainOf(s, z) + M.drift(s, z) + (z.festival > 0 ? 0.5 / 3 : 0);
 M.yieldOf = z => M.N.YIELD[Math.max(0, z.locked ? 3 : M.level(z.C))];
 
 /* ---------------- Cal ---------------- */
@@ -328,7 +342,7 @@ M.advanceDay = (s, onMission = false) => {
     if (z.locked) continue;
     const was = M.level(z.C);
     // under martial law control can rise but not fall; afterwards it decays at double for 3 days
-    let delta = c * M.gainOf(s, z) - M.decayOf(s, z);
+    let delta = c * M.gainOf(s, z) + M.drift(s, z);
     if (z.martial > 0) { delta = Math.max(0, delta); if (!--z.martial) z.martial = -3; }
     else if (z.martial < 0) z.martial++;
     z.C = Math.min(M.N.CAP, z.C + delta);
@@ -531,6 +545,8 @@ M.canEvent = (s, e, z) => {
   if (e.lost && !(z && z.lost)) return "only for a lost zone";
   if (e.zone && !e.lost && z && (z.lost || z.locked)) return "not in a lost or locked zone";
   if (e.id === "bribes" && s.cal.bribed) return "already paid";
+  if (e.needs && !M.isDone(s, e.needs)) return "research it first";
+  if (e.floor && z && (z.floor || 0) >= e.floor) return "already running there";
   return "";
 };
 M.event = (s, e, z) => {
@@ -542,6 +558,11 @@ M.event = (s, e, z) => {
   if (e.id === "bribes") { s.cal.bribed = true; M.note(s, "City Hall has been paid. Cal's next push will be half-hearted.", "good"); }
   if (e.id === "martial") { z.martial = 3; M.note(s, `Martial law in ${name}.`); }
   if (e.id === "amnesty") { z.lost = false; z.C = 0.5; z.policy = M.defaultPolicy(s, z); M.note(s, `An amnesty: ${name} is back, at level 0.`, "good"); }
+  if (e.floor) {
+    z.floor = e.floor;
+    M.note(s, e.floor === 1 ? `Propaganda in ${name}: PVN on every screen. The streets grow quieter. Nobody asks why.`
+      : `Mind control in ${name}. The fighting stops. So does a good deal else. Joyeuse doesn't talk about it.`, "bad");
+  }
   return true;
 };
 

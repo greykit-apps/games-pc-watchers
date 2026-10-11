@@ -325,3 +325,5 @@ h1,h2,h3{font-weight:600;margin:0}
 .offer.k-persuade{border-left-color:var(--steel)} .offer.k-persuade .kind{color:var(--steel)}
 .offer.k-assassinate{border-left-color:#ff8a5c} .offer.k-assassinate .kind{color:#ff8a5c}
 .cmd b.tier{color:var(--good)}
+.f-floor{color:#ff8fd8}
+.cbar b.floor{position:absolute;top:-3px;bottom:-3px;width:2px;background:#ff8fd8;margin-left:-1px}

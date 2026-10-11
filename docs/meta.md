@@ -1,9 +1,11 @@
 # The meta-game: holding PumaCity
 
-A draft of the rules, to be argued with. The numbers in it come from
-`tools/metasim.js`: `node tools/metasim.js` runs one zone through the control
-model, `node tools/metasim.js --board` plays whole campaigns with a simple
-policy. Change the numbers there and rerun it.
+The rules, to be argued with; `js/campaign/meta.js` is the authority. The
+campaign numbers come from `tools/campaign.js`, a bot that plays the real
+rules (`node tools/campaign.js 200 --quiet --seed=N`, or load it as a module
+and sweep). The zone tables come from `tools/metasim.js`, which keeps its own
+copy of the first control model and runs one zone at a time; it predates the
+balance passes and doesn't know about them.
 
 ## The premise
 
@@ -128,7 +130,8 @@ money.
 |---|---|
 | A recruit: a new Watcher, a bare chassis | $45,000 |
 | A weapon from the Armoury, per Watcher (once researched) | MK1 $5,000, MK2 $15,000, MK3 $40,000 |
-| A scanner or a Purrsuader, per Watcher | MK1 $10,000, MK2 $25,000, MK3 $60,000 |
+| A Purrsuader, per Watcher | MK1 $10,000, MK2 $25,000, MK3 $60,000 |
+| The squad's scanner (all four) | MK1 $40,000, MK2 $100,000, MK3 $240,000 |
 | A BanHammer strike (once researched): one shot | $250,000 |
 | A mod, fitted at the clinic, per body part per Watcher | MK1 $10,000, MK2 $30,000, MK3 $75,000 |
 | Stims, ammunition, the clinic's patching up | small change |
@@ -150,12 +153,12 @@ production can't give:
 
 | Event | Effect | Price (a first guess) |
 |---|---|---|
-| A festival | a zone gains 0.5 control over 3 days | $15,000 |
+| A festival | a zone gains 0.75 control over 3 days | $12,000 |
 | Informants | shows where and when Cal pushes next | $30,000 |
 | Bribes at City Hall | halves Cal's next push | $60,000 |
 | Martial law | a zone's control can't fall for 3 days, Cal or no Cal | $60,000 |
 | Hired guns | a mercenary crew fights beside the squad on its next mission (+4 squad power) | $50,000 |
-| An amnesty | a lost zone comes back at level 0 without a siege | $150,000 |
+| An amnesty | a lost zone comes back at level 0 without a siege; not on war footing | $150,000 |
 
 ## Research
 
@@ -178,8 +181,8 @@ improve it, and each needs the one before.
 | **Scanner** | MK1 its range; MK2 shows armed people apart from unarmed; MK3 shows people through roofs and walls, and Cal's gang in red |
 | **Purrsuader** | MK1 its range and power; MK2 persuades armed people; MK3 holds a bigger following, and they fight better |
 | **BanHammer Orbital Platform** | late-game equipment, one item (needs the scanner at MK2). A Watcher carries the spotter: it fires like a long-range laser, marking a spot, and a few seconds later an orbital energy blast lands there and kills everything in a wide radius. One shot per strike bought, and very dear: a money sink and a siege breaker, made for cracking entrenched positions |
-| **Overseers** | an overseer in every zone who, while the squad is away on a mission, moves pips onto control to hold the zone against decay. They don't plan for Cal: his push is still the player's to answer |
-| **Propaganda**, then **mind control** | rolled out zone by zone, bought as an event once researched. Under propaganda decay can't take a zone below 1.0, and it is drawn back up (a quarter a day) when it falls below; under mind control, 2.0. The floor holds against decay only: the wall and the cliff above it stand, and Cal's pushes and failed missions still drag a zone down, as far as lost. It costs Casey too: people watching PVN spend less (a zone makes 15% less money under propaganda), and people who stop wanting anything spend nothing much (40% less under mind control), and can't be talked round by the Purrsuader. Framed for what it is, a crime against the people of the city; and it works, which is the worst of it |
+| **Overseers** | an overseer in every zone who, while the squad is away on a mission, moves pips onto control to hold the zone against decay, and on the wall (2.5 to 3.5) a pip more, to climb it. They don't plan for Cal: his push is still the player's to answer |
+| **Propaganda**, then **mind control** | rolled out zone by zone, bought as an event once researched. Under propaganda decay can't take a zone below 1.0, and it is drawn back up (a quarter a day) when it falls below; under mind control, 2.0. The floor holds against decay only: the wall and the cliff above it stand, and Cal's pushes and failed missions still drag a zone down, as far as lost. It costs Casey too: people watching PVN spend less (a zone makes 15% less money under propaganda), and people who stop wanting anything spend nothing much (30% less under mind control), and can't be talked round by the Purrsuader. Framed for what it is, a crime against the people of the city; and it works, which is the worst of it |
 | **Production** | **zone works:** +1 base pip in a zone of your choice, for good. **Requisition:** a free pip each day, placed wherever control is weakest. Both can be researched again, each time 1.5 times dearer |
 | **Countermeasures** | one for each of Cal's tactics as he uses them: the research sink. However well the city is held, he keeps leaving things that need answering |
 
@@ -198,7 +201,7 @@ game.
 | MK2 | $12,000 | 72 |
 | MK3 | $30,000 | 136 |
 | The BanHammer | $60,000 | 160 |
-| Overseers | $80,000 | 290 |
+| Overseers | $40,000 | 150 |
 | Propaganda | $120,000, then $50,000 a zone | 400 |
 | Mind control | $250,000, then $150,000 a zone | 700 |
 | Zone works | $100,000, then 1.5 times as much each time | 380, then 1.5 times as much |
@@ -212,47 +215,26 @@ countermeasures come and go above it.
 
 ## The endgame: war footing
 
-War comes after a fixed number of **upgrade points**, whatever they were
-spent on. An MK1 or MK2 is a point; an MK3, or the BanHammer, is two.
-Production, the overseers and countermeasures don't count. **War comes at 30
-points**: enough to unlock every weapon, mod and piece of gear and take them
-all to MK2. By then a player has either brought the whole squad's kit up to
-MK2, or has a few specialists at MK3 and other lines still at MK1. Either is
-a way to go to war.
-
-In the simulated campaigns, war came about mission 75 (day 410) for a player
-who also researches production upgrades, mission 59 (day 319) for one who
-doesn't, and mission 48 (day 258) for one who doesn't and puts 70% of
-production into research. With 30 to 40 missions of war and lockdowns after
-it, a campaign comes to about 100 missions: a little more for the player
-building production for the long haul, a little less for one who rushes.
-
-Research costs only go so far as a lever: halving them brings war about a
-quarter sooner, and cutting them further barely moves it, because by then the
-rest of the game sets the pace (the countermeasures Cal keeps demanding,
-production upgrades, the money to start projects).
+War is the player's to declare, once the squad has earned it: at 30
+**upgrade points**, whatever they were spent on, Casey Benton is ready when
+the player is, and the order is given from the Lab. An MK1 or MK2 is a
+point; an MK3, or the BanHammer, is two. Production, the overseers and
+countermeasures don't count. Thirty is enough to unlock every weapon, mod and
+piece of gear and take them all to MK2. Nothing forces it: a player who goes
+to war with a squad that isn't ready, or a city that can't pay for one, has
+chosen to, and one who never does can hold the city as it is.
 
 At that point the game changes from a research balancer to a war of
 attrition. Cal stops probing and commits: **decay everywhere goes up by
-30%**, and the city is on war footing.
+30%**, he rests 2 to 4 days between pushes instead of 3 to 6, pushes for 5
+days instead of 4, and harder (a base of 0.6 a day, not 0.4); and each zone
+locked down corners him a little more (+0.1), so his push doesn't fade as
+the city closes on him.
 
-On war footing a zone can only be held weakly or strongly; the middle is
-gone. For a base-3 zone, from `node tools/metasim.js --war`:
-
-| | Pips to hold | Made a day |
-|---|---|---|
-| Level 0 | 2 of 3 | 1 |
-| Level 1 | 3 of 4 | 1 |
-| Level 2, or level 3 below the plateau | can't be held | |
-| Level 3, on the plateau | 3 of 6 | 4.5 |
-
-A zone either sits weak, making next to nothing, or sits on the plateau making
-plenty; getting it from one to the other means crossing levels that can't be
-held, on everything it has plus missions to push it over, while Cal knocks
-plateau zones back down wherever the squad isn't. So the player chooses:
-hold everything weakly with a zone always in rebellion somewhere, or hold half
-the city strongly and let the rest go, for a stalemate. **Winning takes
-pushing into more zones, which necessarily weakens others.**
+On war footing a zone at level 2 takes nearly everything it makes to hold:
+a base-2 zone holds control 2.0 on all four pips, a base-3 zone 2.0 to 2.5 on
+four or five of five, and nothing holds under a push. So the war is fought
+on thin money, and a city that goes to war already spent finds it hard.
 
 **Propaganda and mind control** change the war: a zone under them can't
 slip below level 1 (or 2) by decay alone; only Cal's pushes and failed
@@ -260,17 +242,18 @@ missions take it lower. It is a way to win the war, and it costs the city
 money while it lasts.
 
 **There is no clock.** City research (overseers, zone works, requisitions,
-propaganda, mind control) doesn't count toward the war's 30 points, and Cal and
-mission threat scale with the player's upgrades and holdings, not with days. So
-a methodical player chooses when the war comes: pacify the board, roll out the
-propaganda, and only then take the squad's gear past 30 points. A player who
-never does can hold the city as it is for as long as they like. That is
-deliberate.
+propaganda, mind control) doesn't count toward the war's 30 points, mission
+threat scales with the squad in the field, not with days, and war waits for
+the order. A player who never gives it can hold the city as it is for as long
+as they like. That is deliberate.
 
 **Story missions** make that pushing worth doing, and they are how the game
 is won. Once the city is on war footing, every zone has a chain of three
 story missions: **find the lieutenant** (any level, threat 2), **turn the
-network** (level 2, threat 3), and **lock it down** (level 2, threat 4).
+network** (level 2, threat 3), and **lock it down** (control 2.5, threat 4),
+each a step harder for every step Cal arms to match the squad (see Threat
+and the squad). The lockdown of the last zone Cal holds is **his last
+stand**: threat 5, his own people, and where a BanHammer strike counts most.
 The last **locks the zone down**: Cal's network there is broken for good, its
 control no longer decays, and it drops out of Cal's reckoning, so each
 lockdown weakens his push on what's left. **When every zone is locked down,
@@ -327,42 +310,50 @@ those ranges, so no two are quite the same.
 
 A mission's **threat** (1 to 5) is its kind's base, a step harder where the
 zone's control is low (a step easier at level 3), a step harder at war, and a
-step harder for every 7 squad power past a new squad's 6.6: Cal arms his
-people to match the squad he sees in the field, not the research done. Story
-steps are their own: 2, 3 and 4. The **squad's tier** is its power (each of
+step harder at squad power 18 and again at 27: Cal arms his people to match
+the squad he sees in the field, not the research done. It is worked out for
+the squad deployed now, every time it's shown and when the squad goes, not
+frozen when the offer turned up. The **squad's tier** is its power (each of
 the four's best gun, a fifth of a point per mod mark, a hired crew, a
-BanHammer on a siege or lockdown) against 9, 13, 19 and 25 for tiers 2 to 5.
-Weapon marks don't count toward it until the mission engine fields them.
+BanHammer on a siege or lockdown) against 9, 13, 19 and 25 for tiers 2 to 5;
+the hired crew and the BanHammer don't count toward Cal's step. Weapon marks
+don't count toward either until the mission engine fields them. Every
+researched mark of a weapon is on the racks, MK1 included, and a BanHammer
+strike takes none of a Watcher's eight slots.
 
-## Balance, measured (2026-10-11)
+## Balance, measured (2026-10-11, second pass)
 
-`tools/campaign.js` as a bot, its outcomes rolled against the gap between a
-mission's threat and the squad's tier (set from real fights in the engine:
-at its tier a squad wins 9 in 10 and loses a Watcher about one mission in
-twelve). Eight seeds of 200 missions each:
+`tools/campaign.js` as a bot. Its outcomes are rolled against the gap between
+a mission's threat and the squad's tier, from real fights in the engine,
+halved for a careful player (the engine's test bot walks straight in;
+`--harsh` uses its raw rates). It declares war once the squad is tier 3,
+and puts money first at war. Twelve seeds of 200 missions each:
 
-| Strategy | Wins | Won by mission | War at mission | Watchers lost |
-|---|---|---|---|---|
-| The bot as it plays | 5 of 8 | 99 on average (91 to 114) | 59 | 20 |
-| Mind control everywhere, story first | 4 of 8 | 125 | 52 | 24 |
-| Research-heavy (70% to research) | 0 of 8 | | 39 | 25 |
+| Strategy | Wins | Won by mission | War at mission | War lasts | Watchers lost |
+|---|---|---|---|---|---|
+| 50% to research (the default) | 11 of 12 | 97 | 66 | 36 | 12 |
+| 30% / 40% to research | 12 of 12 | 145 / 114 | 111 / 79 | 35 | 11 / 10 |
+| 60% to research | 11 of 12 | 109 | 62 | 55 | 23 |
+| 70% to research | 6 of 12 | 141 | 78 | 64 | 27 |
+| War the moment it's ready | 11 of 12 | 97 | 60 | 36 | 11 |
+| Mind control everywhere, story first | 11 of 12 | 105 | 58 | 48 | 17 |
+| Research-heavy turtle | 7 of 12 | 129 | 71 | 60 | 31 |
 
-The seeds that don't win went to war early (missions 47 to 52) with a squad
-that wasn't ready, and lost a zone they couldn't take back: the player's
-choice, with no clock. Stacking every project and running intel every few
-days brings war on day 224 (it was 66). A city left alone for 300 days banks
-$2.5 to 3.2 million and loses 2 or 3 zones. Twelve real fights in the engine
-(`--fight`): 12 won, none lost.
+With the engine bot's raw death rates (a player who walks straight in), 2 of
+12 win, by mission 177, with 81 Watchers lost: skill in the field matters.
+Fifteen real fights in the engine: 14 won, none lost. Stacking every project
+and running intel every four days brings war in 168 to 224 days (it was 66).
+A prepared player banks millions by the end: the late money sink is still
+thin.
 
 ## Open questions
 
-1. **How long is the war?** Eight lockdowns at several story missions each is
-   24 to 40 missions, plus the fighting to hold zones and reach the levels
-   the story steps need. That is a guess until the story chains are written.
-2. **The simulation doesn't spend money yet** on recruits, gear, mods or
-   events, so it can't yet say whether those prices are right. In it the
-   money piles up into the millions; that is about what four Watchers kitted
-   out to MK3 would cost, which suggests the prices are in the right range.
+1. **How long is the war?** Measured at 35 to 64 missions from the order to
+   the last lockdown, against a floor of 24 story steps.
+2. **The late money sink is thin.** A prepared player ends with millions
+   once the squad is kitted out. Hired guns and BanHammer strikes help;
+   something for a rich city to buy at war (Casey's favours, the Vault) is
+   still to find.
 3. **The simulation plays badly.** Its policy is crude (it climbs everything
    to level 3 and holds it), so it can't show what overseers are worth, for
    instance. The numbers here are a starting point for playtesting, not a

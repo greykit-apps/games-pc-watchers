@@ -82,6 +82,7 @@ W.Command = class {
   draw() {
     const s = this.s, M = W.M;
     if (!this.agentId || !M.agentById(s, this.agentId)) this.agentId = s.roster[0] && s.roster[0].id;
+    M.liveThreats(s);
     const fk = this.focusTo || (document.activeElement && this.el.contains(document.activeElement) ? document.activeElement.dataset.fk : null);
     const hadFocus = !!fk;
     this.focusTo = null;
@@ -127,7 +128,7 @@ W.Command = class {
         <div class="lcd"><small>Day</small>${this.px(String(s.day).padStart(3, "0"), "lcd-t", 2)}</div>
         <div class="lcd"><small>Cash</small>${this.px(W.money(s.cash), "lcd-t", 2)}</div>
         <div class="lcd take" title="What the city makes a day: money, and research points (RP)"><small>A day<span class="sr">, money and research points (RP)</span></small><span class="v">${this.takeLCD(take)}</span></div>
-        <div class="warm ${s.war ? "at" : ""}"><small>${s.war ? "At war" : "War footing"}</small>
+        <div class="warm ${s.war ? "at" : s.warReady ? "ready" : ""}"><small>${s.war ? "At war" : s.warReady ? "War: ready, your order" : "War footing"}</small>
           ${s.war ? this.px("AT WAR", "war-t", 2) : `<span class="cells" role="meter" aria-label="Upgrade points toward war" aria-valuemin="0" aria-valuemax="${war}" aria-valuenow="${Math.min(pts, war)}">${cells}</span><b>${pts}/${war}</b>`}</div>
       </div>
       <div class="cx-split">
@@ -318,7 +319,8 @@ W.Command = class {
     const order = Object.keys(byZone).sort((a, b) => M.zone(s, a).C - M.zone(s, b).C);
     return `<header class="ops-head">${this.hx("MISSIONS", "sub-t", 2)}
         <p class="squadline"><span title="Missions above the squad's tier cost Watchers. Quiet ones can be done without a shot fired.">Squad tier <b>${tier}</b><span class="sr">: missions above it cost Watchers; quiet ones can be done without a shot fired</span></span> <span class="dots t-ok" aria-hidden="true">${this.dots(tier, tier)}</span> · ${squad.map(a => W.esc(a.name)).join(", ")}
-          <button class="link" data-a="screen" data-screen="clinic" data-fk="to-clinic">Clinic</button></p></header>
+          <button class="link" data-a="screen" data-screen="clinic" data-fk="to-clinic">Clinic</button></p>
+        ${M.threatStep(s) ? `<p class="hint">Cal arms his people to match: missions +${M.threatStep(s)} threat for this squad.</p>` : ""}</header>
       ${urgent.length ? `<section class="urgent"><h3 class="sub">Can't wait <span>${urgent.length}</span></h3>${urgent.map(o => this.offerHTML(o, true)).join("")}</section>` : ""}
       ${this.zoneId && !this.allOffers ? `<button class="link" data-a="alloffers" data-fk="alloffers">Show missions in every zone (${s.offers.length - urgent.length})</button>` : this.zoneId ? `<button class="link" data-a="alloffers" data-fk="alloffers">Only ${W.esc(M.zoneDef(this.zoneId).name)}</button>` : ""}
       ${order.map(id => { const z = M.zone(s, id), L = M.level(z.C);
@@ -332,7 +334,7 @@ W.Command = class {
   offerHTML(o, urgent, fkp = "") {
     const s = this.s, M = W.M, D = M.zoneDef(o.zone), K = M.KINDS[o.kind], why = M.canRun(s, o), tier = M.squadTier(s, o), th = o.threat || 1;
     const risk = th <= tier ? "ok" : th === tier + 1 ? "hard" : "deadly";
-    const title = o.kind === "story" ? M.STORY[o.step].name : (o.landmark && o.landmark !== D.name ? o.landmark : D.name);
+    const title = o.kind === "story" ? (M.lastStand(s, M.zone(s, o.zone), o.step) ? "Cal's last stand" : M.STORY[o.step].name) : (o.landmark && o.landmark !== D.name ? o.landmark : D.name);
     const left = o.expires - s.day;
     const exp = o.expires >= s.day + 90 ? "" : left <= 0 ? `<b class="bad">last day</b>` : `${left} day${left === 1 ? "" : "s"} left`;
     const riskWord = { ok: "within reach", hard: "a stretch", deadly: "beyond the squad" }[risk];
@@ -377,7 +379,8 @@ W.Command = class {
     const counters = avail.filter(r => r.kind === "counter");
     const runCounters = run.filter(p => p.id.startsWith("counter:"));
     return `<section class="panel lab-war">
-        <div>${this.hx(s.war ? "AT WAR" : "WAR FOOTING", "sub-t", 2)}<p>${s.war ? "Cal has committed. Decay runs faster everywhere. Finish each zone's story and lock it down." : `${pts} of ${war} upgrade points. An MK3, or the BanHammer, counts 2. At ${war}, Cal stops probing and commits.`}</p></div>
+        <div>${this.hx(s.war ? "AT WAR" : "WAR FOOTING", "sub-t", 2)}<p>${s.war ? "Cal has committed. Decay runs faster everywhere, and he pushes harder. Finish each zone's story and lock it down; the last is his last stand." : pts >= war ? "Casey Benton is ready when you are. War is yours to declare: decay runs faster, Cal commits, and every zone's story opens. Take your time; there's no clock." : `${pts} of ${war} upgrade points. An MK3, or the BanHammer, counts 2. At ${war}, war is yours to declare.`}</p>
+          ${!s.war && pts >= war ? `<button class="${this.armed === "war" ? "armed" : "go"}" data-a="declare" data-fk="declare">${this.armed === "war" ? "Confirm: go to war with Cal" : "Declare war"}</button>` : ""}</div>
         ${s.war ? "" : `<span class="cells big" role="meter" aria-label="Upgrade points toward war" aria-valuemin="0" aria-valuemax="${war}" aria-valuenow="${Math.min(pts, war)}">${cells}</span>`}
       </section>
       <section class="panel lab-run">
@@ -403,7 +406,7 @@ W.Command = class {
     if (r.id === "banhammer") return "an orbital strike: mark a spot, and everything near it dies";
     if (r.id === "overseers") return "while the squad is out, zones hold against decay; Cal is still yours to answer";
     if (r.id === "propaganda") return "a zone it's rolled out in won't decay below level 1; it makes 15% less money";
-    if (r.id === "mindcontrol") return "a zone it's rolled out in won't decay below level 2; it makes 40% less money, and nobody there can be talked round";
+    if (r.id === "mindcontrol") return "a zone it's rolled out in won't decay below level 2; it makes 30% less money, and nobody there can be talked round";
     if (r.id === "works") return "+1 pip, for good, in a zone you choose";
     if (r.id === "requisition") return "a free pip of control a day, wherever control is weakest";
     if (r.kind === "counter") return "control pips there buy full value again";
@@ -439,7 +442,7 @@ W.Command = class {
         <div class="slots">${right.map(id => slot(W.MODS.find(m => m.id === id))).join("")}</div></div>
     </section>`;
     const armoury = `<section class="panel armoury" data-scroll="arm">${this.hx("ARMOURY", "sub-t", 2)}
-      <h3 class="sub">${W.esc(a.name)} carries <span>${a.items.length} of 8 · ammunition topped up free</span></h3>
+      <h3 class="sub">${W.esc(a.name)} carries <span>${M.slots(a)} of 8 · ammunition topped up free</span></h3>
       <ul class="inv">${a.items.map((it, i) => `<li><canvas width="44" height="22" data-icon="${it.type === "banhammer" ? "laser" : it.type}"></canvas><span>${W.esc(it.type === "banhammer" ? "BanHammer strike" : (W.WEAPONS[it.type] || {}).name || it.type)}${it.mk ? ` MK${it.mk}` : ""}${it.count > 1 ? ` ×${it.count}` : ""}</span>
         <button class="mini ${this.armed === "sell-" + i ? "armed" : ""}" data-a="sell" data-i="${i}" data-fk="sell-${i}">${this.armed === "sell-" + i ? `Confirm: sell for ${W.money(M.sellPrice(it))}` : "Sell for half"}</button></li>`).join("") || `<li class="quiet">Nothing.</li>`}</ul>
       <h3 class="sub">On the racks</h3>
@@ -505,8 +508,8 @@ W.Command = class {
     if (!b || b.disabled || b.tagName === "INPUT" || b.tagName === "SELECT") return;
     const s = this.s, M = W.M, d = b.dataset, a = M.agentById(s, this.agentId);
     // a second click confirms what loses money; any other click disarms
-    const armKey = d.a === "cancel" ? "cancel-" + d.r : d.a === "sell" ? "sell-" + d.i : d.a === "buy" ? "buy-" + d.k : d.a === "event" ? "event-" + d.e : null;
-    const needsArm = armKey && (d.a === "cancel" || d.a === "sell" || (d.a === "buy" && (M.shop(s, a).find(x => x.key === d.k) || {}).price >= 100000) || (d.a === "event" && (M.EVENTS.find(x => x.id === d.e) || {}).price >= 100000));
+    const armKey = d.a === "declare" ? "war" : d.a === "cancel" ? "cancel-" + d.r : d.a === "sell" ? "sell-" + d.i : d.a === "buy" ? "buy-" + d.k : d.a === "event" ? "event-" + d.e : null;
+    const needsArm = armKey && (d.a === "declare" || d.a === "cancel" || d.a === "sell" || (d.a === "buy" && (M.shop(s, a).find(x => x.key === d.k) || {}).price >= 100000) || (d.a === "event" && (M.EVENTS.find(x => x.id === d.e) || {}).price >= 100000));
     if (needsArm && this.armed !== armKey) { this.armed = armKey; W.audio.play("click"); return this.draw(); }
     this.armed = null;
     switch (d.a) {
@@ -523,6 +526,7 @@ W.Command = class {
       case "alloffers": this.allOffers = !this.allOffers; return this.draw();
       case "log": this.showLog = !this.showLog; return this.draw();
       case "office": this.officeZone = d.z; return this.go("office");
+      case "declare": if (!M.declareWar(s)) return W.audio.play("deny"); this.banners.push({ tone: "red", big: "WAR", sub: "Casey Benton gives the order. Cal commits. Lock the city down, zone by zone.", sound: "alarm" }); break;
       case "works": if (!M.placeWorks(s, M.zone(s, d.z))) return W.audio.play("deny"); W.audio.play("heal"); break;
       case "deploy": return this.game.toBriefing(d.o);
       case "start": { const r = M.available(s).find(x => x.id === d.r); if (!r || !M.start(s, r)) return W.audio.play("deny"); W.audio.play("select"); this.focusTo = `cancel-${r.id}`; break; }

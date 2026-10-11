@@ -64,6 +64,8 @@
 .cx .warm{min-width:190px}
 .cx .warm b{font-size:13px;color:var(--t1)}
 .cx .warm.at .px{color:var(--red)}
+.cx .warm.ready small{color:var(--orange)}
+.cx .lab-war button{align-self:flex-start;margin-top:8px}
 .cx .cells{display:flex;gap:2px}
 .cx .cells i{width:4px;height:12px;background:#2a1414}
 .cx .cells i.on{background:var(--red)}

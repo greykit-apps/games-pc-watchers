@@ -12,21 +12,27 @@
  *
  * By default a mission's outcome is rolled against the gap between its threat
  * and the squad's tier, set from real fights in the engine (a squad at its
- * tier wins 9 in 10 and loses a Watcher about one mission in seven; two
- * over, it wins under half and loses more than one). --fight plays each one out in the
- * mission engine. Strategies: baseline, turtle, mind (propaganda and mind
- * control everywhere, story first).
+ * tier wins 19 in 20 and loses a Watcher about one mission in five; a step
+ * over, about one a mission; two over, it wins half and loses two or three).
+ * Those are the engine's test bot, which walks straight in; by default the
+ * bot assumes a careful player who loses half as many (--harsh for the raw
+ * rates). --fight plays each one out in the mission engine. The bot declares war once
+ * the squad is tier 3, or at 40 upgrade points. Strategies: baseline, turtle,
+ * mind (propaganda and mind control everywhere, story first), eager (war the
+ * moment it's ready, as a first-timer might).
  *
  * As a module: require("./campaign.js").play({ seed, missions, fight, strategy }) */
 "use strict";
 const { load, run } = require("./sim.js");
 
 // the rolled fight: by threat minus tier, the chance to win and the Watchers lost on average
-const ROLL = { "-2": [0.99, 0.02], "-1": [0.97, 0.05], 0: [0.92, 0.08], 1: [0.72, 0.4], 2: [0.45, 1.3], 3: [0.25, 2.5] };
+const ROLL = { "-2": [0.99, 0], "-1": [0.98, 0.03], 0: [0.95, 0.2], 1: [0.88, 1.0], 2: [0.5, 2.4], 3: [0.15, 3.2] };
+// the engine's test bot walks straight in; a careful player (cover, the Purrsuader, medikits) loses about half as many
+const CAREFUL = 0.5;
 
 function play(opt = {}) {
   const W = opt.W || load(), M = W.M;
-  const N = opt.missions || 60, fight = !!opt.fight, strategy = opt.strategy || "baseline", seed = opt.seed || 1;
+  const N = opt.missions || 60, fight = !!opt.fight, strategy = opt.strategy || "baseline", seed = opt.seed || 1, deathScale = opt.harsh ? 1 : CAREFUL;
   let r = seed * 9301 + 49297;
   const rand = () => (r = (r * 9301 + 49297) % 233280) / 233280;
   const s = M.fresh(seed);
@@ -37,7 +43,7 @@ function play(opt = {}) {
     if (!s.roster.length) fail("no Watchers left");
     if (M.squad(s).length < 1 || M.squad(s).length > M.SQUAD) fail("squad size");
     if (s.roster.length > M.ROSTER_MAX) fail("too many Watchers");
-    for (const a of s.roster) if (a.items.length > 8) fail(`${a.name} carries ${a.items.length} items`);
+    for (const a of s.roster) if (M.slots(a) > 8) fail(`${a.name} carries ${M.slots(a)} items`);
     for (const id of s.research.done) if (s.research.done.indexOf(id) !== s.research.done.lastIndexOf(id)) fail(`${id} researched twice`);
     for (const z of s.zones) {
       if (!(z.C >= 0 && z.C <= M.N.CAP + 1e-9)) fail(`${z.id} control ${z.C}`);
@@ -67,7 +73,9 @@ function play(opt = {}) {
     for (const a of s.roster) if (!a.deployed && M.squad(s).length < M.SQUAD) a.deployed = true;
     while (M.squad(s).length < M.SQUAD && !M.canHire(s) && s.cash >= M.PRICE.recruit + 5000) M.hire(s);
     for (const a of M.squad(s)) {
-      for (const it of M.shop(s, a)) if (it.type !== "banhammer" && it.type !== "medikit" && !M.canBuy(s, a, it) && s.cash - it.price > 40000) M.buy(s, a, it);
+      const shop = M.shop(s, a), best = {};
+      for (const it of shop) if (it.mk && (!best[it.type] || it.mk > best[it.type].mk)) best[it.type] = it;
+      for (const it of Object.values(best)) if (!M.canBuy(s, a, it) && s.cash - it.price > 40000) M.buy(s, a, it);
       const med = M.shop(s, a).find(x => x.type === "medikit");
       if (!a.items.some(x => x.type === "medikit") && !M.canBuy(s, a, med)) M.buy(s, a, med);
       for (const part of ["chest", "legs", "eyes", "arms"]) if (!M.canInstall(s, a, part) && s.cash > 80000) M.install(s, a, part);
@@ -75,15 +83,22 @@ function play(opt = {}) {
     // mind control: roll it out everywhere it can be afforded
     if (strategy === "mind") for (const e of [M.EVENTS.find(x => x.id === "mindcontrol"), M.EVENTS.find(x => x.id === "propaganda")]) for (const z of s.zones) if (!M.canEvent(s, e, z) && s.cash - e.price > 50000) M.event(s, e, z);
     stats.mindZones = s.zones.filter(z => z.floor === 2).length;
-    // policy: hold every zone, climb the weak ones a little; at war, everything on control where a story step waits on the level
+    // war: declared once the squad is ready (tier 3, or 40 points); eager declares the moment it can
+    if (s.warReady && !s.war && (strategy === "eager" || M.squadTier(s) >= 3)) M.declareWar(s);
+    // policy: hold every zone, climb the weak ones a little; at war, everything on control where a story step waits on control
     for (const z of s.zones) {
       if (z.lost || z.locked) continue;
-      const p = M.pips(s, z), L = M.level(z.C), next = s.war && z.story < M.STORY.length ? M.STORY[z.story].needs : -1;
-      const climb = next > L || (strategy === "turtle" ? L < 3 : L < 2);
-      M.setDial(s, z, Math.min(p, M.holdPips(s, z) + (climb ? (next > L ? 99 : 1) : 0)));
+      const p = M.pips(s, z), L = M.level(z.C), need = s.war && z.story < M.STORY.length ? M.STORY[z.story].needs : 0;
+      const short = need > z.C, climb = short || (strategy === "turtle" ? L < 3 : L < 2);
+      M.setDial(s, z, Math.min(p, M.holdPips(s, z) + (climb ? (short ? 99 : 1) : 0)));
+      // a festival to get a zone over the lockdown's mark, if that's all it's short of
+      if (short && need - z.C < 0.6 && !z.festival && s.cash > 80000) M.event(s, M.EVENTS.find(e => e.id === "festival"), z);
     }
-    M.setBalance(s, strategy === "turtle" ? 0.7 : 0.5);
+    // at war the tree is nearly done and the squad needs paying for: money first
+    const bal = opt.balance != null ? opt.balance : strategy === "turtle" ? 0.7 : 0.5;
+    M.setBalance(s, s.war ? Math.min(bal, 0.2) : bal);
     // the mission: within reach first, then by what matters; story first under the mind strategy
+    M.liveThreats(s);
     const tier = M.squadTier(s), short = M.squad(s).length < M.SQUAD;
     // a stretch (a step over the tier) only for what can't wait: Cal, a siege, a story step; and never short-handed
     const urgent = o => o.kind === "cal" || o.kind === "siege" || o.kind === "story";
@@ -108,7 +123,7 @@ function play(opt = {}) {
     } else {
       const gap = Math.max(-2, Math.min(3, offer.threat - tierNow)), [pw, deaths] = ROLL[gap], sq = M.squad(s);
       const won = rand() < pw;
-      res = { won, agents: sq.map(a => ({ id: a.id, alive: rand() >= deaths / sq.length, kills: 3, items: a.items.map(x => ({ type: x.type, mk: x.mk, ammo: x.count })) })) };
+      res = { won, agents: sq.map(a => ({ id: a.id, alive: rand() >= deaths * deathScale / sq.length, kills: 3, items: a.items.map(x => ({ type: x.type, mk: x.mk, ammo: x.count })) })) };
     }
     if (offer.kind === "story") { stats.storyTried++; if (res.won) stats.storyWon++; }
     stats.fallen += res.agents.filter(a => !a.alive).length;
@@ -129,11 +144,11 @@ module.exports = { play };
 if (require.main === module) {
   const args = process.argv.slice(2);
   const N = +(args.find(a => /^\d+$/.test(a)) || 60);
-  const quiet = args.includes("--quiet"), fight = args.includes("--fight");
+  const quiet = args.includes("--quiet"), fight = args.includes("--fight"), harsh = args.includes("--harsh");
   const val = k => { const a = args.find(x => x.startsWith(`--${k}=`)); return a && a.split("=")[1]; };
   const seed = +(val("seed") || 1), strategy = val("strategy") || "baseline";
   try {
-    const st = play({ seed, missions: N, fight, strategy, log: quiet ? null : console.log });
+    const st = play({ seed, missions: N, fight, strategy, harsh, log: quiet ? null : console.log });
     const s = st.s;
     console.log(`${st.missions} missions, ${st.won} won, day ${st.day}; research ${st.points} points${s.war ? `, at war since mission ${st.warAt}` : ""}; zones ${s.zones.map(z => `${z.id}:${z.locked ? "locked" : z.lost ? "lost" : st.s.zones && W_level(z.C)}`).join(" ")}; fallen ${st.fallen}${st.win ? `; WON at mission ${st.wonAt}` : ""}`);
   } catch (e) { console.error(`FAIL ${e.message}`); process.exit(1); }

@@ -4,9 +4,9 @@
  * every day between research, money and control. Cal pushes one zone at a
  * time. Research costs money to start and research points to finish; points
  * can't be banked. Missions are offered in zones, take days, and pay in
- * research, money or control. After 30 upgrade points the city goes to war:
- * decay rises by half, and each zone's story chain ends in a lockdown. Lock
- * down every zone to win.
+ * research, money or control. After 30 upgrade points the player can send the
+ * city to war: decay rises by 30%, Cal commits, and each zone's story chain
+ * ends in a lockdown, the last against Cal himself. Lock down every zone to win.
  *
  * Plain data and functions over one JSON state, saved under
  * pcwatchers_campaign_v2. Nothing in here touches the DOM. The numbers are the
@@ -22,14 +22,15 @@ M.N = {
   GAIN: [1.0, 0.6, 0.35, 0.3],          // control bought by a pip on control, by level
   YIELD: [1.0, 1.0, 1.25, 1.5],         // research or money made by a pip, by level
   DECAY: [[0, 0.8], [1, 0.95], [2, 0.95], [2.5, 1.2], [2.9, 1.55], [3, 1.5], [3.3, 1.35], [3.5, 0.5], [3.95, 0.4]],
-  CAL: { rest: [3, 6], push: 4, base: 0.4, perPacified: 0.15, tactic: 0.4 },
+  CAL: { rest: [3, 6], push: 4, base: 0.4, perPacified: 0.15, tactic: 0.4,
+         war: { rest: [2, 4], push: 5, base: 0.6, cornered: 0.1 } },   // at war he commits: shorter rests, longer pushes, and each lockdown corners him
   WAR: 1.3, WAR_AT: 30, INTEL: 0.5,
   PIP_MONEY: 1000,
   TACTIC_GAIN: 0.75,                    // control pips buy this much while one of Cal's tactics stands
   PULL: 0.25,                           // how fast propaganda or mind control draws a zone back up to its floor
   HIRED: 4,                             // a hired crew, in squad power
   BANHAMMER: 6,                         // a BanHammer strike carried, in squad power, for a siege or a lockdown
-  FLOOR_MONEY: [1, 0.85, 0.6],          // what propaganda (1) and mind control (2) leave of a zone's money: people stop spending
+  FLOOR_MONEY: [1, 0.85, 0.7],          // what propaganda (1) and mind control (2) leave of a zone's money: people stop spending
 };
 M.decay = (C, war) => {
   const T = M.N.DECAY, w = war ? M.N.WAR : 1;
@@ -70,7 +71,7 @@ M.zoneDef = id => M.ZONES.find(z => z.id === id);
 M.TACTICS = ["a new drug on the streets", "a bought official", "an informer network", "a protection racket", "a pirate radio station", "a gun shop in a back room"];
 
 /* ---------------- research ---------------- */
-M.COST = { MK1: [4000, 30], MK2: [12000, 72], MK3: [30000, 136], banhammer: [60000, 160], overseers: [80000, 290], propaganda: [120000, 400], mindcontrol: [250000, 700], works: [100000, 380], requisition: [160000, 580], counter: [5000, 45] };
+M.COST = { MK1: [4000, 30], MK2: [12000, 72], MK3: [30000, 136], banhammer: [60000, 160], overseers: [40000, 150], propaganda: [120000, 400], mindcontrol: [250000, 700], works: [100000, 380], requisition: [160000, 580], counter: [5000, 45] };
 M.WEAPON_LINES = [
   { id: "pistol", name: "Pistol", start: 1 }, { id: "shotgun", name: "Shotgun", start: 1 }, { id: "uzi", name: "Uzi" },
   { id: "longrange", name: "Longwhisker rifle" }, { id: "minigun", name: "Minigun", needs: "uzi:1" }, { id: "laser", name: "Laser", needs: "longrange:1" },
@@ -103,14 +104,14 @@ M.PRICE = {
   weapon: [0, 5000, 15000, 40000], purrsuader: [0, 10000, 25000, 60000], mod: [0, 10000, 30000, 75000],
 };
 M.EVENTS = [
-  { id: "festival", name: "A festival", what: "the zone gains 0.5 control over 3 days", price: 15000, zone: true },
+  { id: "festival", name: "A festival", what: "the zone gains 0.75 control over 3 days", price: 12000, zone: true },
   { id: "informants", name: "Informants", what: "shows where Cal will push next, and when", price: 30000 },
   { id: "bribes", name: "Bribes at City Hall", what: "halves Cal's next push", price: 60000 },
   { id: "martial", name: "Martial law", what: "the zone's control can't fall for 3 days, Cal or no Cal", price: 60000, zone: true },
   { id: "hired", name: "Hired guns", what: "a mercenary crew fights beside the squad on its next mission", price: 50000 },
   { id: "amnesty", name: "An amnesty", what: "a lost zone comes back at level 0, without a siege", price: 150000, zone: true, lost: true },
   { id: "propaganda", name: "Propaganda in the zone", what: "PVN on every screen, every hour: the zone won't decay below level 1. People watch more and spend less: 15% less money", price: 50000, zone: true, needs: "propaganda", floor: 1 },
-  { id: "mindcontrol", name: "Mind control in the zone", what: "the signal under the broadcasts. People stop wanting to fight. Some stop wanting anything: the zone won\'t decay below level 2, makes 40% less money, and nobody there can be talked round", price: 150000, zone: true, needs: "mindcontrol", floor: 2 },
+  { id: "mindcontrol", name: "Mind control in the zone", what: "the signal under the broadcasts. People stop wanting to fight. Some stop wanting anything: the zone won\'t decay below level 2, makes 30% less money, and nobody there can be talked round", price: 150000, zone: true, needs: "mindcontrol", floor: 2 },
 ];
 M.ROSTER_MAX = 8;
 M.SQUAD = 4;
@@ -123,7 +124,7 @@ M.NAMES = ["OCELOT", "SERVAL", "MAINE", "BENGAL", "RAGDOLL", "ABBY", "SIAMESE", 
  * engine's (see docs/missions.md); here, what it pays and how hard it is. */
 M.KINDS = {
   persuade:    { name: "Persuade", threat: 1, quiet: true, days: [3, 4], what: "talk someone round: control in the zone, and a word on Cal" },
-  intel:       { name: "Intel", threat: 1, quiet: true, days: [3, 5], what: "get in, get the data, get out: research, half of what is left on every project running; and where Cal goes next" },
+  intel:       { name: "Intel", threat: 1, quiet: true, days: [3, 5], what: "get in, get the data, get out: research for the first project running; and where Cal goes next" },
   job:         { name: "Job", threat: 2, days: [3, 6], what: "a robbery, a shakedown, a delivery: money, enough for a real purchase" },
   crackdown:   { name: "Crackdown", threat: 2, days: [4, 7], what: "break up a gang's operation: control in the zone" },
   assassinate: { name: "Assassination", threat: 3, days: [4, 7], what: "a name on Casey Benton's list: money and control" },
@@ -142,11 +143,16 @@ M.MIX = {
 M.OFFERS = { "-1": 0, 0: 3, 1: 2, 2: 2, 3: 1 };
 /* Threat, 1 to 5: the kind's base, harder where control is low (easier at
  * level 3), and rising with the squad Cal sees in the field (he arms his
- * people to match yours): a step at squad power 13.6, another at 20.6; one
- * more at war. A story step is its own: 2, 3 and 4, the lockdown hardest; 5 is Cal's army. */
-M.threatStep = s => Math.floor(Math.max(0, M.squadPower(s) - 6.6) / 7);
+ * people to match yours): a step at squad power 18, another at 27; one more
+ * at war. A story step: 2, 3 and 4, plus the same step for the squad; Cal's
+ * last stand, the final lockdown, is 5. An offer's threat is worked out
+ * afresh for the squad that's deployed (M.liveThreats), not frozen when it
+ * turned up. */
+M.threatStep = s => Math.floor(Math.max(0, M.basePower(s) - 9) / 9);
+// Cal's last stand: the lockdown of the last zone he has
+M.lastStand = (s, z, step) => step === M.STORY.length - 1 && s.zones.filter(q => !q.locked).length === 1 && !z.locked;
 M.threatOf = (s, kind, z, step = 0) => {
-  if (kind === "story") return 2 + step;
+  if (kind === "story") return M.lastStand(s, z, step) ? 5 : Math.min(5, 2 + step + M.threatStep(s));
   const L = z.lost ? -1 : M.level(z.C);
   const lvl = L <= 0 ? 1 : L === 3 ? -1 : 0;
   const t = M.KINDS[kind].threat + (kind === "siege" ? 0 : lvl) + M.threatStep(s) + (s.war ? 1 : 0);
@@ -177,11 +183,12 @@ M.agentPower = a => {
 // the missions the BanHammer is for: taking a zone back, and locking one down
 M.bigGun = o => !!o && (o.kind === "siege" || (o.kind === "story" && o.step === M.STORY.length - 1));
 M.carriesBanhammer = s => M.squad(s).some(a => a.items.some(i => i.type === "banhammer" && (i.count || 1) > 0));
-M.squadPower = (s, o) => M.squad(s).reduce((t, a) => t + M.agentPower(a), 0) + (s.hired ? M.N.HIRED : 0) + (M.bigGun(o) && M.carriesBanhammer(s) ? M.N.BANHAMMER : 0);
+M.basePower = s => M.squad(s).reduce((t, a) => t + M.agentPower(a), 0);
+M.squadPower = (s, o) => M.basePower(s) + (s.hired ? M.N.HIRED : 0) + (M.bigGun(o) && M.carriesBanhammer(s) ? M.N.BANHAMMER : 0);
 M.TIERS = [0, 9, 13, 19, 25];         // squad power for tiers 1..5
 M.squadTier = (s, o) => { const p = M.squadPower(s, o); let t = 1; for (let k = 1; k < M.TIERS.length; k++) if (p >= M.TIERS[k]) t = k + 1; return t; };
 // a zone's story chain on war footing: three steps, each needing the zone at a level
-M.STORY = [{ needs: 0, name: "Find the lieutenant" }, { needs: 2, name: "Turn the network" }, { needs: 2, name: "Lock it down" }];
+M.STORY = [{ needs: 0, name: "Find the lieutenant" }, { needs: 2, name: "Turn the network" }, { needs: 2.5, name: "Lock it down" }];
 
 /* ---------------- the state ---------------- */
 let seq = 0;
@@ -224,7 +231,11 @@ M.zone = (s, id) => s.zones.find(z => z.id === id);
 M.pips = (s, z) => z.lost ? 0 : M.zoneDef(z.id).base + z.works + (z.locked ? 3 : M.level(z.C));
 M.gainOf = (s, z) => M.N.GAIN[Math.max(0, M.level(z.C))] * (z.tactic ? M.N.TACTIC_GAIN : 1);
 // Cal pushes harder the more of the city is held at level 2 or above; a zone locked down is out of his reach and his reckoning
-M.calPressure = (s, z) => s.cal.zone === z.id ? (M.N.CAL.base + M.N.CAL.perPacified * s.zones.filter(q => !q.lost && !q.locked && M.level(q.C) >= 2).length) * (s.cal.bribed ? 0.5 : 1) : 0;
+M.calPressure = (s, z) => {
+  if (s.cal.zone !== z.id) return 0;
+  const C = M.N.CAL, base = s.war ? C.war.base + C.war.cornered * s.zones.filter(q => q.locked).length : C.base;
+  return (base + C.perPacified * s.zones.filter(q => !q.lost && !q.locked && M.level(q.C) >= 2).length) * (s.cal.bribed ? 0.5 : 1);
+};
 M.naturalDecay = (s, z) => z.locked ? 0 : M.decay(z.C, s.war);
 M.decayOf = (s, z) => M.naturalDecay(s, z) + M.calPressure(s, z);
 /* A day's change in control with c pips on it. Pips add, decay takes away;
@@ -302,7 +313,7 @@ M.placeWorks = (s, z) => {
 };
 M.setBalance = (s, b) => { s.balance = Math.max(0, Math.min(1, b)); M.spread(s); };
 // a day's net change in control, as the policy stands
-M.netControl = (s, z) => z.lost || z.locked ? 0 : (z.martial > 0 ? Math.max(0, M.dayDelta(s, z, M.fitPolicy(s, z).c)) : M.dayDelta(s, z, M.fitPolicy(s, z).c)) + (z.festival > 0 ? 0.5 / 3 : 0);
+M.netControl = (s, z) => z.lost || z.locked ? 0 : (z.martial > 0 ? Math.max(0, M.dayDelta(s, z, M.fitPolicy(s, z).c)) : M.dayDelta(s, z, M.fitPolicy(s, z).c)) + (z.festival > 0 ? 0.75 / 3 : 0);
 /* Where the zone is heading at today's rate: the next level up and the days
  * to it, or the level down (or the loss) and the days to that. Rough: decay
  * changes with control, so it's a guide, not a promise. */
@@ -326,7 +337,7 @@ M.planCal = (s, last) => {
   let r = rnd(s) * w.reduce((a, [, x]) => a + x, 0);
   s.cal.next = cands[0] ? cands[0].id : null;
   for (const [z, x] of w) if ((r -= x) <= 0) { s.cal.next = z.id; break; }
-  s.cal.nextIn = s.cal.rest = ri(s, ...M.N.CAL.rest);
+  s.cal.nextIn = s.cal.rest = ri(s, ...(s.war ? M.N.CAL.war.rest : M.N.CAL.rest));
 };
 M.calStep = s => {
   const c = s.cal;
@@ -343,7 +354,7 @@ M.calStep = s => {
     }
   } else if (--c.rest <= 0) {
     if (c.next && !M.zone(s, c.next).locked) {
-      c.zone = c.next; c.left = M.N.CAL.push;
+      c.zone = c.next; c.left = s.war ? M.N.CAL.war.push : M.N.CAL.push;
       M.note(s, `Cal is pushing ${M.zoneDef(c.zone).name}.`, "bad");
     } else M.planCal(s);
   } else c.nextIn = c.rest;
@@ -381,9 +392,11 @@ M.finish = (s, p) => {
     R.done.push(id);
     R.points += it.points;
     M.note(s, `Research done: ${it.name}.${it.kind === "weapon" ? " In the Armoury." : it.kind === "mod" ? " At the Clinic." : ""}`, "good");
-    if (!s.war && R.points >= M.N.WAR_AT) M.toWar(s);
+    if (!s.war && !s.warReady && R.points >= M.N.WAR_AT) { s.warReady = true; M.note(s, "Casey Benton is ready to go to war with Cal whenever you are. Give the order from the Lab.", "good"); }
   }
 };
+M.canDeclareWar = s => s.war ? "already at war" : s.research.points < M.N.WAR_AT ? `${M.N.WAR_AT - s.research.points} more upgrade points first` : "";
+M.declareWar = s => { if (M.canDeclareWar(s)) return false; M.toWar(s); M.refreshOffers(s); return true; };
 M.toWar = s => {
   s.war = true;
   M.note(s, "Cal stops probing and commits. The city is on war footing: control decays faster everywhere. Each zone has a story to finish; lock them all down.", "bad");
@@ -408,7 +421,9 @@ M.advanceDay = (s, onMission = false) => {
     let c = P.c, r = P.r, m = P.m;
     // away on a mission, an overseer moves pips onto control so the zone holds against decay; Cal's push is still yours to answer
     if (onMission && overseers && !z.locked) {
-      const need = Math.min(M.pips(s, z), M.holdPips(s, z, true));
+      // on the wall (2.5 to 3.5) and not under a push, they put a pip over hold, to climb it
+      const wall = z.C >= 2.5 && z.C < 3.5 && s.cal.zone !== z.id;
+      const need = Math.min(M.pips(s, z), M.holdPips(s, z, true) + (wall ? 1 : 0));
       while (c < need && (r > 0 || m > 0)) { if (r >= m) r--; else m--; c++; }
     }
     rp += r * M.yieldOf(z); money += m * M.moneyYield(z) * M.N.PIP_MONEY;
@@ -418,7 +433,7 @@ M.advanceDay = (s, onMission = false) => {
     let delta = M.dayDelta(s, z, c);
     if (z.martial > 0) { delta = Math.max(0, delta); z.martial--; }
     z.C = Math.min(M.N.CAP, z.C + delta);
-    if (z.festival > 0) { z.C = Math.min(M.N.CAP, z.C + 0.5 / 3); z.festival--; }
+    if (z.festival > 0) { z.C = Math.min(M.N.CAP, z.C + 0.75 / 3); z.festival--; }
     if (z.C <= 0) {
       z.C = 0; z.lost = true;
       M.note(s, `${M.zoneDef(z.id).name} is lost. Nothing comes out of it until it's taken back by siege.`, "bad");
@@ -468,20 +483,25 @@ M.refreshOffers = s => {
   }
   // there is always something the squad can take on: if nothing on offer is within its tier, a
   // quiet job turns up in the calmest zone that isn't lost or locked
+  M.liveThreats(s);
   const tier = M.squadTier(s);
   if (!s.offers.some(o => o.threat <= tier)) {
     const z = s.zones.filter(q => !q.lost && !q.locked).sort((a, b) => b.C - a.C)[0];
     if (z) {
       const D = M.zoneDef(z.id), kind = rnd(s) < 0.5 ? "persuade" : "intel";
       s.offers.push({ id: `o${s.day}-${++seq}-${z.id}`, zone: z.id, kind, days: ri(s, ...M.KINDS[kind].days), level: M.level(z.C), seed: Math.floor(rnd(s) * 1e9),
-        landmark: D.areas ? pickS(s, D.areas) : null, expires: s.day + ri(s, 5, 9), threat: Math.min(tier, M.threatOf(s, kind, z)) });
+        landmark: D.areas ? pickS(s, D.areas) : null, expires: s.day + ri(s, 5, 9), threat: Math.min(tier, M.threatOf(s, kind, z)), fallback: true });
     }
   }
 };
+// every offer's threat for the squad deployed now: offers aren't frozen at the squad that was out when they turned up
+M.liveThreat = (s, o) => { const z = M.zone(s, o.zone), t = M.threatOf(s, o.kind, z, o.step || 0); return o.fallback ? Math.min(M.squadTier(s), t) : t; };
+M.liveThreats = s => { for (const o of s.offers) o.threat = M.liveThreat(s, o); };
 // can this offer be run now? (story steps need the zone at a level)
 M.canRun = (s, o) => {
   const z = M.zone(s, o.zone);
-  if (o.kind === "story" && M.level(z.C) < M.STORY[o.step].needs) return `needs ${M.zoneDef(z.id).name} at level ${M.STORY[o.step].needs}`;
+  const need = o.kind === "story" && M.STORY[o.step].needs;
+  if (need && z.C < need) return `needs ${M.zoneDef(z.id).name} at ${Number.isInteger(need) ? `level ${need}` : `control ${need}`}`;
   if (!M.squad(s).length) return "no Watchers in the squad: put one in at the Clinic";
   return "";
 };
@@ -548,9 +568,10 @@ M.bestMk = (s, line) => [3, 2, 1].find(k => M.isDone(s, `${line}:${k}`)) || 0;
 M.shop = (s, a) => {
   const out = [];
   for (const w of M.WEAPON_LINES) {
-    const mk = M.bestMk(s, w.id); if (!mk) continue;
+    const best = M.bestMk(s, w.id); if (!best) continue;
     const have = a.items.find(i => i.type === w.id);
-    if (!have || (have.mk || 1) < mk) out.push({ key: `w:${w.id}`, type: w.id, mk, name: `${w.name} MK${mk}`, price: M.PRICE.weapon[mk], upgrade: !!have });
+    // every mark researched is on the racks, not only the best: MK1 stays cheap
+    for (let mk = 1; mk <= best; mk++) if (!have || (have.mk || 1) < mk) out.push({ key: `w:${w.id}:${mk}`, type: w.id, mk, name: `${w.name} MK${mk}`, price: M.PRICE.weapon[mk], upgrade: !!have });
   }
   const pk = M.bestMk(s, "purrsuader"), hp = a.items.find(i => i.type === "purrsuader" || i.type === "purr2");
   if (pk && (!hp || (hp.mk || 1) < pk)) out.push({ key: "w:purrsuader", type: "purrsuader", mk: pk, name: `Purrsuader MK${pk}`, price: M.PRICE.purrsuader[pk], upgrade: !!hp });
@@ -558,10 +579,12 @@ M.shop = (s, a) => {
   if (M.isDone(s, "banhammer")) out.push({ key: "banhammer", type: "banhammer", name: "BanHammer strike (one shot)", price: M.PRICE.banhammer });
   return out;
 };
+// the slots a Watcher's kit takes: a BanHammer strike is a spotter and a radio, and takes none
+M.slots = a => a.items.filter(i => i.type !== "banhammer").length;
 M.canBuy = (s, a, it) => {
   if (s.cash < it.price) return M.short(s, it.price);
   if (it.type === "medikit") { const m = a.items.find(i => i.type === "medikit"); if (m && m.count >= 4) return "carries the most there is room for: 4"; }
-  if (!it.upgrade && it.type !== "medikit" && a.items.length >= 8) return "all 8 slots full: sell something first";
+  if (!it.upgrade && it.type !== "medikit" && it.type !== "banhammer" && M.slots(a) >= 8) return "all 8 slots full: sell something first";
   return "";
 };
 M.buy = (s, a, it) => {
@@ -615,9 +638,9 @@ M.missionRoster = s => M.squad(s).map(a => ({
 M.missionFor = (s, o) => {
   const D = M.zoneDef(o.zone), z = M.zone(s, o.zone);
   const L = W.missionLevel({ district: D.district, landmark: o.landmark, seed: o.seed });
-  const threat = o.threat || M.threatOf(s, o.kind, z, o.step || 0);
+  const threat = M.liveThreat(s, o);
   // cal: the crew on the ground are Cal's own (his push, or a zone he holds)
-  L.mission = { kind: o.kind, threat, quiet: !!M.KINDS[o.kind].quiet, zoneLevel: z.lost ? -1 : M.level(z.C), step: o.step, cal: o.kind === "cal" || o.kind === "siege" || z.lost };
+  L.mission = { kind: o.kind, threat, quiet: !!M.KINDS[o.kind].quiet, zoneLevel: z.lost ? -1 : M.level(z.C), step: o.step, cal: o.kind === "cal" || o.kind === "siege" || z.lost || (o.kind === "story" && M.lastStand(s, z, o.step)) };
   L.mod = Object.assign({}, M.THREAT[threat]);
   L.scannerMk = s.scannerMk || 0;
   // a hired crew fights beside the squad; in a mind-controlled zone nobody can be talked round: they don't want anything
@@ -632,6 +655,7 @@ M.canEvent = (s, e, z) => {
   if (s.cash < e.price) return M.short(s, e.price);
   if (e.zone && !z) return "choose a zone above";
   if (e.lost && !(z && z.lost)) return "only for a zone lost to Cal";
+  if (e.id === "amnesty" && s.war) return "not on war footing: a siege takes it back";
   if (e.zone && !e.lost && z && (z.lost || z.locked)) return "not in a zone that's lost or locked down";
   if (e.id === "bribes" && s.cal.bribed) return "already paid for this push";
   if (e.id === "hired" && s.hired) return "already hired for the next mission";
@@ -728,7 +752,7 @@ M.settle = (s, o, res) => {
     }
     // what the engine wasn't sent (a BanHammer strike) comes home with them, less a strike fired on a siege or a lockdown
     for (const i of a.items) if (!W.WEAPONS[i.type === "purrsuader" && (i.mk || 1) >= 2 ? "purr2" : i.type] && !items.some(x => x.type === i.type)) items.push(Object.assign({}, i));
-    a.items = items.slice(0, 8);
+    a.items = items.filter(i => i.type !== "banhammer").slice(0, 8).concat(items.filter(i => i.type === "banhammer"));
   }
   if (!s.roster.length) { const a = M.hire(s, true); M.note(s, `With no Watchers left, Casey Benton sends a raw recruit: ${a.name}.`, "bad"); }
   if (!M.squad(s).length) s.roster[0].deployed = true;

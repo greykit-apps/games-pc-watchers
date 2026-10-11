@@ -608,8 +608,9 @@ W.Renderer = class {
         }
       }
       // the scanner's mark on a gun under plain clothes
-      if (u.undercover && !u.revealed && W.scanArmed(world, u)) {
-        o.fillStyle = Math.sin(world.time * 8) > 0 ? "#ff8a3c" : "#a8541c";
+      if (u.undercover && !u.revealed && (W.scanArmed(world, u) || W.scanCal(world, u))) {
+        const cal = W.scanCal(world, u), on = Math.sin(world.time * 8) > 0;
+        o.fillStyle = cal ? (on ? "#ff5266" : "#8a2a36") : on ? "#ff8a3c" : "#a8541c";
         o.beginPath(); o.moveTo(X, Y - 25 * k); o.lineTo(X + 4, Y - 25 * k - 6); o.lineTo(X, Y - 25 * k - 12); o.lineTo(X - 4, Y - 25 * k - 6); o.closePath(); o.fill();
       }
       if (u.kind === "target") {
@@ -700,6 +701,8 @@ W.Renderer = class {
       else if (u.kind === "target") { target = u; col = blink ? "#ffb000" : "#7a5500"; sz = 4; }
       else if (u.faction === "player") col = "#2fb8c4";
       // plain clothes pass for the crowd, unless the scanner marks the gun
+      // MK3, against Cal: his people show as what they are, plain clothes or not
+      else if (u.faction === "crew" && u.undercover && !u.revealed && W.scanCal(world, u)) col = u.hostile ? "#ff5266" : "#b8424f";
       else if (u.faction === "crew" && u.undercover && !u.revealed) { if (W.scanArmed(world, u)) col = blink ? "#ff8a3c" : "#a8541c"; else { if (opts.noCiv) continue; col = "#56607a"; sz = 1; } }
       // MK2 and up: the armed apart from the unarmed
       else if (u.faction === "crew" && mk >= 2 && !W.hasGun(u)) col = u.hostile ? "#a8505c" : "#6e3a44";

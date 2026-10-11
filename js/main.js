@@ -382,6 +382,7 @@ const Game = W.game = {
     const N = this.world.names;
     if (u.kind === "target") return [N.target, "#ffb000"];
     if (u.follower) return ["Follower", "#54f2ff"];
+    if (u.kind === "crew" && u.undercover && !u.revealed && W.scanCal(this.world, u)) return ["One of Cal's", "#ff5266"];
     if (u.kind === "crew" && u.undercover && !u.revealed) return W.scanArmed(this.world, u) ? ["Armed civilian?", "#ff8a3c"] : [N.civ, "#94a0c4"];
     if (u.kind === "crew") return [u.guard ? N.guard : N.henchman, "#ff5266"];
     if (u.kind === "sec") { const t = u.title || N.sec; return [u.angryAt.player ? `${t} (hostile)` : t, u.elite ? "#d8b048" : "#7aa8ff"]; }

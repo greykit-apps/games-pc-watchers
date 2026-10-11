@@ -672,6 +672,14 @@ W.scanMk = world => {
   for (const a of world.agents) if (a.alive && !a.out && a.scannerMk > mk) mk = a.scannerMk;
   return Math.min(3, mk);
 };
+/* Is this mission against Cal's people? The campaign says so (L.mission.cal),
+ * or it follows from the kind: a hit on Cal's crew, a siege, a zone he holds. */
+W.isCal = level => { const M = level.mission; return !!M && (M.cal ?? (M.kind === "cal" || M.kind === "siege" || M.zoneLevel === -1)); };
+/* does the squad's MK3 scanner know u for one of Cal's, plain clothes or not? */
+W.scanCal = (world, u) => {
+  if (W.scanMk(world) < 3 || !W.isCal(world.level) || !u.alive || u.faction !== "crew") return false;
+  return world.agents.some(a => a.alive && !a.out && W.dist(a.x, a.y, u.x, u.y) <= W.SCAN[3].armed);
+};
 /* does the squad's scanner mark u as armed? */
 W.scanArmed = (world, u) => {
   const r = (W.SCAN[W.scanMk(world)] || W.SCAN[1]).armed;

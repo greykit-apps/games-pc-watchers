@@ -126,7 +126,8 @@ Its mark is the best any Watcher still in the field carries (the campaign's
 - **MK2**: guns marked within 12 tiles of a Watcher, and unarmed crew shown
   apart from armed.
 - **MK3**: guns marked within 22 tiles, and people seen through roofs and
-  walls.
+  walls. Against Cal (his crew, a siege, a zone he holds) his people within
+  range show as crew, plain clothes or not.
 
 That matters because **not all the crew wear red**. From threat 3 up, some
 dress like everyone else (about one in eight at threat 3, nearly half at

@@ -1,0 +1,559 @@
+/* The campaign: holding PumaCity for Casey Benton. See docs/meta.md.
+ *
+ * Eight zones, each with a control level and whole pips of production split
+ * every day between research, money and control. Cal pushes one zone at a
+ * time. Research costs money to start and research points to finish; points
+ * can't be banked. Missions are offered in zones, take days, and pay in
+ * research, money or control. After 30 upgrade points the city goes to war:
+ * decay rises by half, and each zone's story chain ends in a lockdown. Lock
+ * down every zone to win.
+ *
+ * Plain data and functions over one JSON state, saved under
+ * pcwatchers_campaign_v2. Nothing in here touches the DOM. The numbers are the
+ * ones tools/metasim.js was tuned with. */
+"use strict";
+
+W.M = {};
+const M = W.M;
+
+/* ---------------- the numbers ---------------- */
+M.N = {
+  CAP: 3.95,
+  GAIN: [1.0, 0.6, 0.35, 0.3],          // control bought by a pip on control, by level
+  YIELD: [1.0, 1.0, 1.25, 1.5],         // research or money made by a pip, by level
+  DECAY: [[0, 0.8], [1, 0.95], [2, 0.95], [2.5, 1.2], [2.9, 1.55], [3, 1.5], [3.3, 1.35], [3.5, 0.5], [3.95, 0.4]],
+  CAL: { rest: [3, 6], push: 4, base: 0.4, perPacified: 0.15, tactic: 0.4 },
+  WAR: 1.5, WAR_AT: 30, INTEL: 0.5,
+  PIP_MONEY: 1000,
+  TACTIC_GAIN: 0.75,                    // control pips buy this much while one of Cal's tactics stands
+};
+M.decay = (C, war) => {
+  const T = M.N.DECAY, w = war ? M.N.WAR : 1;
+  if (C <= T[0][0]) return T[0][1] * w;
+  for (let i = 1; i < T.length; i++) if (C <= T[i][0]) { const [x0, y0] = T[i - 1], [x1, y1] = T[i]; return (y0 + (y1 - y0) * (C - x0) / (x1 - x0)) * w; }
+  return T[T.length - 1][1] * w;
+};
+M.level = C => C <= 0 ? -1 : Math.min(3, Math.floor(C));
+
+/* ---------------- the board ---------------- */
+M.ZONES = [
+  { id: "towers", name: "The Towers", district: "downtown", base: 3, start: 3.95, held: "Benton's own seat",
+    areas: ["The Towers", "City Hall", "St. Whiskers Hospital", "PVN Theater", "Club Nine Lives", "PumaCorp"], x: 50, y: 50,
+    blurb: "PVN Tower, City Hall, the hospital. Casey Benton's own streets, and her guard on every corner." },
+  { id: "oldtown", name: "Old Town and the Market", district: "downtown", base: 3, start: 1.5, held: "street crews",
+    areas: ["Old Town", "Market Plaza", "St. Felis Cathedral", "Downtown Precinct", "The Garage"], x: 30, y: 46,
+    blurb: "Narrow streets, the cathedral, the precinct, and Market Plaza, where the money changes hands." },
+  { id: "lantern", name: "Lantern Row", district: "downtown", base: 2, start: 1.5, held: "street crews",
+    areas: ["Lantern Row", "Pounce Park", "Central Station"], x: 42, y: 70,
+    blurb: "Central Station, the park, and the bars of Lantern Row." },
+  { id: "maple", name: "Maple Heights", district: "suburbs", base: 2, start: 2.5, held: "the Cul-de-Sac Kings",
+    areas: ["The Water Tower", "Pounceton College"], x: 30, y: 16,
+    blurb: "The water tower, the college, and street after street of Benton's rentals." },
+  { id: "juniper", name: "Juniper Hills", district: "suburbs", base: 2, start: 1.5, held: "the Cul-de-Sac Kings",
+    areas: ["Main Street", "Pounceton Station", "Whisker Hill Cemetery", "A backyard"], x: 58, y: 18,
+    blurb: "Main Street, the station, the cemetery, and the backyards behind it all." },
+  { id: "expo", name: "The Expo", district: "convention", base: 3, start: 0.6, held: "the Expo mob",
+    areas: null, x: 76, y: 42,
+    blurb: "The Convention Center, the arena and Neon Street. A new event every week." },
+  { id: "starport", name: "The Starport", district: "starport", base: 3, start: 0.6, held: "the Bay 13 smugglers",
+    areas: null, x: 74, y: 74,
+    blurb: "The pads, the hangars, the Moonsugar in her cradle, and Skooma coming in cheap." },
+  { id: "ranch", name: "The Ranch", district: "ranch", base: 2, start: 0, held: "the Thornback gang",
+    areas: null, x: 10, y: 28,
+    blurb: "The grow fields, out past the edge of town. Cal's people hold it." },
+];
+M.zoneDef = id => M.ZONES.find(z => z.id === id);
+M.TACTICS = ["a new drug on the streets", "a bought official", "an informer network", "a protection racket", "a pirate radio station", "a gun shop in a back room"];
+
+/* ---------------- research ---------------- */
+M.COST = { MK1: [4000, 30], MK2: [12000, 72], MK3: [30000, 136], banhammer: [60000, 160], overseers: [80000, 290], works: [100000, 380], requisition: [160000, 580], counter: [5000, 45] };
+M.WEAPON_LINES = [
+  { id: "pistol", name: "Pistol", start: 1 }, { id: "shotgun", name: "Shotgun", start: 1 }, { id: "uzi", name: "Uzi" },
+  { id: "longrange", name: "Longwhisker rifle" }, { id: "minigun", name: "Minigun", needs: "uzi:1" }, { id: "laser", name: "Laser", needs: "longrange:1" },
+  { id: "gauss", name: "Gauss Gun", needs: ["minigun:1", "laser:1"] },
+];
+M.GEAR_LINES = [
+  { id: "scanner", name: "Scanner", what: ["a longer reach", "armed people marked apart from unarmed", "people seen through roofs and walls; Cal's gang in red"] },
+  { id: "purrsuader", name: "Purrsuader", start: 1, what: ["talks people round", "a longer reach; works on the armed with a smaller crowd", "a bigger following, and they fight better"] },
+];
+M.catalogue = () => {
+  const out = [];
+  const marks = (line, kind, name, needs0) => { for (let k = 1; k <= 3; k++) out.push({ id: `${line}:${k}`, line, mk: k, kind, name: `${name} MK${k}`, needs: k > 1 ? [`${line}:${k - 1}`] : [].concat(needs0 || []), cost: M.COST[`MK${k}`], points: k === 3 ? 2 : 1 }); };
+  for (const w of M.WEAPON_LINES) marks(w.id, "weapon", w.name, w.needs);
+  for (const m of W.MODS) marks(m.id, "mod", m.name);
+  for (const g of M.GEAR_LINES) marks(g.id, "gear", g.name);
+  out.push({ id: "banhammer", line: "banhammer", mk: 1, kind: "gear", name: "BanHammer Orbital Platform", needs: ["scanner:2"], cost: M.COST.banhammer, points: 2 });
+  out.push({ id: "overseers", line: "overseers", kind: "city", name: "Overseers", needs: [], cost: M.COST.overseers, points: 0 });
+  return out;
+};
+M.CATALOGUE = M.catalogue();
+M.item = id => M.CATALOGUE.find(r => r.id === id);
+M.START_DONE = M.CATALOGUE.filter(r => r.mk === 1 && ([...M.WEAPON_LINES, ...M.GEAR_LINES].find(l => l.id === r.line) || {}).start).map(r => r.id);
+
+/* ---------------- prices ---------------- */
+M.PRICE = {
+  recruit: 60000, medikit: 1000, banhammer: 250000, scanner: [0, 40000, 100000, 240000],
+  weapon: [0, 5000, 15000, 40000], purrsuader: [0, 10000, 25000, 60000], mod: [0, 10000, 30000, 75000],
+};
+M.EVENTS = [
+  { id: "festival", name: "A festival", what: "the zone gains 0.5 control over 3 days", price: 40000, zone: true },
+  { id: "informants", name: "Informants", what: "shows where Cal will push next, and when", price: 30000 },
+  { id: "bribes", name: "Bribes at City Hall", what: "halves Cal's next push", price: 60000 },
+  { id: "martial", name: "Martial law", what: "the zone's control can't fall for 3 days, then decays at double for 3", price: 80000, zone: true },
+  { id: "amnesty", name: "An amnesty", what: "a lost zone comes back at level 0, without a siege", price: 150000, zone: true, lost: true },
+];
+M.ROSTER_MAX = 8;
+M.SQUAD = 4;
+M.NAMES = ["OCELOT", "SERVAL", "MAINE", "BENGAL", "RAGDOLL", "ABBY", "SIAMESE", "CHARTREUX", "KORAT", "BOMBAY", "SOMALI", "TONKINESE", "BIRMAN", "SAVANNAH", "MAU", "PIXIE", "CORNISH", "HAVANA"];
+
+/* ---------------- missions ---------------- */
+M.KINDS = {
+  intel:     { name: "Intel", days: [3, 5], what: "research: half of what is left on every project running; and where Cal goes next" },
+  job:       { name: "Job", days: [3, 6], what: "money, enough for a real purchase" },
+  crackdown: { name: "Crackdown", days: [4, 7], what: "control in the zone" },
+  cal:       { name: "Hit Cal's crew", days: [3, 5], what: "ends Cal's push here, and some control back" },
+  siege:     { name: "Siege", days: [6, 8], what: "takes the zone back" },
+  story:     { name: "Story", days: [5, 8], what: "the next step toward locking the zone down" },
+};
+// what a zone's level leans toward: [intel, job, crackdown] weights
+M.MIX = { 0: [0.15, 0.35, 0.5], 1: [0.25, 0.4, 0.35], 2: [0.4, 0.35, 0.25], 3: [0.5, 0.3, 0.2] };
+M.OFFERS = { "-1": 0, 0: 3, 1: 2, 2: 2, 3: 1 };
+// the enemy, by level: more of them where the streets are worse (for the mission engine: L.mod)
+M.DIFFICULTY = { "-1": { crew: 1.6, guards: 1.5, sec: 0.5 }, 0: { crew: 1.4, guards: 1.25, sec: 0.6 }, 1: { crew: 1.1, guards: 1, sec: 0.8 }, 2: { crew: 0.9, guards: 1, sec: 1 }, 3: { crew: 0.7, guards: 0.75, sec: 1.2 } };
+// a zone's story chain on war footing: three steps, each needing the zone at a level
+M.STORY = [{ needs: 0, name: "Find the lieutenant" }, { needs: 2, name: "Turn the network" }, { needs: 3, name: "Lock it down" }];
+
+/* ---------------- the state ---------------- */
+let seq = 0;
+const rnd = s => { s.rng = (s.rng * 9301 + 49297) % 233280; return s.rng / 233280; };
+const ri = (s, a, b) => a + Math.floor(rnd(s) * (b - a + 1));
+const pickS = (s, a) => a[Math.floor(rnd(s) * a.length)];
+
+M.agent = (id, name, fur, items, patch) => ({ id, name, fur, patch: patch || null, mods: {}, items, deployed: true, missions: 0, kills: 0 });
+M.fresh = (seed = Date.now() % 100000) => {
+  const s = {
+    v: 2, day: 1, cash: 80000, nextId: 5, rng: seed % 233280,
+    zones: M.ZONES.map(z => ({ id: z.id, C: z.start, lost: z.start <= 0, locked: false, works: 0, tactic: null, policy: null, story: 0, martial: 0, festival: 0 })),
+    research: { done: M.START_DONE.slice(), running: [], points: 0, works: 0, requisition: 0, counters: 0 },
+    scannerMk: 0, war: false, won: false,
+    cal: { zone: null, left: 0, rest: 4, next: null, nextIn: 0, revealed: false, bribed: false },
+    offers: [],
+    roster: [
+      M.agent(1, "LYNX", "#b08a5a", [{ type: "pistol", mk: 1 }, { type: "purrsuader", mk: 1 }, { type: "medikit", count: 1 }]),
+      M.agent(2, "MANX", "#7c7c84", [{ type: "pistol", mk: 1 }, { type: "shotgun", mk: 1 }, { type: "medikit", count: 1 }]),
+      M.agent(3, "SPHYNX", "#c9a49a", [{ type: "pistol", mk: 1 }, { type: "shotgun", mk: 1 }, { type: "medikit", count: 1 }]),
+      M.agent(4, "CALICO", "#e8e4dc", [{ type: "pistol", mk: 1 }, { type: "medikit", count: 1 }], "#c98a4a"),
+    ],
+    fallen: [], log: [], stats: { missions: 0, won: 0 },
+  };
+  for (const z of s.zones) z.policy = M.defaultPolicy(s, z);
+  M.planCal(s);
+  M.refreshOffers(s);
+  M.note(s, "Casey Benton has given the Watchers the city to hold. Set each zone's pips, start some research, and pick a mission.");
+  return s;
+};
+M.KEY = "campaign_v2";
+M.load = () => { const s = W.store.get(M.KEY, null); return s && s.v === 2 ? s : null; };
+M.save = s => W.store.set(M.KEY, s);
+M.note = (s, text, kind = "") => { s.log.unshift({ day: s.day, text, kind }); s.log.length = Math.min(s.log.length, 60); };
+
+/* ---------------- zones ---------------- */
+M.zone = (s, id) => s.zones.find(z => z.id === id);
+M.pips = (s, z) => z.lost ? 0 : M.zoneDef(z.id).base + z.works + (z.locked ? 3 : M.level(z.C));
+M.gainOf = (s, z) => M.N.GAIN[Math.max(0, M.level(z.C))] * (z.tactic ? M.N.TACTIC_GAIN : 1);
+M.calPressure = (s, z) => s.cal.zone === z.id ? (M.N.CAL.base + M.N.CAL.perPacified * s.zones.filter(q => !q.lost && M.level(q.C) >= 2).length) * (s.cal.bribed ? 0.5 : 1) : 0;
+M.decayOf = (s, z) => z.locked ? 0 : M.decay(z.C, s.war) * (z.martial < 0 ? 2 : 1) + M.calPressure(s, z);
+// pips on control that keep the zone where it is
+M.holdPips = (s, z) => Math.ceil(M.decayOf(s, z) / M.gainOf(s, z) - 1e-9);
+M.defaultPolicy = (s, z) => {
+  const p = M.pips(s, z), c = Math.min(p, Math.max(1, M.holdPips(s, z)));
+  const rest = p - c, r = Math.ceil(rest / 2);
+  return { r, m: rest - r, c: z.locked ? 0 : c };
+};
+// keep a policy's pips summing to what the zone makes: shortfalls come off research, then money, then control
+M.fitPolicy = (s, z) => {
+  const P = z.policy || (z.policy = { r: 0, m: 0, c: 0 }), want = M.pips(s, z);
+  let sum = P.r + P.m + P.c;
+  for (const k of ["r", "m", "c"]) while (sum > want && P[k] > 0) { P[k]--; sum--; }
+  while (sum < want) { P.m++; sum++; }
+  if (z.locked) { P.r += P.c; P.c = 0; }
+  return P;
+};
+// cycle one pip: research -> money -> control -> research
+M.cyclePip = (s, z, from) => {
+  const P = M.fitPolicy(s, z), next = { r: "m", m: z.locked ? "r" : "c", c: "r" }[from];
+  if (P[from] <= 0) return;
+  P[from]--; P[next]++;
+};
+// a day's net change in control, as the policy stands
+M.netControl = (s, z) => z.lost || z.locked ? 0 : M.fitPolicy(s, z).c * M.gainOf(s, z) - M.decayOf(s, z) + (z.festival > 0 ? 0.5 / 3 : 0);
+M.yieldOf = z => M.N.YIELD[Math.max(0, z.locked ? 3 : M.level(z.C))];
+
+/* ---------------- Cal ---------------- */
+// he plans his next push as he starts to rest, so intel can find it out
+M.planCal = s => {
+  const cands = s.zones.filter(z => !z.locked && z.id !== s.cal.zone && z.id !== "towers");
+  const w = cands.map(z => [z, (z.lost ? 0.2 : 1) * (4.5 - z.C) * M.zoneDef(z.id).base]);
+  let r = rnd(s) * w.reduce((a, [, x]) => a + x, 0);
+  s.cal.next = cands[0] ? cands[0].id : null;
+  for (const [z, x] of w) if ((r -= x) <= 0) { s.cal.next = z.id; break; }
+  s.cal.nextIn = s.cal.rest = ri(s, ...M.N.CAL.rest);
+};
+M.calStep = s => {
+  const c = s.cal;
+  if (c.zone) {
+    if (--c.left <= 0) {
+      const z = M.zone(s, c.zone);
+      if (z && !z.lost && !z.locked && rnd(s) < M.N.CAL.tactic && !z.tactic) {
+        z.tactic = pickS(s, M.TACTICS);
+        M.note(s, `Cal leaves something behind in ${M.zoneDef(z.id).name}: ${z.tactic}. Control there costs more until it's countered.`, "bad");
+      } else M.note(s, `Cal's people pull back from ${M.zoneDef(c.zone).name}.`);
+      c.zone = null; c.bribed = false; c.revealed = false;
+      M.planCal(s);
+    }
+  } else if (--c.rest <= 0) {
+    if (c.next && !M.zone(s, c.next).locked) {
+      c.zone = c.next; c.left = M.N.CAL.push;
+      M.note(s, `Cal is pushing ${M.zoneDef(c.zone).name}.`, "bad");
+    } else M.planCal(s);
+  } else c.nextIn = c.rest;
+};
+
+/* ---------------- research ---------------- */
+M.isDone = (s, id) => s.research.done.includes(id);
+M.isRunning = (s, id) => s.research.running.some(p => p.id === id);
+M.repeatCost = (s, kind) => { const n = s.research[kind]; return M.COST[kind].map(x => Math.round(x * 1.5 ** n)); };
+M.available = s => {
+  const out = M.CATALOGUE.filter(r => !M.isDone(s, r.id) && !M.isRunning(s, r.id) && r.needs.every(n => M.isDone(s, n)));
+  for (const kind of ["works", "requisition"]) if (!M.isRunning(s, kind)) out.push({ id: kind, kind: "city", name: kind === "works" ? `Zone works #${s.research.works + 1}` : `Requisition #${s.research.requisition + 1}`, cost: M.repeatCost(s, kind), points: 0, repeat: true });
+  for (const z of s.zones) if (z.tactic && !M.isRunning(s, `counter:${z.id}`)) out.push({ id: `counter:${z.id}`, kind: "counter", name: `Counter ${z.tactic} (${M.zoneDef(z.id).name})`, cost: M.COST.counter, points: 0 });
+  return out;
+};
+M.canStart = (s, r) => s.cash < r.cost[0] ? "not enough cash" : "";
+M.start = (s, r) => {
+  if (M.canStart(s, r)) return false;
+  s.cash -= r.cost[0];
+  s.research.running.push({ id: r.id, name: r.name, left: r.cost[1], total: r.cost[1] });
+  return true;
+};
+M.cancel = (s, id) => { s.research.running = s.research.running.filter(p => p.id !== id); };
+M.finish = (s, p) => {
+  const R = s.research, id = p.id;
+  if (id === "works") {
+    R.works++;
+    const z = s.zones.filter(q => !q.lost).sort((a, b) => M.zoneDef(a.id).base + a.works - M.zoneDef(b.id).base - b.works)[0];
+    if (z) { z.works++; M.note(s, `Zone works done: ${M.zoneDef(z.id).name} makes a pip more, for good.`, "good"); }
+  } else if (id === "requisition") { R.requisition++; M.note(s, `Requisition ${R.requisition}: a free pip a day, wherever control is weakest.`, "good"); }
+  else if (id.startsWith("counter:")) { const z = M.zone(s, id.slice(8)); if (z) { M.note(s, `${M.zoneDef(z.id).name}: ${z.tactic} countered.`, "good"); z.tactic = null; } R.counters++; }
+  else {
+    const it = M.item(id);
+    R.done.push(id);
+    R.points += it.points;
+    M.note(s, `Research done: ${it.name}.${it.kind === "weapon" ? " In the Armoury." : it.kind === "mod" ? " At the Clinic." : ""}`, "good");
+    if (!s.war && R.points >= M.N.WAR_AT) M.toWar(s);
+  }
+};
+M.toWar = s => {
+  s.war = true;
+  M.note(s, "Cal stops probing and commits. The city is on war footing: control decays half as fast again everywhere. Each zone has a story to finish; lock them all down.", "bad");
+};
+// research points into the running projects, split evenly; nothing running, they're wasted
+M.feedResearch = (s, rp) => {
+  const run = s.research.running;
+  if (!run.length) { s.research.wasted = (s.research.wasted || 0) + rp; return; }
+  const share = rp / run.length;
+  for (const p of run) p.left -= share;
+  for (const p of run.filter(p => p.left <= 0)) { run.splice(run.indexOf(p), 1); M.finish(s, p); }
+};
+
+/* ---------------- a day ---------------- */
+M.advanceDay = (s, onMission = false) => {
+  M.calStep(s);
+  let rp = 0, money = 0;
+  const overseers = M.isDone(s, "overseers");
+  for (const z of s.zones) {
+    if (z.lost) continue;
+    const P = M.fitPolicy(s, z);
+    let c = P.c, r = P.r, m = P.m;
+    // away on a mission, an overseer moves pips onto control so the zone keeps its level
+    if (onMission && overseers && !z.locked) {
+      const need = Math.min(M.pips(s, z), M.holdPips(s, z));
+      while (c < need && (r > 0 || m > 0)) { if (r >= m) r--; else m--; c++; }
+    }
+    const y = M.yieldOf(z);
+    rp += r * y; money += m * y * M.N.PIP_MONEY;
+    if (z.locked) continue;
+    const was = M.level(z.C);
+    // under martial law control can rise but not fall; afterwards it decays at double for 3 days
+    let delta = c * M.gainOf(s, z) - M.decayOf(s, z);
+    if (z.martial > 0) { delta = Math.max(0, delta); if (!--z.martial) z.martial = -3; }
+    else if (z.martial < 0) z.martial++;
+    z.C = Math.min(M.N.CAP, z.C + delta);
+    if (z.festival > 0) { z.C = Math.min(M.N.CAP, z.C + 0.5 / 3); z.festival--; }
+    if (z.C <= 0) {
+      z.C = 0; z.lost = true;
+      M.note(s, `${M.zoneDef(z.id).name} is lost. Nothing comes out of it until it's taken back by siege.`, "bad");
+    } else {
+      // the milestones only: reaching or losing level 3, falling to level 0
+      const now = M.level(z.C);
+      if (now === 3 && was < 3) M.note(s, `${M.zoneDef(z.id).name} is pacified: level 3.`, "good");
+      else if (was === 3 && now < 3) M.note(s, `${M.zoneDef(z.id).name} slips from level 3.`, "bad");
+      else if (now === 0 && was > 0) M.note(s, `${M.zoneDef(z.id).name} falls to level 0. It's close to lost.`, "bad");
+    }
+  }
+  // requisitioned pips go where control is weakest
+  for (let q = 0; q < s.research.requisition; q++) {
+    const z = s.zones.filter(z => !z.lost && !z.locked).sort((a, b) => a.C - b.C)[0];
+    if (z) z.C = Math.min(M.N.CAP, z.C + M.gainOf(s, z));
+  }
+  s.cash += Math.round(money);
+  s.today = { rp, money };
+  M.feedResearch(s, rp);
+  s.day++;
+  M.refreshOffers(s);
+};
+
+/* ---------------- missions on offer ---------------- */
+M.refreshOffers = s => {
+  s.offers = s.offers.filter(o => o.expires >= s.day && !(o.kind === "cal" && s.cal.zone !== o.zone) && !M.zone(s, o.zone).locked);
+  for (const z of s.zones) {
+    if (z.locked) continue;
+    const D = M.zoneDef(z.id), L = M.level(z.C), mine = s.offers.filter(o => o.zone === z.id);
+    const add = (kind, extra = {}) => {
+      const K = M.KINDS[kind];
+      s.offers.push(Object.assign({ id: `o${s.day}-${++seq}-${z.id}`, zone: z.id, kind, days: ri(s, ...K.days), level: L, seed: Math.floor(rnd(s) * 1e9),
+        landmark: D.areas ? pickS(s, D.areas) : null, expires: s.day + ri(s, 5, 9) }, extra));
+    };
+    if (z.lost) { if (!mine.some(o => o.kind === "siege")) add("siege", { expires: s.day + 99 }); continue; }
+    if (s.cal.zone === z.id && !mine.some(o => o.kind === "cal")) add("cal", { expires: s.day + s.cal.left });
+    if (s.war && !mine.some(o => o.kind === "story") && z.story < M.STORY.length) add("story", { step: z.story, expires: s.day + 99 });
+    const want = M.OFFERS[L], ordinary = mine.filter(o => o.kind === "intel" || o.kind === "job" || o.kind === "crackdown").length;
+    for (let k = ordinary; k < want; k++) {
+      const mix = M.MIX[L], r = rnd(s);
+      add(r < mix[0] ? "intel" : r < mix[0] + mix[1] ? "job" : "crackdown");
+    }
+  }
+};
+// can this offer be run now? (story steps need the zone at a level)
+M.canRun = (s, o) => {
+  const z = M.zone(s, o.zone);
+  if (o.kind === "story" && M.level(z.C) < M.STORY[o.step].needs) return `needs ${M.zoneDef(z.id).name} at level ${M.STORY[o.step].needs}`;
+  if (!M.squad(s).length) return "no Watchers in the squad";
+  return "";
+};
+// what a money reward is worth now: the dearest single purchase open to the squad
+M.moneyReward = s => {
+  const best = Math.max(...M.CATALOGUE.filter(r => M.isDone(s, r.id)).map(r => r.kind === "weapon" ? M.PRICE.weapon[r.mk] : r.kind === "mod" ? M.PRICE.mod[r.mk] : r.line === "purrsuader" ? M.PRICE.purrsuader[r.mk] : 0), M.PRICE.mod[1]);
+  return Math.round(Math.min(Math.max(best, s.roster.length < M.ROSTER_MAX ? M.PRICE.recruit * 0.5 : 0), 90000) / 1000) * 1000;
+};
+M.reward = (s, o) => {
+  const L = Math.max(0, M.level(M.zone(s, o.zone).C));
+  switch (o.kind) {
+    case "intel": return { rp: true, reveal: true };
+    case "job": return { money: M.moneyReward(s) };
+    case "crackdown": return { control: [0.9, 0.8, 0.65, 0.5][L], money: Math.round(M.moneyReward(s) * 0.2 / 1000) * 1000 };
+    case "cal": return { endPush: true, control: 0.4 };
+    case "siege": return { retake: true };
+    case "story": return { story: true, control: 0.3 };
+  }
+  return {};
+};
+M.describeReward = (s, o) => {
+  const R = M.reward(s, o), out = [];
+  if (R.rp) out.push(s.research.running.length ? `half of what's left on ${s.research.running.length} project${s.research.running.length > 1 ? "s" : ""}` : "research (start a project first, or it's wasted)");
+  if (R.reveal) out.push("Cal's next move");
+  if (R.money) out.push(W.money(R.money));
+  if (R.control) out.push(`+${R.control} control`);
+  if (R.endPush) out.push("ends Cal's push");
+  if (R.retake) out.push("the zone back, at level 0");
+  if (R.story) out.push(o.step === M.STORY.length - 1 ? "LOCKDOWN" : `story step ${o.step + 1} of ${M.STORY.length}`);
+  return out.join(" · ");
+};
+
+/* ---------------- the squad ---------------- */
+M.agentById = (s, id) => s.roster.find(a => a.id === id);
+M.squad = s => s.roster.filter(a => a.deployed).slice(0, M.SQUAD);
+M.toggleDeploy = (s, a) => {
+  if (a.deployed) { if (M.squad(s).length > 1) a.deployed = false; }
+  else if (M.squad(s).length < M.SQUAD) a.deployed = true;
+};
+M.canHire = s => s.roster.length >= M.ROSTER_MAX ? "the barracks are full" : s.cash < M.PRICE.recruit ? "not enough cash" : "";
+M.hire = (s, free = false) => {
+  if (!free && M.canHire(s)) return null;
+  if (!free) s.cash -= M.PRICE.recruit;
+  const used = new Set(s.roster.map(a => a.name).concat(s.fallen));
+  const name = M.NAMES.find(n => !used.has(n)) || "STRAY " + s.nextId;
+  const a = M.agent(s.nextId++, name, W.pick(W.FURS), [{ type: "pistol", mk: 1 }, { type: "medikit", count: 1 }], W.chance(0.3) ? W.pick(W.FURS) : null);
+  a.deployed = M.squad(s).length < M.SQUAD;
+  s.roster.push(a);
+  return a;
+};
+M.bestMk = (s, line) => [3, 2, 1].find(k => M.isDone(s, `${line}:${k}`)) || 0;
+// what can be bought for a Watcher: each researched weapon at its best mark, the Purrsuader, medikits, a BanHammer strike
+M.shop = (s, a) => {
+  const out = [];
+  for (const w of M.WEAPON_LINES) {
+    const mk = M.bestMk(s, w.id); if (!mk) continue;
+    const have = a.items.find(i => i.type === w.id);
+    if (!have || (have.mk || 1) < mk) out.push({ key: `w:${w.id}`, type: w.id, mk, name: `${w.name} MK${mk}`, price: M.PRICE.weapon[mk], upgrade: !!have });
+  }
+  const pk = M.bestMk(s, "purrsuader"), hp = a.items.find(i => i.type === "purrsuader" || i.type === "purr2");
+  if (pk && (!hp || (hp.mk || 1) < pk)) out.push({ key: "w:purrsuader", type: "purrsuader", mk: pk, name: `Purrsuader MK${pk}`, price: M.PRICE.purrsuader[pk], upgrade: !!hp });
+  out.push({ key: "medikit", type: "medikit", name: "Medikit", price: M.PRICE.medikit });
+  if (M.isDone(s, "banhammer")) out.push({ key: "banhammer", type: "banhammer", name: "BanHammer strike (one shot)", price: M.PRICE.banhammer });
+  return out;
+};
+M.canBuy = (s, a, it) => {
+  if (s.cash < it.price) return "not enough cash";
+  if (it.type === "medikit") { const m = a.items.find(i => i.type === "medikit"); if (m && m.count >= 4) return "carries 4 already"; }
+  if (!it.upgrade && it.type !== "medikit" && a.items.length >= 8) return "no free slot";
+  return "";
+};
+M.buy = (s, a, it) => {
+  if (M.canBuy(s, a, it)) return false;
+  s.cash -= it.price;
+  if (it.type === "medikit") { const m = a.items.find(i => i.type === "medikit"); if (m) m.count++; else a.items.push({ type: "medikit", count: 1 }); return true; }
+  if (it.type === "banhammer") { const b = a.items.find(i => i.type === "banhammer"); if (b) b.count = (b.count || 1) + 1; else a.items.push({ type: "banhammer", count: 1 }); return true; }
+  const have = a.items.find(i => i.type === it.type || (it.type === "purrsuader" && i.type === "purr2"));
+  if (have) { have.type = it.type; have.mk = it.mk; } else a.items.push({ type: it.type, mk: it.mk });
+  return true;
+};
+M.sell = (s, a, idx) => {
+  const it = a.items[idx]; if (!it) return false;
+  const price = it.type === "medikit" ? M.PRICE.medikit : it.type === "banhammer" ? M.PRICE.banhammer : it.type === "purrsuader" || it.type === "purr2" ? M.PRICE.purrsuader[it.mk || 1] : M.PRICE.weapon[it.mk || 1];
+  s.cash += Math.floor(price / 2);
+  if ((it.type === "medikit" || it.type === "banhammer") && it.count > 1) it.count--; else a.items.splice(idx, 1);
+  return true;
+};
+M.canInstall = (s, a, part) => {
+  const v = (a.mods[part] || 0) + 1;
+  if (v > 3) return "fully modded";
+  if (!M.isDone(s, `${part}:${v}`)) return "research it first";
+  if (s.cash < M.PRICE.mod[v]) return "not enough cash";
+  return "";
+};
+M.install = (s, a, part) => {
+  if (M.canInstall(s, a, part)) return false;
+  const v = (a.mods[part] || 0) + 1;
+  s.cash -= M.PRICE.mod[v];
+  a.mods[part] = v;
+  return true;
+};
+// the squad's scanner is one piece of kit, fitted a mark at a time once the mark is researched
+M.canUpgradeScanner = s => { const k = s.scannerMk + 1; if (k > 3) return "at MK3"; if (!M.isDone(s, `scanner:${k}`)) return "research it first"; return s.cash < M.PRICE.scanner[k] ? "not enough cash" : ""; };
+M.upgradeScanner = s => { if (M.canUpgradeScanner(s)) return false; s.scannerMk++; s.cash -= M.PRICE.scanner[s.scannerMk]; return true; };
+// what the squad has sunk into a Watcher: how much it hurts to lose them
+M.worth = a => M.PRICE.recruit + Object.values(a.mods).reduce((t, v) => t + [1, 2, 3].slice(0, v).reduce((x, k) => x + M.PRICE.mod[k], 0), 0)
+  + a.items.reduce((t, i) => t + (i.type === "medikit" ? M.PRICE.medikit * (i.count || 1) : i.type === "banhammer" ? M.PRICE.banhammer * (i.count || 1) : i.type === "purrsuader" || i.type === "purr2" ? M.PRICE.purrsuader[i.mk || 1] : M.PRICE.weapon[i.mk || 1] || 0), 0);
+
+/* What the mission engine is given: the deployed squad, with each weapon's mark. */
+M.missionRoster = s => M.squad(s).map(a => ({
+  id: a.id, name: a.name, fur: a.fur, patch: a.patch, mods: Object.assign({}, a.mods),
+  weapons: a.items.filter(i => W.WEAPONS[i.type === "purrsuader" && (i.mk || 1) >= 2 ? "purr2" : i.type]).map(i => ({
+    type: i.type === "purrsuader" && (i.mk || 1) >= 2 ? "purr2" : i.type, mk: i.mk || 1, ammo: i.type === "medikit" ? i.count : undefined })),
+}));
+/* The mission for an offer: the district, the area, the seed; and how hard the zone's streets are. */
+M.missionFor = (s, o) => {
+  const D = M.zoneDef(o.zone), z = M.zone(s, o.zone);
+  const L = W.missionLevel({ district: D.district, landmark: o.landmark, seed: o.seed });
+  L.mod = Object.assign({}, M.DIFFICULTY[z.lost ? -1 : M.level(z.C)]);
+  L.offer = o;
+  return L;
+};
+
+/* ---------------- events ---------------- */
+M.canEvent = (s, e, z) => {
+  if (s.cash < e.price) return "not enough cash";
+  if (e.zone && !z) return "pick a zone";
+  if (e.lost && !(z && z.lost)) return "only for a lost zone";
+  if (e.zone && !e.lost && z && (z.lost || z.locked)) return "not in a lost or locked zone";
+  if (e.id === "bribes" && s.cal.bribed) return "already paid";
+  return "";
+};
+M.event = (s, e, z) => {
+  if (M.canEvent(s, e, z)) return false;
+  s.cash -= e.price;
+  const name = z ? M.zoneDef(z.id).name : "";
+  if (e.id === "festival") { z.festival = 3; M.note(s, `A festival in ${name}.`, "good"); }
+  if (e.id === "informants") { s.cal.revealed = true; M.note(s, "Informants say where Cal goes next.", "good"); }
+  if (e.id === "bribes") { s.cal.bribed = true; M.note(s, "City Hall has been paid. Cal's next push will be half-hearted.", "good"); }
+  if (e.id === "martial") { z.martial = 3; M.note(s, `Martial law in ${name}.`); }
+  if (e.id === "amnesty") { z.lost = false; z.C = 0.5; z.policy = M.defaultPolicy(s, z); M.note(s, `An amnesty: ${name} is back, at level 0.`, "good"); }
+  return true;
+};
+
+/* ---------------- after a mission ----------------
+ * result: { won, agents: [{ id, alive, kills, items: [{ type, ammo, mk }] }] }.
+ * Pays out, counts the dead, and lets the mission's days pass with the
+ * policies as they stand (overseers adjusting, if researched). Returns the
+ * debrief's lines. */
+M.settle = (s, o, res) => {
+  const D = M.zoneDef(o.zone), z = M.zone(s, o.zone), lines = [];
+  s.stats.missions++;
+  s.offers = s.offers.filter(x => x.id !== o.id);
+  if (res.won) {
+    s.stats.won++;
+    const R = M.reward(s, o);
+    if (R.rp) {
+      let got = 0;
+      for (const p of s.research.running) { const g = p.left * M.N.INTEL; p.left -= g; got += g; }
+      M.feedResearch(s, 0);
+      lines.push(["Intel: research", got ? `${Math.round(got)} points` : "nothing running"]);
+    }
+    if (R.reveal) { s.cal.revealed = true; lines.push(["Intel: Cal's next push", s.cal.next ? `${M.zoneDef(s.cal.next).name}, in ${s.cal.nextIn} days` : "unclear"]); }
+    if (R.money) { s.cash += R.money; lines.push(["Paid", W.money(R.money)]); }
+    if (R.control) { z.C = Math.min(M.N.CAP, z.C + R.control); lines.push([`Control in ${D.name}`, `+${R.control}`]); }
+    if (R.endPush && s.cal.zone === z.id) { s.cal.left = 1; lines.push(["Cal's push", "broken"]); }
+    if (R.retake) { z.lost = false; z.C = 0.6; z.policy = M.defaultPolicy(s, z); lines.push([D.name, "taken back"]); M.note(s, `${D.name} is taken back.`, "good"); }
+    if (R.story) {
+      z.story++;
+      if (z.story >= M.STORY.length) {
+        z.locked = true; z.C = M.N.CAP; z.tactic = null; z.policy = M.defaultPolicy(s, z);
+        lines.push([D.name, "LOCKED DOWN"]);
+        M.note(s, `${D.name} is locked down. Cal's network there is finished.`, "good");
+        if (s.zones.every(q => q.locked)) { s.won = true; M.note(s, "Every zone is locked down. PumaCity is Casey Benton's, and Cal is finished.", "good"); }
+      } else lines.push([`${D.name}: story`, `step ${z.story} of ${M.STORY.length} done`]);
+    }
+    M.note(s, `${M.KINDS[o.kind].name} in ${D.name}: done.`, "good");
+  } else {
+    lines.push(["Mission failed", "no reward"]);
+    if (!z.lost && !z.locked) { z.C = Math.max(0.01, z.C - 0.3); lines.push([`Control in ${D.name}`, "-0.3"]); }
+    M.note(s, `${M.KINDS[o.kind].name} in ${D.name}: failed.`, "bad");
+  }
+  // the squad comes home, or doesn't
+  for (const r of res.agents) {
+    const a = M.agentById(s, r.id);
+    if (!a) continue;
+    if (!r.alive) {
+      const worth = M.worth(a);
+      s.roster = s.roster.filter(x => x !== a);
+      s.fallen.push(a.name);
+      lines.push([`${a.name} killed`, `${W.money(worth)} of Watcher lost`]);
+      M.note(s, `${a.name} was killed in ${D.name}.`, "bad");
+      continue;
+    }
+    a.missions++; a.kills += r.kills || 0;
+    // the engine hands weapons back without their marks: a weapon a Watcher went out with keeps its mark
+    const had = {}; for (const i of a.items) had[i.type] = i.mk || 1;
+    const items = [];
+    for (const w of r.items) {
+      const type = w.type === "purr2" ? "purrsuader" : w.type;
+      if (!w.mk && had[type]) w.mk = had[type];
+      if (type === "medikit") { if (w.ammo > 0) items.push({ type, count: Math.min(4, w.ammo) }); }
+      else if (type === "banhammer") { if (w.ammo > 0) items.push({ type, count: w.ammo }); }
+      else if (!items.some(i => i.type === type)) items.push({ type, mk: w.mk || 1 });
+    }
+    a.items = items.slice(0, 8);
+  }
+  if (!s.roster.length) { const a = M.hire(s, true); M.note(s, `With no Watchers left, Casey Benton sends a raw recruit: ${a.name}.`, "bad"); }
+  if (!M.squad(s).length) s.roster[0].deployed = true;
+  // the days the mission took
+  const cash0 = s.cash, lost0 = s.zones.filter(q => q.lost).length;
+  for (let d = 0; d < o.days; d++) M.advanceDay(s, true);
+  lines.push([`${o.days} days away`, `${W.money(s.cash - cash0)} made in the city`]);
+  const lostNow = s.zones.filter(q => q.lost).length;
+  if (lostNow > lost0) lines.push(["While you were out", `${lostNow - lost0} zone${lostNow - lost0 > 1 ? "s" : ""} lost`]);
+  return { lines };
+};
+
+W.money = n => (n < 0 ? "-$" : "$") + Math.abs(Math.round(n)).toLocaleString("en-US");

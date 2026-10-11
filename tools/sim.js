@@ -12,7 +12,7 @@
 "use strict";
 const fs = require("fs"), path = require("path"), vm = require("vm");
 const ROOT = path.join(__dirname, "..");
-const FILES = ["js/core/util.js", "js/core/map.js", "js/core/weapons.js", "js/core/units.js", "js/core/world.js", "js/levels/plaza.js", "js/campaign/campaign.js"];
+const FILES = ["js/core/util.js", "js/core/map.js", "js/core/weapons.js", "js/core/units.js", "js/core/world.js", "js/levels/plaza.js", "js/campaign/meta.js"];
 
 function load() {
   const store = {};
@@ -31,7 +31,7 @@ function load() {
 }
 
 function run(W, seed, attract, quiet, camp, roster, level) {
-  const world = new W.World(level || W.LEVELS.plaza, { attract, roster: roster || (camp ? W.C.missionRoster(W.C.fresh()) : undefined) });
+  const world = new W.World(level || W.LEVELS.plaza, { attract, roster: roster || (camp ? W.M.missionRoster(W.M.fresh()) : undefined) });
   const m = world.map, dt = 1 / 60;
   let t = 0, orderT = 0;
   const fail = msg => { throw new Error(`run ${seed} t=${t.toFixed(1)}: ${msg}`); };

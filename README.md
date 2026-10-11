@@ -2,13 +2,13 @@
 
 **Four cyber-cats in long coats, and Casey Benton's orders.** A squad
 tactics game in the spirit of *Syndicate* (Bullfrog, 1993), set in PumaCity.
-You run the Watchers, the Boss's covert enforcers, through the city's
-districts one contract at a time.
+You run the Watchers, the Boss's covert enforcers, holding her city zone by
+zone against Cal and the gangs he sets on it.
 
-Status: the engine; the campaign loop (contracts pay, money funds research,
-research unlocks gear); five districts, each one large map with
-generated missions; and Market Plaza, the first contract, played on all of
-Downtown.
+Status: the engine; the meta-game (eight zones, daily production, Cal, research,
+war and lockdowns: see `docs/meta.md`), its missions played for now as the one
+mission type the engine has; five districts, each one large map with generated
+missions.
 
 ## Play
 
@@ -18,29 +18,33 @@ art and sound included, is drawn and synthesised in the page.
 
 ### The campaign
 
-As in *Syndicate Wars*, the Boss pays by the contract and the money buys the
-squad's future:
+The rules, and the numbers behind them, are in [docs/meta.md](docs/meta.md);
+`tools/metasim.js` tunes them headless. In short:
 
-- **Contracts** pay a fee on success, plus a bonus for each optional
-  objective, scaled by grade (S ×1.25 to D ×0.8). A finished contract can be
-  run again as a mop-up, for a smaller fee.
-- **Research.** Two labs, *Weapons* and *Cyber*, each work on one project at
-  a time and spend their daily funding ($0 to $4,000) as days pass. A
-  contract takes two days; *Wait a day* passes one.
-  - Weapons: Uzi, Longwhisker rifle, Purrsuader II, Minigun (needs the Uzi),
-    Laser (needs the rifle), Gauss Gun (needs both).
-  - Cyber: Legs, Arms, Chest, Heart, Eyes and Brain, in three versions each.
-- **The Armoury** sells what has been researched, to a chosen Watcher (8
-  slots each). Ammunition is topped up free before every mission; medikits
-  are bought. Selling pays back half the price.
-- **The Clinic** installs researched mods, one version at a time.
-- **The Roster** holds up to 8 Watchers; 4 deploy. The dead stay dead, along
-  with what they carried. Weapons picked up in the field come home. Hire
-  replacements for $4,000.
-- **Skirmish** on the title plays Market Plaza with the standard kit and
-  saves nothing.
+- **Eight zones** on the five district maps. Each makes whole **pips** a day,
+  split between **research**, **money** and **control** by clicking them on the
+  board. Control decays every day; each level of it adds a pip, and a calm
+  zone's pips are worth more. At zero the zone is lost until a **siege**.
+- **Cal** pushes one zone at a time, harder the better you're doing, and can
+  leave **tactics** behind that need researching away. Intel shows where he
+  goes next.
+- **Research** costs money to start and research points to finish; points
+  can't be banked and split between the projects running. Weapons, mods, the
+  scanner and the Purrsuader come in three marks; the BanHammer, overseers,
+  zone works and requisitions besides.
+- **Missions** are offered in zones (more where control is low), take 3 to 8
+  days during which the pips stand as set, and pay research (half of what is
+  left on every project running), money (enough for a real purchase) or
+  control. The mission itself is, for now, the engine's one type: find and
+  kill the target.
+- **The squad**: up to 8 Watchers, 4 deploy. Weapons are bought per Watcher,
+  mods fitted at the Clinic; the dead are gone with everything spent on them.
+- **War** comes after 30 upgrade points: decay rises by half, and each zone
+  gets a story chain whose last step locks it down. Lock every zone down to win.
+- **Skirmish** on the title plays any district with the standard kit and saves
+  nothing.
 
-The campaign saves under `pcwatchers_campaign_v1` after every change.
+The campaign saves under `pcwatchers_campaign_v2` after every change.
 
 ### Districts and the Map Room
 
@@ -150,13 +154,14 @@ js/core/world.js      a mission in progress: traffic, damage, effects, win/lose
 js/levels/plaza.js    Mission 1: map, population, briefing, objectives
 js/districts/kit.js   district registry, warrens, fences, lamps, parking, mission generator
 js/districts/*.js     Downtown, Suburbs, Convention Center, The Ranch, Starport
-js/campaign/campaign.js  the campaign: research, prices, roster, pay (no DOM)
+js/campaign/meta.js   the campaign: zones, Cal, research, missions, squad (no DOM)
 js/ui/hud.js          the mission's left panel
-js/ui/overworld.js    Watchers command: city, contracts, labs, Armoury, Clinic, Roster
+js/ui/command.js      Watchers command: the board, missions, research, squad, events
 js/ui/maproom.js      the Map Room: districts, sections, missions, fly-overs
 js/main.js            screens, input, loop
 tools/sim.js          headless bot runs of the mission
-tools/campaign.js     a headless campaign: contracts, research, shopping
+tools/campaign.js     a bot plays the campaign headless; checks its invariants
+tools/metasim.js      the meta-game's numbers, run and tuned headless
 tools/maps.js         every district: points walkable and connected
 tools/serve.py        a dev server that never lets the browser cache
 ```
@@ -190,7 +195,7 @@ node tools/sim.js 10 --quiet   # bot walks in holstered, draws late
 node tools/sim.js 10           # bot goes in loud
 node tools/sim.js 10 --campaign  # with a new campaign's kit (no Uzis)
 node tools/sim.js 2 --attract  # the title screen's backdrop sim
-node tools/campaign.js 14      # a bot plays 14 contracts; checks the economy
+node tools/campaign.js 100     # a bot plays 100 missions (outcomes rolled); --fight plays them out
 node tools/maps.js             # every district and section is sound
 node tools/sim.js 6 --quiet --district=downtown   # generated missions
 ```

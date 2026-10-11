@@ -123,7 +123,9 @@ function play(opt = {}) {
     } else {
       const gap = Math.max(-2, Math.min(3, offer.threat - tierNow)), [pw, deaths] = ROLL[gap], sq = M.squad(s);
       const won = rand() < pw;
-      res = { won, agents: sq.map(a => ({ id: a.id, alive: rand() >= deaths * deathScale / sq.length, kills: 3, items: a.items.map(x => ({ type: x.type, mk: x.mk, ammo: x.count })) })) };
+      // a careful player calls a BanHammer strike down on the siege or lockdown it's carried for, and nowhere else
+      const fire = M.bigGun(offer) && sq.find(a => a.items.some(x => x.type === "banhammer"));
+      res = { won, agents: sq.map(a => ({ id: a.id, alive: rand() >= deaths * deathScale / sq.length, kills: 3, items: a.items.map(x => ({ type: x.type, mk: x.mk, ammo: x.type === "banhammer" && a === fire ? (x.count || 1) - 1 : x.count })) })) };
     }
     if (offer.kind === "story") { stats.storyTried++; if (res.won) stats.storyWon++; }
     stats.fallen += res.agents.filter(a => !a.alive).length;

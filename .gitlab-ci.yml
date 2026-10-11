@@ -1,0 +1,75 @@
+stages:
+  - validate
+  - deploy
+
+# Every local file the page names must be in the repo (games-meta STANDARD.md
+# §10), every script must parse, and the headless tools must play: sim.js fails
+# on a crash, a unit standing where it cannot, NaN positions or a mission that
+# never ends; campaign.js checks the campaign's invariants after every mission.
+# Runs on every branch and merge request, and on main ahead of deploy, so a
+# broken build stops the deploy instead of reaching the live site.
+validate:
+  stage: validate
+  image: node:20-alpine
+  script:
+    - node tools/check-assets.js
+    - find js tools -name '*.js' -exec node --check {} \;
+    - test -s index.html
+    - node tools/sim.js 3
+    - node tools/sim.js 2 --district=ranch
+    - node tools/campaign.js 200 --seed=1
+
+deploy:
+  stage: deploy
+  image: debian:bookworm-slim
+  only:
+    - main
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq openssh-client rsync > /dev/null 2>&1
+    - mkdir -p ~/.ssh
+    - cp "$DREAMHOST_SSH_KEY" ~/.ssh/id_rsa
+    - echo "" >> ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    # Host key is PINNED rather than scanned. A bare `ssh-keyscan` opens a burst
+    # of parallel connections (one per host-key type), which trips an SSH-scan
+    # detector on the self-hosted runner's network path; outbound port 22 to the
+    # target is then blackholed for minutes -- long enough for the rsync below
+    # to time out (exit 255 after 133s). Pinning costs zero connections and is
+    # also strictly safer than trusting whatever key answers at deploy time.
+    # If DreamHost rebuilds the VPS this must be re-pinned: the job will then
+    # fail loudly on a host key mismatch rather than silently trust a new key.
+    - echo "$DREAMHOST_HOST ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEtxw582rJAeTpXMTRJeGJ6GHis19hHmWWBwEL1bCbYd" > ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    # ConnectTimeout turns a blocked port into a 15s failure instead of a 133s
+    # one, for rsync's own ssh too.
+    - printf 'Host *\n  ConnectTimeout 15\n  BatchMode yes\n' > ~/.ssh/config
+    - chmod 600 ~/.ssh/config
+    # Outbound port 22 to this host gets blackholed for minutes once too many
+    # SSH connections go to it in a short window. Retry with long gaps so a
+    # queued deploy rides the block out; probing harder re-arms it.
+    - |
+      puma_rsync() {
+        attempt=1
+        until rsync "$@"; do
+          if [ "$attempt" -ge 3 ]; then
+            echo "rsync failed after $attempt attempts" >&2
+            return 1
+          fi
+          echo "attempt $attempt failed; waiting 200s for any port-22 block to clear"
+          attempt=$((attempt + 1))
+          sleep 200
+        done
+      }
+  script:
+    # One destination, one SSH connection. rsync creates the leaf directory
+    # on the first deploy.
+    #
+    # --delete-excluded is load-bearing: plain --delete PROTECTS excluded
+    # paths on the destination, so excluding something already published
+    # would pin it there. With --delete-excluded, "do not publish" also means
+    # "remove from the live site". The design notes, docs, map renders and
+    # headless tools stay in the repo.
+    - puma_rsync -avz --delete --delete-excluded --exclude='.git' --exclude='.claude' --exclude='.gitlab-ci.yml' --exclude='.gitignore' --exclude='.impeccable' --exclude='tools' --exclude='docs' --exclude='screenshots' --exclude='Source' --exclude='PRODUCT.md' --exclude='DESIGN.md' ./ ${DREAMHOST_USERNAME}@${DREAMHOST_HOST}:/home/${DREAMHOST_USERNAME}/greykit.com/games/watchers/
+  environment:
+    name: production
+    url: https://greykit.com/games/watchers/

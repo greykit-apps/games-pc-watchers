@@ -396,6 +396,15 @@ M.finish = (s, p) => {
     if (!s.war && !s.warReady && R.points >= M.N.WAR_AT) { s.warReady = true; M.note(s, "Casey Benton is ready to go to war with Cal whenever you are. Give the order from the Lab.", "good"); }
   }
 };
+// the Konami code: every project running finished, and half a million from Casey's petty cash
+M.cheat = s => {
+  const done = s.research.running.length;
+  for (const p of s.research.running) p.left = 0;
+  M.feedResearch(s, 0);
+  s.cash += 500000;
+  M.note(s, `Up, up, down, down. Casey Benton's petty cash: $500,000${done ? `, and ${done} project${done > 1 ? "s" : ""} finished` : ""}. Nobody saw anything.`, "good");
+  return done;
+};
 M.canDeclareWar = s => s.war ? "already at war" : s.research.points < M.N.WAR_AT ? `${M.N.WAR_AT - s.research.points} more upgrade points first` : "";
 M.declareWar = s => { if (M.canDeclareWar(s)) return false; M.toWar(s); M.refreshOffers(s); return true; };
 M.toWar = s => {
@@ -630,7 +639,7 @@ M.worth = a => M.PRICE.recruit + Object.values(a.mods).reduce((t, v) => t + [1, 
 M.missionRoster = s => M.squad(s).map(a => ({
   id: a.id, name: a.name, fur: a.fur, patch: a.patch, mods: Object.assign({}, a.mods),
   weapons: a.items.filter(i => W.WEAPONS[i.type === "purrsuader" && (i.mk || 1) >= 2 ? "purr2" : i.type]).map(i => ({
-    type: i.type === "purrsuader" && (i.mk || 1) >= 2 ? "purr2" : i.type, mk: i.mk || 1, ammo: i.type === "medikit" ? i.count : undefined })),
+    type: i.type === "purrsuader" && (i.mk || 1) >= 2 ? "purr2" : i.type, mk: i.mk || 1, ammo: i.type === "medikit" || i.type === "banhammer" ? i.count || 1 : undefined })),
 }));
 /* The mission for an offer: the district, the area, the seed; and how hard the zone's streets are. */
 /* The mission for an offer, as the engine gets it: the district, the area
@@ -719,11 +728,7 @@ M.settle = (s, o, res) => {
     M.note(s, `${M.KINDS[o.kind].name} in ${D.name}: failed.`, "bad");
   }
   s.hired = false;
-  // a BanHammer strike called down on a siege or a lockdown is spent, won or lost
-  if (M.bigGun(o)) {
-    const a = M.squad(s).find(x => x.items.some(i => i.type === "banhammer"));
-    if (a) { const i = a.items.find(x => x.type === "banhammer"); if ((i.count || 1) > 1) i.count--; else a.items.splice(a.items.indexOf(i), 1); lines.push(["BanHammer", "one strike called down"]); }
-  }
+  // a BanHammer strike is spent in the field, when it's called down: the engine hands back what's left
   // the squad comes home, or doesn't
   for (const r of res.agents) {
     const a = M.agentById(s, r.id);
@@ -751,8 +756,8 @@ M.settle = (s, o, res) => {
         if (!had[type] && W.WEAPONS[type]) lines.push([`${a.name} brought home`, `${W.WEAPONS[type].name}${M.isDone(s, `${type}:1`) ? "" : " (not researched)"}`]);
       }
     }
-    // what the engine wasn't sent (a BanHammer strike) comes home with them, less a strike fired on a siege or a lockdown
-    for (const i of a.items) if (!W.WEAPONS[i.type === "purrsuader" && (i.mk || 1) >= 2 ? "purr2" : i.type] && !items.some(x => x.type === i.type)) items.push(Object.assign({}, i));
+    // what the engine wasn't sent comes home with them as it went
+    for (const i of a.items) if (!W.WEAPONS[i.type === "purrsuader" && (i.mk || 1) >= 2 ? "purr2" : i.type] && !r.items.some(w => w.type === i.type)) items.push(Object.assign({}, i));
     a.items = items.filter(i => i.type !== "banhammer").slice(0, 8).concat(items.filter(i => i.type === "banhammer"));
   }
   if (!s.roster.length) { const a = M.hire(s, true); M.note(s, `With no Watchers left, Casey Benton sends a raw recruit: ${a.name}.`, "bad"); }

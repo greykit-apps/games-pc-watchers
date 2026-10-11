@@ -414,7 +414,8 @@ const Game = W.game = {
         if (purr && u.kind !== "target") {
           h.mode = "persuade";
           const ok = W.canPersuade(this.world, sel[0], u), mind = this.world.level.mission && this.world.level.mission.mindControl;
-          h.label = ok ? "Persuade " + lbl.toLowerCase() : mind ? lbl + ": mind-controlled, deaf to the Purrsuader" : lbl + ": need more followers";
+          const full = !u.subject && W.squadFollowers(this.world) >= W.followingCap(this.world);
+          h.label = ok ? "Persuade " + lbl.toLowerCase() : mind ? lbl + ": mind-controlled, deaf to the Purrsuader" : full ? `${lbl}: your following is full (${W.followingCap(this.world)})` : lbl + ": need more followers";
           h.labelColor = ok ? "#54f2ff" : "#ffb000";
         } else { h.mode = "fire"; h.label = lbl; h.labelColor = col; }
       }
@@ -841,7 +842,8 @@ const Game = W.game = {
     let slip = null;
     if (camp) {
       slip = W.M.settle(this.campaign, this.run.contract, {
-        won, agents: w.agents.map(a => ({ id: a.rosterId, alive: a.alive, kills: a.kills || 0, items: a.weapons.map(x => ({ type: x.type, ammo: x.ammo, mk: x.mk })) })),
+        won, persuaded: s.persuaded || 0, civKilled: s.civ || 0,
+        agents: w.agents.map(a => ({ id: a.rosterId, alive: a.alive, kills: a.kills || 0, items: a.weapons.map(x => ({ type: x.type, ammo: x.ammo, mk: x.mk })) })),
       });
       W.M.save(this.campaign);
     }
@@ -858,6 +860,7 @@ const Game = W.game = {
         <tr><td>${W.esc(w.names.crew)} down</td><td>${s.crew}</td></tr>
         <tr><td>${W.esc(w.names.sec)} down</td><td>${s.sec}</td></tr>
         <tr><td>Civilians lost</td><td>${s.civ}</td></tr>
+        <tr><td>Citizens talked round</td><td>${s.persuaded || 0}</td></tr>
         ${s.civAcc ? `<tr><td>Traffic accidents (not on you)</td><td>${s.civAcc}</td></tr>` : ""}
         <tr><td>Recruited</td><td>${s.recruited}</td></tr>
         <tr><td>Rounds fired</td><td>${s.shots}</td></tr>

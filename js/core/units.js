@@ -323,7 +323,21 @@ W.tryFire = (world, u, tx, ty, victim) => {
 };
 
 /* ---- the Purrsuader ---- */
-W.squadFollowers = world => world.units.filter(o => o.alive && o.follower && !o.isAgent && !o.merc).length;
+/* The following: everyone talked round and still with us. A persuade job's
+ * subject and hired guns are not part of it. */
+W.squadFollowers = world => world.units.filter(o => o.alive && o.follower && !o.isAgent && !o.merc && !o.subject).length;
+/* How big a following the squad can hold: set by the best Purrsuader any
+ * Watcher still in the field carries (MK1, the Purrsuader II as MK2, or its
+ * mark when the campaign sends one). Nobody past it can be talked round. */
+W.FOLLOWING = { 1: 6, 2: 10, 3: 16 };
+W.followingCap = world => {
+  let mk = 0;
+  for (const a of world.agents) if (a.alive && !a.out) for (const w of a.weapons) {
+    const d = W.WEAPONS[w.type];
+    if (d && d.persuade) mk = Math.max(mk, Math.max(d.persuade, w.mk || 1));
+  }
+  return mk ? W.FOLLOWING[Math.min(3, mk)] : 0;
+};
 /* how many followers it takes to talk t round (before the brain mods count) */
 W.persuadeNeed = (world, agent, t) => {
   let need = t.kind === "target" ? Infinity : t.kind === "crew" ? (t.guard ? 6 : W.PERSUADE_NEED.crew) : W.PERSUADE_NEED[t.kind];
@@ -337,7 +351,10 @@ W.canPersuade = (world, agent, t) => {
   if (!t.alive || t.inCar || t.faction === "player" || t.isAgent) return false;
   // a persuade job's subject: their own price in followers (the threat less one; half with a better Purrsuader).
   // Mind control does not reach them: the job is to turn them.
+  // (the subject never counts against the following's cap: a full crowd cannot lock the job out)
   if (t.subject) { const d = W.curDef(agent); let need = t.need || 0; if (d && d.persuade > 1) need = Math.ceil(need / 2); return W.squadFollowers(world) + W.mod(agent, "brain") >= need; }
+  // a full following: nobody else
+  if (W.squadFollowers(world) >= W.followingCap(world)) return false;
   // a zone under mind control: nobody there hears the Purrsuader
   if (world.level.mission && world.level.mission.mindControl) return false;
   const need = W.persuadeNeed(world, agent, t);
@@ -352,6 +369,7 @@ W.persuade = (world, agent, t) => {
   W.say(t, W.pick(W.LINES.purr), "#54f2ff");
   W.audio.at("persuaded", t.x, t.y);
   world.stats.recruited++;
+  if (t.kind === "civ" && !t.subject) t.persuadedCiv = true;
   world.spark(t.x, t.y, 18, "#54f2ff", 6);
 };
 
@@ -436,7 +454,7 @@ W.thinkAgent = (world, u) => {
         if (u.manual === pick) u.manual = null;
       } else if (m) {
         if (!W.canPersuade(world, u, m)) {
-          if (!u.denyT) { world.msg(world.level.mission && world.level.mission.mindControl ? `${u.name}: they don't hear it. Nobody here does.` : `${u.name}: need ${W.persuadeNeed(world, u, m)} followers to work on that one.`, "#ffb000"); u.denyT = 3; W.audio.play("deny"); }
+          if (!u.denyT) { world.msg(!m.subject && W.squadFollowers(world) >= W.followingCap(world) ? `${u.name}: that's as many as we can keep. Lose some first.` : world.level.mission && world.level.mission.mindControl ? `${u.name}: they don't hear it. Nobody here does.` : `${u.name}: need ${W.persuadeNeed(world, u, m)} followers to work on that one.`, "#ffb000"); u.denyT = 3; W.audio.play("deny"); }
           u.manual = null;
         } else if (!u.path || u.chaseT <= 0) { W.goTo(world, u, m.x, m.y); u.chaseT = 1; }
       }

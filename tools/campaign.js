@@ -119,7 +119,7 @@ function play(opt = {}) {
     if (fight) {
       const L = M.missionFor(s, offer);
       const out = run(W, i, false, true, false, M.missionRoster(s), L);
-      res = { won: out.status === "won", agents: out.world.agents.map(a => ({ id: a.rosterId, alive: a.alive, kills: a.kills || 0, items: a.weapons.map(x => ({ type: x.type, ammo: x.ammo, mk: x.mk })) })) };
+      res = { won: out.status === "won", persuaded: out.world.stats.persuaded || 0, civKilled: out.world.stats.civ || 0, agents: out.world.agents.map(a => ({ id: a.rosterId, alive: a.alive, kills: a.kills || 0, items: a.weapons.map(x => ({ type: x.type, ammo: x.ammo, mk: x.mk })) })) };
     } else {
       const gap = Math.max(-2, Math.min(3, offer.threat - tierNow)), [pw, deaths] = ROLL[gap], sq = M.squad(s);
       const won = rand() < pw;

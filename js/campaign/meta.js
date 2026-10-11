@@ -30,6 +30,7 @@ M.N = {
   PULL: 0.25,                           // how fast propaganda or mind control draws a zone back up to its floor
   HIRED: 4,                             // a hired crew, in squad power
   BANHAMMER: 6,                         // a BanHammer strike carried, in squad power, for a siege or a lockdown
+  PERSUADED: 0.02, CIV_KILLED: 0.03,     // control, per citizen talked round and per civilian killed on a mission, won or lost
   FLOOR_MONEY: [1, 0.85, 0.7],          // what propaganda (1) and mind control (2) leave of a zone's money: people stop spending
 };
 M.decay = (C, war) => {
@@ -770,6 +771,13 @@ M.settle = (s, o, res) => {
   if (res.won) {
     const R = M.reward(s, o);
     if (R.control && !z.lost && !z.locked) { z.C = Math.min(M.N.CAP, z.C + R.control); lines.push([`Control in ${D.name}`, `+${R.control}, now level ${M.level(z.C)}`]); }
+  }
+  // the streets remember, won or lost: citizens talked round and still with the squad, and civilians the fight killed
+  const talked = res.persuaded || 0, dead = res.civKilled || 0;
+  if ((talked || dead) && !z.lost && !z.locked) {
+    const f = n => (n < 0 ? "−" : "+") + Math.abs(n).toFixed(2);
+    if (talked) { const g = talked * M.N.PERSUADED; z.C = Math.min(M.N.CAP, z.C + g); lines.push([`Citizens talked round: ${talked}`, `control ${f(g)}`]); }
+    if (dead) { const g = dead * M.N.CIV_KILLED; z.C = Math.max(0.01, z.C - g); lines.push([`Civilians killed: ${dead}`, `control ${f(-g)}`]); }
   }
   const lostNow = s.zones.filter(q => q.lost).length;
   if (lostNow > lost0) lines.push(["While you were out", `${lostNow - lost0} zone${lostNow - lost0 > 1 ? "s" : ""} lost`]);

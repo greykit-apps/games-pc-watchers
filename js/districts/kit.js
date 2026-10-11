@@ -411,6 +411,8 @@ W.populateMission = (world, L, d, opts) => {
     const gun = mod ? modGun() : W.pick(T.crewGuns || ["pistol", "pistol", "uzi"]);
     W.giveWeapon(u, gun, gun === "uzi" ? 60 : undefined);
   }
+  // what else is going on: gangs, deals, the police, crowds, roaming crew (encounters.js)
+  W.populateEncounters(world, L, d, opts);
   if (L.picks.exit) world.escapePoint = m.nearestWalkable(L.picks.exit.x, L.picks.exit.y, 6);
   // the squad
   const sp = L.picks.spawn;

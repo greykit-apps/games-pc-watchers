@@ -238,6 +238,7 @@ W.World = class {
     let want = car.escape ? 5.5 : reckless ? Math.max(5.5, car.maxSpeed * 1.4) : car.maxSpeed;
     // whatever is in front: the car ahead in the lane, or anything crossing it
     const front = s + dir * car.len / 2;
+    let blocked = false;
     for (const o of this.cars) {
       if (o === car || o.dead && !o.boomed) continue;
       if (o.axis === car.axis) {
@@ -246,7 +247,7 @@ W.World = class {
         const ahead = (os - s) * dir;
         if (ahead <= 0) continue;
         const gap = ahead - (car.len + o.len) / 2;
-        if (gap < 2.4) want = Math.min(want, Math.max(0, gap - 0.5) * 2.2);
+        if (gap < 2.4) { want = Math.min(want, Math.max(0, gap - 0.5) * 2.2); if (o.parked || o.dead) blocked = true; }
       } else {
         // crossing traffic: is its body inside the next stretch of our lane?
         const os = ax ? o.x : o.y, ol = ax ? o.y : o.x;
@@ -293,6 +294,18 @@ W.World = class {
         if (ahead >= -0.05 && ahead < 2.2 && !this.light[car.axis]) want = Math.min(want, Math.max(0, ahead - 0.6) * 2.5);
       }
     }
+    // stuck behind something that will not move (a squad car, a wreck): turn round, when the other lane is clear
+    if (blocked && car.speed < 0.1 && !car.escape) {
+      car.blockedT = (car.blockedT || 0) + dt;
+      if (car.blockedT > 1.5) {
+        const O = this.map.lanes.find(o => !o.train && o.axis === car.axis && o.dir === -dir && Math.abs(o.at - lat) <= 2.5 && s > o.from && s < o.to);
+        if (O && !this.cars.some(c => c !== car && c.lane === O && Math.abs((ax ? c.x : c.y) - s) < 3.5)) {
+          car.lane = O; car.dir = O.dir; car.blockedT = 0;
+          if (ax) car.y = O.at; else car.x = O.at;
+          return;
+        }
+      }
+    } else car.blockedT = 0;
     car.speed += W.clamp(want - car.speed, -14 * dt, (reckless ? 7 : 4) * dt);
     if (car.speed < 0.02) car.speed = 0;
     const ns = s + dir * car.speed * dt;

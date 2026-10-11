@@ -84,6 +84,14 @@ What makes them play:
   (so a squad can be split by one). Cars give way at level crossings. Car
   parks have a loop road, aisles and gates; every driveway runs through the
   sidewalk to a road.
+- **Encounters.** The district goes on without you. Each mission puts
+  something at a handful of its places of interest (inside buildings, open
+  spaces, big back alleys, two-way streets): a gang drinking in a bar or a
+  club, a deal going down, the police round a body in the road with their
+  cars across both lanes (traffic turns round), a patrol, a crowd. A few of
+  the crew walk the streets among everyone else. The hostile ones scale with
+  the threat, none are near the drop point, and nobody has to die: going
+  round is often the answer.
 - **Cars and people.** Drivers brake for pedestrians, now and then too late:
   a knockdown and some damage. A speeding car (a getaway, or a driver
   panicking away from gunfire) kills whoever it hits. Walking into a car's
@@ -165,6 +173,7 @@ js/core/units.js      units, stims, hostility, AI per kind, firing, Purrsuader
 js/core/world.js      a mission in progress: traffic, damage, effects, win/lose
 js/levels/plaza.js    Mission 1: map, population, briefing, objectives
 js/districts/kit.js   district registry, warrens, fences, lamps, parking, mission generator
+js/districts/encounters.js  places of interest, and what is going on at them
 js/districts/*.js     Downtown, Suburbs, Convention Center, The Ranch, Starport
 js/campaign/meta.js   the campaign: zones, Cal, research, missions, squad (no DOM)
 js/ui/hud.js          the mission's left panel

@@ -1568,6 +1568,13 @@ W.drawCar = (c, car, ox, oy) => {
   else { if (f > 0) { cy0 = y0 + cut * 0.6; cy1 = y1 - cut * 1.6; } else { cy0 = y0 + cut * 1.6; cy1 = y1 - cut * 0.6; } cx0 += 0.08; cx1 -= 0.08; }
   W.box(c, ox, oy, cx0, cy0, cx1, cy1, 6, 10, W.shade(col, 0.95), "#1d3346", "#122232");
   if (car.taxi) W.box(c, ox, oy, (cx0 + cx1) / 2 - 0.12, (cy0 + cy1) / 2 - 0.12, (cx0 + cx1) / 2 + 0.12, (cy0 + cy1) / 2 + 0.12, 10, 12, "#ffe08a", "#d9b85a", "#b8973c");
+  if (car.police) {
+    // the light bar, across the roof: red and blue, taking turns
+    const mx = (cx0 + cx1) / 2, my = (cy0 + cy1) / 2, on = (Date.now() / 260 | 0) % 2;
+    const half = (a, red) => { const lit = red === !!on; const col = red ? (lit ? "#ff3048" : "#5a1a22") : (lit ? "#3a8bff" : "#1a2a5a");
+      W.box(c, ox, oy, ax ? mx - 0.14 : mx + (a - 1) * 0.3, ax ? my + (a - 1) * 0.3 : my - 0.14, ax ? mx + 0.14 : mx + a * 0.3, ax ? my + a * 0.3 : my + 0.14, 10, 11.5, col, W.shade(col, 0.8), W.shade(col, 0.7)); };
+    half(0, true); half(1, false);
+  }
   // lights: front white-yellow, back red
   const fx = ax ? (f > 0 ? x1 : x0) : null, fy = ax ? null : (f > 0 ? y1 : y0);
   const bx = ax ? (f > 0 ? x0 : x1) : null, by = ax ? null : (f > 0 ? y0 : y1);

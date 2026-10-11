@@ -201,7 +201,7 @@ const pickS = (s, a) => a[Math.floor(rnd(s) * a.length)];
 M.agent = (id, name, fur, items, patch) => ({ id, name, fur, patch: patch || null, mods: {}, items, deployed: true, missions: 0, kills: 0 });
 M.fresh = (seed = Date.now() % 100000) => {
   const s = {
-    v: 2, day: 1, cash: 80000, nextId: 5, rng: seed % 233280,
+    v: 2, day: 1, cash: 80000, nextId: 5, rng: seed % 233280, armoury: {},
     zones: M.ZONES.map(z => ({ id: z.id, C: z.start, lost: z.start <= 0, locked: false, works: 0, tactic: null, policy: null, story: 0, martial: 0, festival: 0, floor: 0 })),
     research: { done: M.START_DONE.slice(), running: [], points: 0, works: 0, requisition: 0, counters: 0 },
     scannerMk: 0, war: false, won: false,
@@ -224,7 +224,7 @@ M.fresh = (seed = Date.now() % 100000) => {
   return s;
 };
 M.KEY = "campaign_v2";
-M.load = () => { const s = W.store.get(M.KEY, null); return s && s.v === 2 ? s : null; };
+M.load = () => { const s = W.store.get(M.KEY, null); if (s && s.v === 2 && !s.armoury) s.armoury = {}; return s && s.v === 2 ? s : null; };
 M.save = s => W.store.set(M.KEY, s);
 M.note = (s, text, kind = "") => { s.log.unshift({ day: s.day, text, kind }); s.log.length = Math.min(s.log.length, 60); };
 
@@ -493,13 +493,14 @@ M.refreshOffers = s => {
     }
   }
   // there is always something the squad can take on: if nothing on offer is within its tier, a
-  // quiet job turns up in the calmest zone that isn't lost or locked
+  // quiet job turns up in the calmest zone that isn't lost or locked; and when Cal holds all
+  // that's left, intel or a job in one of his zones, to rebuild a squad on before the sieges
   M.liveThreats(s);
   const tier = M.squadTier(s);
   if (!s.offers.some(o => o.threat <= tier)) {
-    const z = s.zones.filter(q => !q.lost && !q.locked).sort((a, b) => b.C - a.C)[0];
+    const z = s.zones.filter(q => !q.lost && !q.locked).sort((a, b) => b.C - a.C)[0] || s.zones.find(q => q.lost && !q.locked);
     if (z) {
-      const D = M.zoneDef(z.id), kind = M.hasTalker(s) && rnd(s) < 0.5 ? "persuade" : "intel";
+      const D = M.zoneDef(z.id), kind = z.lost ? (rnd(s) < 0.5 ? "job" : "intel") : M.hasTalker(s) && rnd(s) < 0.5 ? "persuade" : "intel";
       s.offers.push({ id: `o${s.day}-${++seq}-${z.id}`, zone: z.id, kind, days: ri(s, ...M.KINDS[kind].days), level: M.level(z.C), seed: Math.floor(rnd(s) * 1e9),
         landmark: D.areas ? pickS(s, D.areas) : null, expires: s.day + ri(s, 5, 9), threat: Math.min(tier, M.threatOf(s, kind, z)), fallback: true });
     }
@@ -608,17 +609,72 @@ M.buy = (s, a, it) => {
   if (it.type === "medikit") { const m = a.items.find(i => i.type === "medikit"); if (m) m.count++; else a.items.push({ type: "medikit", count: 1 }); return true; }
   if (it.type === "banhammer") { const b = a.items.find(i => i.type === "banhammer"); if (b) b.count = (b.count || 1) + 1; else a.items.push({ type: "banhammer", count: 1 }); return true; }
   const have = a.items.find(i => i.type === it.type || (it.type === "purrsuader" && i.type === "purr2"));
-  if (have) { have.type = it.type; have.mk = it.mk; } else a.items.push({ type: it.type, mk: it.mk });
+  if (have) { M.stock(s, have.type, have.mk || 1, 1); have.type = it.type; have.mk = it.mk; } else a.items.push({ type: it.type, mk: it.mk });
+  return true;
+};
+
+/* ---------------- the armoury ----------------
+ * The squad's stock, shared: what's brought home from the field goes here, and
+ * any Watcher's kit can go back. From here it's handed out, sold for half, or
+ * bought (once researched). s.armoury is { key: count }, the key an item's type,
+ * and its mark for a weapon ("uzi:2"); medikits and BanHammer strikes have none. */
+M.armKey = (type, mk) => type === "medikit" || type === "banhammer" ? type : `${type === "purr2" ? "purrsuader" : type}:${mk || 1}`;
+M.armItem = key => { const [type, mk] = key.split(":"); return mk ? { type, mk: +mk } : { type }; };
+M.itemName = it => it.type === "banhammer" ? "BanHammer strike" : it.type === "medikit" ? "Medikit"
+  : `${(M.WEAPON_LINES.find(w => w.id === it.type) || (it.type === "purrsuader" || it.type === "purr2" ? { name: "Purrsuader" } : null) || W.WEAPONS[it.type] || { name: it.type }).name} MK${it.mk || 1}`;
+M.stock = (s, type, mk, n) => { const k = M.armKey(type, mk); s.armoury[k] = (s.armoury[k] || 0) + n; if (s.armoury[k] <= 0) delete s.armoury[k]; };
+// what an item costs new: null if it can't be bought (not researched, or loot from the field)
+M.armPrice = (s, key) => {
+  const it = M.armItem(key);
+  if (it.type === "medikit") return M.PRICE.medikit;
+  if (it.type === "banhammer") return M.isDone(s, "banhammer") ? M.PRICE.banhammer : null;
+  if (it.type === "purrsuader") return M.bestMk(s, "purrsuader") >= it.mk ? M.PRICE.purrsuader[it.mk] : null;
+  return M.WEAPON_LINES.some(w => w.id === it.type) && M.bestMk(s, it.type) >= it.mk ? M.PRICE.weapon[it.mk] : null;
+};
+// the armoury's rows: everything on the racks (bought or brought home), and everything that can be bought, even at none
+M.armoury = s => {
+  const keys = new Set(Object.keys(s.armoury));
+  for (const w of M.WEAPON_LINES) for (let mk = 1; mk <= M.bestMk(s, w.id); mk++) keys.add(`${w.id}:${mk}`);
+  for (let mk = 1; mk <= M.bestMk(s, "purrsuader"); mk++) keys.add(`purrsuader:${mk}`);
+  keys.add("medikit"); if (M.isDone(s, "banhammer")) keys.add("banhammer");
+  const order = key => { const it = M.armItem(key), i = M.WEAPON_LINES.findIndex(w => w.id === it.type); return (i >= 0 ? i : it.type === "purrsuader" ? 50 : it.type === "medikit" ? 60 : it.type === "banhammer" ? 70 : 40) * 10 + (it.mk || 0); };
+  return [...keys].sort((a, b) => order(a) - order(b)).map(key => {
+    const it = M.armItem(key);
+    return { key, type: it.type, mk: it.mk, name: M.itemName(it), count: s.armoury[key] || 0, price: M.armPrice(s, key), sell: M.sellPrice(it) };
+  });
+};
+M.canArmBuy = (s, key) => { const p = M.armPrice(s, key); return p == null ? "not researched: can't be bought" : M.short(s, p); };
+M.armBuy = (s, key) => { if (M.canArmBuy(s, key)) return false; s.cash -= M.armPrice(s, key); s.armoury[key] = (s.armoury[key] || 0) + 1; return true; };
+M.armSell = (s, key) => { if (!s.armoury[key]) return false; const it = M.armItem(key); s.cash += M.sellPrice(it); M.stock(s, it.type, it.mk, -1); return true; };
+// handing one out: a gun of a kind the Watcher already carries is swapped, and the old one goes back on the racks
+M.canIssue = (s, a, key) => !a ? "pick a Watcher" : !s.armoury[key] ? "none on the racks" : M.canTake(a, key);
+// whether a Watcher has room for one more of an item, wherever it comes from
+M.canTake = (a, key) => {
+  const it = M.armItem(key);
+  if (it.type === "medikit") { const m = a.items.find(i => i.type === "medikit"); return m && m.count >= 4 ? "carries the most there is room for: 4" : ""; }
+  if (it.type === "banhammer") return "";
+  const have = a.items.find(i => i.type === it.type || (it.type === "purrsuader" && i.type === "purr2"));
+  if (have && (have.mk || 1) === it.mk) return "carries one already";
+  return !have && M.slots(a) >= 8 ? "all 8 slots full: return something first" : "";
+};
+M.issue = (s, a, key) => {
+  if (M.canIssue(s, a, key)) return false;
+  const it = M.armItem(key);
+  M.stock(s, it.type, it.mk, -1);
+  if (it.type === "medikit" || it.type === "banhammer") { const m = a.items.find(i => i.type === it.type); if (m) m.count = (m.count || 1) + 1; else a.items.push({ type: it.type, count: 1 }); return true; }
+  const have = a.items.find(i => i.type === it.type || (it.type === "purrsuader" && i.type === "purr2"));
+  if (have) { M.stock(s, have.type, have.mk || 1, 1); have.type = it.type; have.mk = it.mk; } else a.items.push({ type: it.type, mk: it.mk });
+  return true;
+};
+// one of what a Watcher carries back on the racks (one medikit or strike at a time)
+M.unissue = (s, a, idx) => {
+  const it = a.items[idx]; if (!it) return false;
+  M.stock(s, it.type, it.mk, 1);
+  if ((it.type === "medikit" || it.type === "banhammer") && it.count > 1) it.count--; else a.items.splice(idx, 1);
   return true;
 };
 // what an item fetches: half what it cost
 M.sellPrice = it => Math.floor((it.type === "medikit" ? M.PRICE.medikit : it.type === "banhammer" ? M.PRICE.banhammer : it.type === "purrsuader" || it.type === "purr2" ? M.PRICE.purrsuader[it.mk || 1] : M.PRICE.weapon[it.mk || 1]) / 2);
-M.sell = (s, a, idx) => {
-  const it = a.items[idx]; if (!it) return false;
-  s.cash += M.sellPrice(it);
-  if ((it.type === "medikit" || it.type === "banhammer") && it.count > 1) it.count--; else a.items.splice(idx, 1);
-  return true;
-};
 M.canInstall = (s, a, part) => {
   const v = (a.mods[part] || 0) + 1;
   if (v > 3) return "fully modded";
@@ -734,7 +790,8 @@ M.settle = (s, o, res) => {
   }
   s.hired = false;
   // a BanHammer strike is spent in the field, when it's called down: the engine hands back what's left
-  // the squad comes home, or doesn't
+  // the squad comes home, or doesn't; what they picked up goes to the armoury
+  const haul = [];
   for (const r of res.agents) {
     const a = M.agentById(s, r.id);
     if (!a) continue;
@@ -753,18 +810,24 @@ M.settle = (s, o, res) => {
     for (const w of r.items) {
       const type = w.type === "purr2" ? "purrsuader" : w.type;
       if (!w.mk && had[type]) w.mk = had[type];
-      if (type === "medikit") { if (w.ammo > 0) items.push({ type, count: Math.min(4, w.ammo) }); }
+      if (type === "medikit") {
+        // a Watcher carries 4 at most: what they picked up past that goes on the racks
+        const m = items.find(i => i.type === "medikit"), n = (m ? m.count : 0) + Math.max(0, w.ammo || 0), keep = Math.min(4, n);
+        if (m) m.count = keep; else if (keep) items.push({ type, count: keep });
+        if (n > 4) { M.stock(s, "medikit", 0, n - 4); haul.push(`${n - 4} medikit${n > 5 ? "s" : ""}`); }
+      }
       else if (type === "banhammer") { if (w.ammo > 0) items.push({ type, count: w.ammo }); }
       else if (!items.some(i => i.type === type)) {
-        items.push({ type, mk: w.mk || 1 });
-        // loot from the field: a gun nobody sent them out with, researched or not, is theirs to keep or sell
-        if (!had[type] && W.WEAPONS[type]) lines.push([`${a.name} brought home`, `${W.WEAPONS[type].name}${M.isDone(s, `${type}:1`) ? "" : " (not researched)"}`]);
+        // loot from the field: a gun nobody sent them out with, researched or not, goes on the armoury's racks
+        if (!had[type] && W.WEAPONS[type]) { M.stock(s, type, w.mk || 1, 1); haul.push(`${M.itemName({ type, mk: w.mk || 1 })}${M.isDone(s, `${type}:1`) ? "" : " (not researched)"}`); }
+        else items.push({ type, mk: w.mk || 1 });
       }
     }
     // what the engine wasn't sent comes home with them as it went
     for (const i of a.items) if (!W.WEAPONS[i.type === "purrsuader" && (i.mk || 1) >= 2 ? "purr2" : i.type] && !r.items.some(w => w.type === i.type)) items.push(Object.assign({}, i));
     a.items = items.filter(i => i.type !== "banhammer").slice(0, 8).concat(items.filter(i => i.type === "banhammer"));
   }
+  if (haul.length) lines.push(["To the armoury", haul.join(", ")]);
   if (!s.roster.length) { const a = M.hire(s, true); M.note(s, `With no Watchers left, Casey Benton sends a raw recruit: ${a.name}.`, "bad"); }
   if (!M.squad(s).length) s.roster[0].deployed = true;
   // the days the mission took

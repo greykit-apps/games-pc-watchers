@@ -25,8 +25,19 @@
 "use strict";
 const { load, run } = require("./sim.js");
 
-// the rolled fight: by threat minus tier, the chance to win and the Watchers lost on average
+// the rolled fight: by threat minus tier, the chance to win and the Watchers lost on average.
+// Measured per kind in the engine (2026-10-11, a5a4475): four kits from the starting squad to
+// tier 4, threat one under to two over, six fights a cell. The quiet kinds keep the old table.
 const ROLL = { "-2": [0.99, 0], "-1": [0.98, 0.03], 0: [0.95, 0.2], 1: [0.88, 1.0], 2: [0.5, 2.4], 3: [0.15, 3.2] };
+const ROLL_KIND = {
+  assassinate: { "-2": [1, 0], "-1": [1, 0.06], 0: [1, 0.13], 1: [0.92, 1.25], 2: [0.72, 2.33], 3: [0.4, 3.2] },
+  cal:         { "-2": [1, 0], "-1": [1, 0],    0: [0.92, 0.34], 1: [0.63, 1.88], 2: [0.24, 3.65], 3: [0.08, 3.9] },
+  crackdown:   { "-2": [1, 0], "-1": [1, 0.06], 0: [1, 0.33], 1: [0.58, 2.04], 2: [0.11, 3.67], 3: [0.04, 3.9] },
+  job:         { "-2": [1, 0], "-1": [1, 0],    0: [0.83, 0.75], 1: [0.46, 2.37], 2: [0.28, 3.44], 3: [0.1, 3.8] },
+  siege:       { "-2": [1, 0], "-1": [1, 0],    0: [0.96, 0.67], 1: [0.75, 1.92], 2: [0.17, 3.61], 3: [0.06, 3.9] },
+};
+// a story step fights as its job: find the lieutenant is a hit, turn the network a persuade, the lockdown a siege
+const rollFor = o => ROLL_KIND[o.kind === "story" ? ["assassinate", "persuade", "siege"][o.step] : o.kind] || ROLL;
 // the engine's test bot walks straight in; a careful player (cover, the Purrsuader, medikits) loses about half as many
 const CAREFUL = 0.5;
 
@@ -72,10 +83,16 @@ function play(opt = {}) {
     // the squad: fill it from the reserve, then with recruits; arm it, mod it
     for (const a of s.roster) if (!a.deployed && M.squad(s).length < M.SQUAD) a.deployed = true;
     while (M.squad(s).length < M.SQUAD && !M.canHire(s) && s.cash >= M.PRICE.recruit + 5000) M.hire(s);
+    // one Purrsuader in the squad, for the jobs that need talking
+    if (!M.hasTalker(s) && M.squad(s).length) { const a = M.squad(s)[0], it = M.shop(s, a).find(x => x.type === "purrsuader"); if (it && !M.canBuy(s, a, it)) M.buy(s, a, it); }
     for (const a of M.squad(s)) {
-      const shop = M.shop(s, a), best = {};
-      for (const it of shop) if (it.mk && (!best[it.type] || it.mk > best[it.type].mk)) best[it.type] = it;
-      for (const it of Object.values(best)) if (!M.canBuy(s, a, it) && s.cash - it.price > 40000) M.buy(s, a, it);
+      // the gun that adds most to this Watcher's power, one at a time, while it's affordable: a rack of every gun is money thrown away
+      for (;;) {
+        const now = M.agentPower(a), gain = it => M.agentPower(Object.assign({}, a, { items: a.items.filter(x => x.type !== it.type).concat([{ type: it.type, mk: it.mk }]) })) - now;
+        const it = M.shop(s, a).filter(x => x.mk && x.type !== "purrsuader" && !M.canBuy(s, a, x) && s.cash - x.price > 40000 && gain(x) > 0.01).sort((p, q) => gain(q) / q.price - gain(p) / p.price)[0];
+        if (!it) break;
+        M.buy(s, a, it);
+      }
       const med = M.shop(s, a).find(x => x.type === "medikit");
       if (!a.items.some(x => x.type === "medikit") && !M.canBuy(s, a, med)) M.buy(s, a, med);
       for (const part of ["chest", "legs", "eyes", "arms"]) if (!M.canInstall(s, a, part) && s.cash > 80000) M.install(s, a, part);
@@ -121,7 +138,7 @@ function play(opt = {}) {
       const out = run(W, i, false, true, false, M.missionRoster(s), L);
       res = { won: out.status === "won", persuaded: out.world.stats.persuaded || 0, civKilled: out.world.stats.civ || 0, agents: out.world.agents.map(a => ({ id: a.rosterId, alive: a.alive, kills: a.kills || 0, items: a.weapons.map(x => ({ type: x.type, ammo: x.ammo, mk: x.mk })) })) };
     } else {
-      const gap = Math.max(-2, Math.min(3, offer.threat - tierNow)), [pw, deaths] = ROLL[gap], sq = M.squad(s);
+      const gap = Math.max(-2, Math.min(3, offer.threat - tierNow)), [pw, deaths] = rollFor(offer)[gap], sq = M.squad(s);
       const won = rand() < pw;
       // a careful player calls a BanHammer strike down on the siege or lockdown it's carried for, and nowhere else
       const fire = M.bigGun(offer) && sq.find(a => a.items.some(x => x.type === "banhammer"));

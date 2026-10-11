@@ -6,7 +6,11 @@
  *                Cal and the zones to watch; the day's dispatch; the missions,
  *                the ones that can't wait first.
  *   The Lab      research as a tree of marks, and the war meter.
- *   The Clinic   the roster, a Watcher's body and its mods, and the Armoury.
+ *   The Clinic   the roster, and a Watcher's body and its mods.
+ *   The Armoury  the squad's kit: every Watcher's loadout, the racks (what the
+ *                squad owns, bought or brought home from the field), the
+ *                dealer (what research has put on sale), and one card for the
+ *                item picked, with what can be done with it.
  *   The Office   Casey Benton's penthouse: what money buys from the Boss.
  *
  * The top bar carries the readouts, the city split between research and
@@ -18,7 +22,7 @@ W.Command = class {
   constructor(game) {
     this.game = game;
     this.screen = W.store.get("cmdscreen_v1", "city");
-    if (!["city", "lab", "clinic", "office"].includes(this.screen)) this.screen = "city";
+    if (!W.Command.SCREENS.includes(this.screen)) this.screen = "city";
     this.zoneId = null;
     this.agentId = null;
     this.officeZone = null;
@@ -37,6 +41,12 @@ W.Command = class {
       this.el.setAttribute("role", "main");
       this.el.setAttribute("aria-label", "Watchers command");
       this.el.addEventListener("click", ev => this.onClick(ev));
+      this.el.addEventListener("dragstart", ev => this.onDragStart(ev));
+      this.el.addEventListener("dragover", ev => this.onDragOver(ev));
+      this.el.addEventListener("drop", ev => this.onDrop(ev));
+      this.el.addEventListener("dragend", () => this.onDragEnd());
+      this.el.addEventListener("pointerover", ev => { if (!this.drag && this.screen === "armoury" && ev.target.closest) this.armShow(ev.target.closest("[data-drag]")); });
+      this.el.addEventListener("focusin", ev => { if (this.screen === "armoury" && ev.target.closest) this.armShow(ev.target.closest("[data-drag]")); });
       this.el.addEventListener("input", ev => this.onInput(ev));
       this.el.addEventListener("change", ev => this.onChange(ev));
       this.el.addEventListener("keydown", ev => this.onZoneKey(ev));
@@ -96,6 +106,7 @@ W.Command = class {
     W.pix.paint(this.el);
     this.el.querySelectorAll("canvas[data-port]").forEach(c => { const a = M.agentById(s, +c.dataset.port); if (a) W.drawPortrait(c.getContext("2d"), W.agentLook(a), c.width, c.height); });
     this.el.querySelectorAll("canvas[data-icon]").forEach(c => W.drawWeaponIcon(c.getContext("2d"), c.dataset.icon, c.width / 2, c.height / 2, "#eef2f8"));
+    this.el.querySelectorAll("canvas[data-big]").forEach(c => { const x = c.getContext("2d"), k = +c.dataset.k || 3; x.imageSmoothingEnabled = false; x.scale(k, k); W.drawWeaponIcon(x, c.dataset.big, c.width / 2 / k, c.height / 2 / k, "#eef2f8"); });
     this.el.querySelectorAll("canvas[data-bar]").forEach(c => { const k = 2; c.width = 18 * k; c.height = 18 * k; const x = c.getContext("2d"); W.pix.icon(x, c.dataset.bar, 0, 0, 2 * k, getComputedStyle(c).color); });
     this.drawFigure();
     const office = this.el.querySelector("canvas[data-office]");
@@ -103,7 +114,7 @@ W.Command = class {
     // focus goes back where it was; failing that, to a stand-in for what vanished; failing that, to the screen's tab
     if (hadFocus) {
       const find = k => { const e = k && this.el.querySelector(`[data-fk="${CSS.escape(k)}"]`); return e && !e.disabled ? e : null; };
-      const alt = fk.replace(/^(close|w|og)-/, "zone-").replace(/^start-(.*)$/, "cancel-$1").replace(/^sell-\d+$/, "sell-0").replace(/^buy-.*$/, "scanner");
+      const alt = fk.replace(/^(close|w|og)-/, "zone-").replace(/^start-(.*)$/, "cancel-$1").replace(/^slot-(\d+)-\d+$/, "kit-$1");
       const back = find(fk) || find(alt) || find(`dial-${this.zoneId}`) || find(`screen-${this.screen}`);
       if (back) back.focus({ preventScroll: true });
     }
@@ -171,8 +182,9 @@ W.Command = class {
     const tabs = [
       ["city", "CITY", "1", "Map, zones, missions", s.offers.length ? `<i class="n">${s.offers.length}</i>` : ""],
       ["lab", "LAB", "2", "Research and war", idle ? `<i class="n warn">IDLE</i>` : ""],
-      ["clinic", "CLINIC", "3", "Squad, mods, armoury", `<i class="n soft">${M.squad(s).length}/${M.SQUAD}</i>`],
+      ["clinic", "CLINIC", "3", "The roster, and mods", `<i class="n soft">${M.squad(s).length}/${M.SQUAD}</i>`],
       ["office", "OFFICE", "4", "What the Boss can buy", ""],
+      ["armoury", "ARMOURY", "5", "The squad's kit, the racks, the dealer", Object.keys(s.armoury).length ? `<i class="n soft">${Object.values(s.armoury).reduce((t, n) => t + n, 0)}</i>` : ""],
     ];
     return `<nav class="cx-bar" role="tablist" aria-label="Screens">${tabs.map(([id, label, key, sub, badge]) =>
       `<button role="tab" id="tab-${id}" title="${sub}" tabindex="${this.screen === id ? 0 : -1}" data-a="screen" data-screen="${id}" data-fk="screen-${id}" aria-selected="${this.screen === id}" aria-controls="cx-screen">
@@ -433,25 +445,15 @@ W.Command = class {
         <small>${W.esc(m.what)}</small>
         ${v < 3 ? `<button data-a="install" data-part="${m.id}" data-fk="install-${m.id}" ${why3 ? "disabled" : ""}>Fit MK${v + 1} · ${W.money(M.PRICE.mod[v + 1])}</button>${why3 ? `<small class="why">${W.esc(why3)}</small>` : ""}` : `<span class="max">MK3 fitted</span>`}</div>`;
     };
-    const shop = M.shop(s, a), scan = M.canUpgradeScanner(s);
     const left = ["brain", "eyes", "arms"], right = ["heart", "chest", "legs"];
     const body = `<section class="panel body">
-      <header>${this.hx(a.name, "sub-t", 3)}<small>${a.deployed ? "In the squad" : "In reserve"} · ${a.missions} mission${a.missions === 1 ? "" : "s"}</small></header>
+      <header>${this.hx(a.name, "sub-t", 3)}<small>${a.deployed ? "In the squad" : "In reserve"} · ${a.missions} mission${a.missions === 1 ? "" : "s"}</small>
+        <button class="link" data-a="screen" data-screen="armoury" data-fk="to-armoury">Kit in the Armoury</button></header>
       <div class="figure"><div class="slots">${left.map(id => slot(W.MODS.find(m => m.id === id))).join("")}</div>
         <canvas data-figure="${a.id}"></canvas>
         <div class="slots">${right.map(id => slot(W.MODS.find(m => m.id === id))).join("")}</div></div>
     </section>`;
-    const armoury = `<section class="panel armoury" data-scroll="arm">${this.hx("ARMOURY", "sub-t", 2)}
-      <h3 class="sub">${W.esc(a.name)} carries <span>${M.slots(a)} of 8 · ammunition topped up free</span></h3>
-      <ul class="inv">${a.items.map((it, i) => `<li><canvas width="44" height="22" data-icon="${it.type === "banhammer" ? "laser" : it.type}"></canvas><span>${W.esc(it.type === "banhammer" ? "BanHammer strike" : (W.WEAPONS[it.type] || {}).name || it.type)}${it.mk ? ` MK${it.mk}` : ""}${it.count > 1 ? ` ×${it.count}` : ""}</span>
-        <button class="mini ${this.armed === "sell-" + i ? "armed" : ""}" data-a="sell" data-i="${i}" data-fk="sell-${i}">${this.armed === "sell-" + i ? `Confirm: sell for ${W.money(M.sellPrice(it))}` : "Sell for half"}</button></li>`).join("") || `<li class="quiet">Nothing.</li>`}</ul>
-      <h3 class="sub">On the racks</h3>
-      <ul class="inv shop">${shop.map(it => { const why2 = M.canBuy(s, a, it); return `<li><canvas width="44" height="22" data-icon="${it.type === "banhammer" ? "laser" : it.type}"></canvas><span>${W.esc(it.name)}${it.upgrade ? "<small>replaces the one carried</small>" : ""}${why2 ? `<small class="why">${W.esc(why2)}</small>` : ""}</span>
-        <button data-a="buy" data-k="${it.key}" data-fk="buy-${it.key}" ${why2 ? "disabled" : ""} class="${this.armed === "buy-" + it.key ? "armed" : ""}">${this.armed === "buy-" + it.key ? `Confirm: pay ${W.money(it.price)}` : `Buy · ${W.money(it.price)}`}</button></li>`; }).join("")}</ul>
-      <h3 class="sub">The squad's scanner <span>${s.scannerMk ? `MK${s.scannerMk}` : "standard issue"}</span></h3>
-      ${s.scannerMk < 3 ? `<button data-a="scanner" data-fk="scanner" ${scan ? "disabled" : ""}>Fit MK${s.scannerMk + 1} · ${W.money(M.PRICE.scanner[s.scannerMk + 1])}</button>${scan ? `<small class="why">${W.esc(scan)}</small>` : ""}` : `<p class="quiet">The best there is.</p>`}
-    </section>`;
-    return roster + body + armoury;
+    return roster + body;
   }
   drawFigure() {
     const cv = this.el.querySelector("canvas[data-figure]");
@@ -470,6 +472,195 @@ W.Command = class {
       c.beginPath(); c.moveTo(Math.max(0, Math.min(cv.width, sx)), sy); c.lineTo(p[0], p[1]); c.stroke();
       c.fillStyle = "#5ff0ff"; c.fillRect(p[0] - 2 * dpr, p[1] - 2 * dpr, 4 * dpr, 4 * dpr);
     }
+  }
+
+  /* ---------------- the Armoury ----------------
+   * Three places a piece of kit can be: on a Watcher, on the racks, or at the
+   * dealer. It moves by dragging: racks to a Watcher gives it, a Watcher's to
+   * the racks returns it, one Watcher's to another hands it over, the dealer's
+   * to a Watcher or the racks buys it, anything owned to the dealer sells it.
+   * A label by the pointer says what the drop will do, or why it can't. The
+   * card shows whatever is pointed at. From the keyboard: Enter gives (from the
+   * racks or the dealer, to the Watcher picked) or returns (from a Watcher);
+   * Delete sells. */
+  armouryHTML() {
+    const s = this.s, M = W.M, a = M.agentById(s, this.agentId);
+    const icon = it => it.type === "purrsuader" && (it.mk || 1) >= 2 ? "purr2" : it.type;
+    const k$ = n => n >= 1000 ? `$${n % 1000 ? (n / 1000).toFixed(1) : n / 1000}k` : W.money(n);
+    const sel = this.armPick();
+    const drag = (from, key, label, extra = "") => `role="button" tabindex="0" draggable="true" data-drag="${from}" data-k="${key}" aria-label="${W.esc(label)}" ${extra}`;
+    // the squad's loadouts: eight slots each, and BanHammer strikes, which take none; each card takes a drop
+    const card = x => {
+      const kit = x.items.map((it, i) => [it, i]), slots = kit.filter(([it]) => it.type !== "banhammer"), bh = kit.find(([it]) => it.type === "banhammer");
+      const tile = ([it, i]) => { const on = sel && sel.agent === x.id && sel.idx === i, nm = M.itemName(it);
+        return `<div class="tile ${on ? "on" : ""}" ${drag("slot", M.armKey(it.type, it.mk), `${x.name}: ${nm}${it.count > 1 ? `, ${it.count}` : ""}`, `data-a="kitslot" data-id="${x.id}" data-i="${i}" data-fk="slot-${x.id}-${i}" title="${W.esc(nm)}"`)}><canvas width="44" height="22" data-icon="${icon(it)}"></canvas>${it.mk > 1 ? `<em>${"I".repeat(it.mk)}</em>` : ""}${it.count > 1 ? `<i>${it.count}</i>` : ""}</div>`; };
+      return `<li class="kit ${x.id === this.agentId ? "sel" : ""} ${x.deployed ? "" : "res"}" data-drop="agent" data-id="${x.id}">
+        <button class="who" data-a="kitagent" data-id="${x.id}" data-fk="kit-${x.id}" aria-pressed="${x.id === this.agentId}"><canvas width="32" height="32" data-port="${x.id}"></canvas>
+          <span><b>${W.esc(x.name)}</b><small>${x.deployed ? "Squad" : "Reserve"} · ${M.slots(x)} of 8</small></span></button>
+        <div class="slots8">${slots.map(tile).join("")}${"<span class=\"tile empty\" aria-hidden=\"true\"></span>".repeat(Math.max(0, 8 - slots.length))}${bh ? tile(bh) : ""}</div></li>`;
+    };
+    const squad = `<section class="panel loadouts">${this.hx("THE SQUAD'S KIT", "sub-t", 2)}<p class="hint">Drag kit onto a Watcher to give it, between Watchers to hand it over, onto the racks to put it back, onto the dealer to sell it.</p>
+      <ul>${s.roster.slice().sort((p, q) => q.deployed - p.deployed).map(card).join("")}</ul></section>`;
+    // the racks: what the squad owns
+    const racks = M.armoury(s).filter(r => r.count);
+    const rack = `<section class="panel racks-p" data-scroll="racks" data-drop="racks">${this.hx("THE RACKS", "sub-t", 2)}<p class="hint">What the squad owns: bought, or brought home from the field.</p>
+      ${racks.length ? `<ul class="racks">${racks.map(r => { const on = sel && !sel.agent && sel.key === r.key;
+        return `<li><div class="rk ${on ? "on" : ""}" ${drag("rack", r.key, `${r.name}, ${r.count} on the racks`, `data-a="armpick" data-fk="rack-${r.key}"`)}><canvas width="44" height="22" data-icon="${icon(r)}"></canvas>
+          <span><b>${W.esc(r.name)}</b>${r.price == null ? `<small class="loot">from the field</small>` : ""}</span><i class="ct">×${r.count}</i></div></li>`; }).join("")}</ul>`
+        : `<p class="quiet empty">Nothing on the racks. Drag guns here from the dealer, or bring them home from the field: anything a Watcher picks up comes here.</p>`}</section>`;
+    // the dealer: what research has put on sale, every mark; drop anything owned here to sell it
+    const lines = M.WEAPON_LINES.filter(w => M.bestMk(s, w.id)).map(w => ({ type: w.id, name: w.name, best: M.bestMk(s, w.id) }));
+    if (M.bestMk(s, "purrsuader")) lines.push({ type: "purrsuader", name: "Purrsuader", best: M.bestMk(s, "purrsuader") });
+    const mkBtn = (type, mk, best, name) => { const key = `${type}:${mk}`, on = sel && !sel.agent && sel.key === key;
+      return mk <= best ? `<div class="mkb ${on ? "on" : ""}" ${drag("deal", key, `${name} MK${mk} from the dealer, ${W.money(M.armPrice(s, key))}`, `data-a="armpick" data-fk="deal-${key}"`)}>MK${mk}<small>${k$(M.armPrice(s, key))}</small></div>` : `<span class="mkb locked" title="research it in the Lab">MK${mk}<small>Lab</small></span>`; };
+    const one = (key, label, name) => { const on = sel && !sel.agent && sel.key === key; return `<div class="mkb wide ${on ? "on" : ""}" ${drag("deal", key, `${name} from the dealer, ${W.money(M.armPrice(s, key))}`, `data-a="armpick" data-fk="deal-${key}"`)}>${label}<small>${k$(M.armPrice(s, key))}</small></div>`; };
+    const scan = M.canUpgradeScanner(s);
+    const dealer = `<section class="panel dealer" data-scroll="dealer" data-drop="sell">${this.hx("THE DEALER", "sub-t", 2)}<p class="hint">New, at list price: drag onto a Watcher or the racks to buy. Drop anything here to sell it for half.</p>
+      <ul class="deal">${lines.map(l => `<li><canvas width="44" height="22" data-icon="${l.type}"></canvas><b>${W.esc(l.name)}</b><span class="mks">${[1, 2, 3].map(mk => mkBtn(l.type, mk, l.best, l.name)).join("")}</span></li>`).join("")}
+        <li><canvas width="44" height="22" data-icon="medikit"></canvas><b>Medikit</b><span class="mks">${one("medikit", "One", "Medikit")}</span></li>
+        ${M.isDone(s, "banhammer") ? `<li><canvas width="44" height="22" data-icon="banhammer"></canvas><b>BanHammer strike</b><span class="mks">${one("banhammer", "One shot", "BanHammer strike")}</span></li>` : ""}</ul>
+      <h3 class="sub">The squad's scanner <span>${s.scannerMk ? `MK${s.scannerMk}` : "standard issue"}, carried by all four</span></h3>
+      ${s.scannerMk < 3 ? `<button data-a="scanner" data-fk="scanner" ${scan ? "disabled" : ""}>Fit MK${s.scannerMk + 1} · ${W.money(M.PRICE.scanner[s.scannerMk + 1])}</button>${scan ? `<small class="why">${W.esc(scan)}</small>` : ""}` : `<p class="quiet">The best there is.</p>`}</section>`;
+    return squad + `<div class="arm-left">${rack}${dealer}</div>` + this.armCardHTML(sel);
+  }
+  armIcon(it) { return it.type === "purrsuader" && (it.mk || 1) >= 2 ? "purr2" : it.type; }
+  // what the card shows: { key } on the racks or at the dealer, or { key, agent, idx } on a Watcher; null if it's gone
+  armPick() {
+    const s = this.s, M = W.M, p = this.armSel;
+    if (p && p.agent) { const x = M.agentById(s, p.agent), it = x && x.items[p.idx]; if (it && M.armKey(it.type, it.mk) === p.key) return p; }
+    else if (p && (s.armoury[p.key] || M.armPrice(s, p.key) != null)) return p;
+    const first = M.armoury(s).find(r => r.count) || M.armoury(s)[0];
+    return this.armSel = first ? { key: first.key } : null;
+  }
+  armCardHTML(sel) {
+    const s = this.s, M = W.M;
+    if (!sel) return `<section class="panel arm-card"><p class="quiet">Point at something.</p></section>`;
+    const it = M.armItem(sel.key), name = M.itemName(it), def = W.WEAPONS[this.armIcon(it)] || {}, mk = it.mk || 1;
+    const onRacks = s.armoury[sel.key] || 0, price = M.armPrice(s, sel.key), sell = M.sellPrice(it);
+    const carried = s.roster.reduce((t, x) => t + x.items.filter(i => M.armKey(i.type, i.mk) === sel.key).reduce((u, i) => u + (i.count || 1), 0), 0);
+    const owner = sel.agent && M.agentById(s, sel.agent);
+    // the numbers, as bars against the best in the game
+    const bar = (label, v, max, txt) => `<div class="st"><span>${label}</span><i><b style="width:${Math.round(Math.min(1, v / max) * 100)}%"></b></i><em>${txt}</em></div>`;
+    let stats = "";
+    if (def.gun) {
+      const dmg = (def.dmg || 0) * (def.pellets || 1) * (1 + W.MARK.dmg * (mk - 1)), rng = def.range * (1 + W.MARK.range * (mk - 1));
+      stats = bar("Damage", dmg, 20, `${dmg.toFixed(1)}${def.pellets > 1 ? ` (${def.pellets} pellets)` : ""}${def.blast ? ` + blast ${def.blast.dmg}` : ""}`)
+        + bar("Range", rng, 15, `${rng.toFixed(1)} tiles`) + bar("Rate", 1 / def.cd, 20, `${(1 / def.cd).toFixed(1)} a second`)
+        + bar("Magazine", def.ammo == null ? 1 : def.ammo, def.ammo == null ? 1 : 300, def.ammo == null ? "never runs dry" : `${def.ammo}, topped up free`);
+    } else if (def.persuade) stats = bar("Reach", def.range, 6, `${def.range} tiles`) + (W.FOLLOWING ? bar("Following", W.FOLLOWING[mk] || 0, 16, `up to ${W.FOLLOWING[mk] || 0}`) : "");
+    else if (it.type === "banhammer") stats = bar("Radius", 6, 6, "6 tiles: everyone inside") + bar("Range", 30, 30, "30 tiles, in sight");
+    return `<section class="panel arm-card">
+      <header>${this.hx(name.toUpperCase(), "sub-t", 2)}<small>${owner ? `carried by ${W.esc(owner.name)}` : onRacks ? "on the racks" : "at the dealer"}</small></header>
+      <canvas class="big" width="198" height="84" data-big="${this.armIcon(it)}" data-k="3" aria-hidden="true"></canvas>
+      <p>${W.esc(def.desc || "")}</p>
+      ${stats ? `<div class="stats">${stats}</div>` : ""}
+      <dl class="tally"><div><dt>On the racks</dt><dd>${onRacks}</dd></div><div><dt>Carried</dt><dd>${carried}</dd></div><div><dt>New</dt><dd>${price != null ? W.money(price) : "—"}</dd></div><div><dt>Sells for</dt><dd>${W.money(sell)}</dd></div></dl>
+      ${price == null ? `<p class="hint">Not researched: it can't be bought, but what the squad brings home can be carried or sold.</p>` : ""}</section>`;
+  }
+  // the card follows the pointer (and the keyboard) without a redraw, so a drag in progress isn't torn down
+  armShow(el) {
+    const d = el && this.armSrc(el); if (!d) return;
+    const same = this.armSel && this.armSel.key === d.key && this.armSel.agent === d.agent && this.armSel.idx === d.idx;
+    if (same) return;
+    this.armSel = d.from === "slot" ? { key: d.key, agent: d.agent, idx: d.idx } : { key: d.key };
+    const old = this.el.querySelector(".arm-card"); if (!old) return;
+    old.insertAdjacentHTML("afterend", this.armCardHTML(this.armPick())); old.remove();
+    const card = this.el.querySelector(".arm-card");
+    W.pix.paint(card);
+    card.querySelectorAll("canvas[data-big]").forEach(c => { const x = c.getContext("2d"), k = +c.dataset.k || 3; x.imageSmoothingEnabled = false; x.scale(k, k); W.drawWeaponIcon(x, c.dataset.big, c.width / 2 / k, c.height / 2 / k, "#eef2f8"); });
+    this.el.querySelectorAll("[data-drag].on").forEach(e => e.classList.remove("on")); el.classList.add("on");
+  }
+  // a dragged thing, from its element
+  armSrc(el) {
+    const d = el.dataset;
+    return d.drag === "slot" ? { from: "slot", key: d.k, agent: +d.id, idx: +d.i } : d.drag ? { from: d.drag, key: d.k } : null;
+  }
+  // what dropping d on target t would do: { ok, label, dear, run, done }, or null where it means nothing
+  armPlan(d, t) {
+    const s = this.s, M = W.M, it = M.armItem(d.key), name = M.itemName(it), price = M.armPrice(s, d.key), sell = M.sellPrice(it);
+    const owner = d.from === "slot" && M.agentById(s, d.agent);
+    if (d.from === "slot" && (!owner || !owner.items[d.idx] || M.armKey(owner.items[d.idx].type, owner.items[d.idx].mk) !== d.key)) return null;
+    const swapNote = x => { const have = it.mk && x.items.find(i => i.type === it.type || (it.type === "purrsuader" && i.type === "purr2")); return have ? `; the ${M.itemName(have)} goes on the racks` : ""; };
+    if (t.drop === "agent") {
+      const x = M.agentById(s, +t.id); if (!x || (owner && owner.id === x.id)) return null;
+      const why = d.from === "deal" ? M.canArmBuy(s, d.key) || M.canTake(x, d.key) : M.canTake(x, d.key);
+      if (why) return { ok: false, label: `${x.name}: ${why}` };
+      if (d.from === "deal") return { ok: true, dear: price >= 40000, label: `Buy for ${x.name} · ${W.money(price)}${swapNote(x)}`, done: `${name} bought for ${x.name}.`, run: () => M.armBuy(s, d.key) && M.issue(s, x, d.key) };
+      if (owner) return { ok: true, label: `Hand to ${x.name}${swapNote(x)}`, done: `${name}: ${owner.name} to ${x.name}.`, run: () => M.unissue(s, owner, d.idx) && M.issue(s, x, d.key) };
+      return { ok: true, label: `Give to ${x.name}${swapNote(x)}`, done: `${name} to ${x.name}.`, run: () => M.issue(s, x, d.key) };
+    }
+    if (t.drop === "racks") {
+      if (owner) return { ok: true, label: "Back on the racks", done: `${name} back on the racks.`, run: () => M.unissue(s, owner, d.idx) };
+      if (d.from !== "deal") return null;
+      const why = M.canArmBuy(s, d.key);
+      return why ? { ok: false, label: why } : { ok: true, dear: price >= 40000, label: `Buy one for the racks · ${W.money(price)}`, done: `${name} on the racks.`, run: () => M.armBuy(s, d.key) };
+    }
+    if (t.drop === "sell") {
+      if (d.from === "deal") return null;
+      return { ok: true, dear: sell >= 20000, label: `Sell ${owner ? `${owner.name}'s` : "one"} for ${W.money(sell)}`, done: `${name} sold for ${W.money(sell)}.`, run: () => (!owner || M.unissue(s, owner, d.idx)) && M.armSell(s, d.key) };
+    }
+    return null;
+  }
+  // carry a plan out: the dear ones ask first, in the game's own dialog
+  async armRun(p) {
+    if (!p || !p.ok) { if (p) { W.audio.play("deny"); this.toast(p.label); } return; }
+    if (p.dear && !(await confirmSheet(`${p.label}?`, p.label.split(" · ")[0], "The Armoury"))) return;
+    if (!p.run()) { W.audio.play("deny"); return; }
+    W.audio.play(/^(Sell|Back)/.test(p.label) ? "click" : "pickup");
+    this.toast(p.done);
+    this.commit();
+  }
+  // dragging: the targets light up for what they'd do, and a label rides with the pointer
+  onDragStart(ev) {
+    const el = ev.target.closest && ev.target.closest("[data-drag]");
+    if (!el || this.screen !== "armoury") return;
+    this.drag = this.armSrc(el);
+    ev.dataTransfer.effectAllowed = "move";
+    ev.dataTransfer.setData("text/plain", this.drag.key);
+    const cv = el.querySelector("canvas"); if (cv) ev.dataTransfer.setDragImage(cv, 22, 11);
+    this.armShow(el);
+    requestAnimationFrame(() => {
+      if (!this.drag) return;
+      const scr = this.el.querySelector(".cx-armoury"); if (!scr) return;
+      scr.classList.add("dragging", "from-" + this.drag.from);
+      for (const t of scr.querySelectorAll("[data-drop]")) { const p = this.armPlan(this.drag, t.dataset); t.classList.toggle("drop-ok", !!(p && p.ok)); t.classList.toggle("drop-no", !!(p && !p.ok)); }
+    });
+  }
+  onDragOver(ev) {
+    if (!this.drag) return;
+    const t = ev.target.closest && ev.target.closest("[data-drop]"), p = t && this.armPlan(this.drag, t.dataset);
+    if (t !== this.dragOver) { if (this.dragOver) this.dragOver.classList.remove("over"); this.dragOver = t; if (t) t.classList.add("over"); }
+    const tip = this.dragTip || (this.dragTip = Object.assign(document.createElement("div"), { className: "cx-drag" }));
+    if (!tip.isConnected) this.layer.appendChild(tip);
+    tip.hidden = !p;
+    if (p) { tip.textContent = p.label; tip.className = `cx-drag ${p.ok ? "ok" : "no"}`; tip.style.left = ev.clientX + 18 + "px"; tip.style.top = ev.clientY + 14 + "px"; }
+    if (p && p.ok) { ev.preventDefault(); ev.dataTransfer.dropEffect = "move"; }
+  }
+  onDrop(ev) {
+    const t = ev.target.closest && ev.target.closest("[data-drop]"), d = this.drag;
+    ev.preventDefault();
+    this.onDragEnd();
+    if (d && t) this.armRun(this.armPlan(d, t.dataset));
+  }
+  onDragEnd() {
+    this.drag = null;
+    if (this.dragOver) { this.dragOver.classList.remove("over"); this.dragOver = null; }
+    if (this.dragTip) this.dragTip.hidden = true;
+    const scr = this.el.querySelector(".cx-armoury");
+    if (scr) { scr.classList.remove("dragging", "from-rack", "from-slot", "from-deal"); scr.querySelectorAll(".drop-ok,.drop-no").forEach(e => e.classList.remove("drop-ok", "drop-no")); }
+  }
+  // the keyboard's way: Enter gives (racks or dealer, to the Watcher picked) or returns (a Watcher's); Delete sells
+  onArmKey(ev) {
+    const el = ev.target.closest && ev.target.closest("[data-drag]");
+    if (!el || this.screen !== "armoury") return false;
+    const d = this.armSrc(el);
+    if (ev.key === "Enter" || ev.key === " ") {
+      ev.preventDefault(); ev.stopPropagation();
+      this.armRun(d.from === "slot" ? this.armPlan(d, { drop: "racks" }) : this.armPlan(d, { drop: "agent", id: String(this.agentId) }));
+      return true;
+    }
+    if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); ev.stopPropagation(); this.armRun(this.armPlan(d, { drop: "sell" })); return true; }
+    return false;
   }
 
   /* ---------------- Casey's Office ---------------- */
@@ -508,8 +699,8 @@ W.Command = class {
     if (!b || b.disabled || b.tagName === "INPUT" || b.tagName === "SELECT") return;
     const s = this.s, M = W.M, d = b.dataset, a = M.agentById(s, this.agentId);
     // a second click confirms what loses money; any other click disarms
-    const armKey = d.a === "declare" ? "war" : d.a === "cancel" ? "cancel-" + d.r : d.a === "sell" ? "sell-" + d.i : d.a === "buy" ? "buy-" + d.k : d.a === "event" ? "event-" + d.e : null;
-    const needsArm = armKey && (d.a === "declare" || d.a === "cancel" || d.a === "sell" || (d.a === "buy" && (M.shop(s, a).find(x => x.key === d.k) || {}).price >= 100000) || (d.a === "event" && (M.EVENTS.find(x => x.id === d.e) || {}).price >= 100000));
+    const armKey = d.a === "declare" ? "war" : d.a === "cancel" ? "cancel-" + d.r : d.a === "event" ? "event-" + d.e : null;
+    const needsArm = armKey && (d.a === "declare" || d.a === "cancel" || (d.a === "event" && (M.EVENTS.find(x => x.id === d.e) || {}).price >= 100000));
     if (needsArm && this.armed !== armKey) { this.armed = armKey; W.audio.play("click"); return this.draw(); }
     this.armed = null;
     switch (d.a) {
@@ -534,8 +725,9 @@ W.Command = class {
       case "agent": this.agentId = +d.id; W.audio.play("click"); return this.draw();
       case "deploytoggle": M.toggleDeploy(s, M.agentById(s, +d.id)); W.audio.play("click"); break;
       case "hire": { const n = M.hire(s); if (n) { M.note(s, `${n.name} joins the Watchers.`); this.agentId = n.id; W.audio.play("select"); } break; }
-      case "buy": { const it = M.shop(s, a).find(x => x.key === d.k); if (!it || !M.buy(s, a, it)) return W.audio.play("deny"); W.audio.play("pickup"); break; }
-      case "sell": M.sell(s, a, +d.i); W.audio.play("click"); break;
+      case "kitagent": this.agentId = +d.id; W.audio.play("click"); return this.draw();
+      case "kitslot": this.agentId = +d.id; this.armShow(b); return this.draw();
+      case "armpick": this.armShow(b); return;
       case "install": if (!M.install(s, a, d.part)) return W.audio.play("deny"); W.audio.play("heal"); break;
       case "scanner": if (!M.upgradeScanner(s)) return W.audio.play("deny"); W.audio.play("pickup"); break;
       case "event": { const e = M.EVENTS.find(x => x.id === d.e), z = e.zone ? M.zone(s, this.officeZone) : null; if (!M.event(s, e, z)) return W.audio.play("deny"); W.audio.play("select"); break; }
@@ -587,6 +779,7 @@ W.Command = class {
   // arrow keys walk the map from zone to zone
   onZoneKey(ev) {
     const t = ev.target;
+    if (this.onArmKey(ev)) return;
     // the Until menu: up and down, Home and End
     const mi = t.closest && t.closest('.until-menu [role="menuitem"]');
     if (mi && /^(ArrowUp|ArrowDown|Home|End)$/.test(ev.key)) {
@@ -597,7 +790,7 @@ W.Command = class {
     // the screen tabs: left and right move along them and open the screen
     const tab = t.closest && t.closest('[role="tab"]');
     if (tab && /^(ArrowLeft|ArrowRight|Home|End)$/.test(ev.key)) {
-      const ids = ["city", "lab", "clinic", "office"], i = ids.indexOf(tab.dataset.screen);
+      const ids = W.Command.SCREENS, i = ids.indexOf(tab.dataset.screen);
       const next = ev.key === "Home" ? 0 : ev.key === "End" ? 3 : (i + (ev.key === "ArrowRight" ? 1 : -1) + 4) % 4;
       ev.preventDefault(); return this.go(ids[next]);
     }
@@ -748,8 +941,10 @@ W.Command = class {
       this.escArmed = true; this.toast("Press Esc again to leave for the title."); return true;
     }
     if (tag === "INPUT" || tag === "SELECT") return false;
-    if (k >= "1" && k <= "4") { this.go(["city", "lab", "clinic", "office"][+k - 1]); return true; }
+    if (k >= "1" && k <= String(W.Command.SCREENS.length)) { this.go(W.Command.SCREENS[+k - 1]); return true; }
     if (k === "w") { this.wait(1); return true; }
     return false;
   }
 };
+// the screens, in the bar's order, and the number keys'
+W.Command.SCREENS = ["city", "lab", "clinic", "office", "armoury"];

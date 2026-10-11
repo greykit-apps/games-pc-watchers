@@ -42,6 +42,7 @@
 .cx button:disabled{background:var(--btn-off);color:#8994a8;border-color:#3a4458 var(--chip) var(--chip) #3a4458;cursor:default}
 .cx button.go{background:var(--orange);color:var(--ink-orange);border-color:var(--orange-hi) var(--orange-lo) var(--orange-lo) var(--orange-hi)}
 .cx button.go:hover:not(:disabled){background:#ffab50}
+.cx button.go:disabled{background:var(--btn-off);color:#8994a8;border-color:#3a4458 var(--chip) var(--chip) #3a4458}
 .cx button.armed{background:var(--armed);color:#fff;border-color:#ff7a84 #3a060a #3a060a #ff7a84}
 .cx button.link{background:none;border:0;color:var(--orange);padding:4px 0;min-height:28px;text-decoration:underline;text-underline-offset:3px;font-weight:600}
 .cx button.link:hover{background:none;color:var(--orange-hi)}
@@ -92,7 +93,7 @@
 .cx select{font:600 13px var(--sans);color:var(--t1);background:var(--well);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo);padding:5px 8px;border-radius:0}
 
 /* ---- the screen bar ---- */
-.cx-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 16px;background:#161c28;border-bottom:2px solid var(--lo)}
+.cx-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:6px 16px;background:#161c28;border-bottom:2px solid var(--lo)}
 .cx-bar button{display:flex;align-items:center;gap:10px;padding:6px 12px;min-height:50px;text-align:left;color:var(--t2);background:var(--face)}
 .cx-bar button canvas{width:18px;height:18px;flex:none;color:var(--t3);image-rendering:pixelated}
 .cx-bar .bl{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
@@ -263,8 +264,8 @@
 .cx .node.open .why{padding:0 6px 4px}
 .cx .node.none{background:transparent}
 
-/* ---- the Clinic and the Armoury ---- */
-.cx-clinic{display:grid;grid-template-columns:minmax(240px,.8fr) minmax(420px,1.6fr) minmax(280px,1fr);gap:12px;height:100%}
+/* ---- the Clinic ---- */
+.cx-clinic{display:grid;grid-template-columns:minmax(240px,.7fr) minmax(480px,2fr);gap:12px;height:100%}
 .cx-clinic>.panel{min-height:0;overflow-y:auto}
 .cx .roster ul{list-style:none;margin:8px 0 10px;padding:0;display:flex;flex-direction:column;gap:6px}
 .cx .roster li{display:flex;flex-direction:column;gap:4px;padding:6px;background:var(--face2)}
@@ -301,6 +302,79 @@
 .cx .inv li{display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:center;padding:5px 0;border-top:1px solid var(--divider);color:var(--t1);font-size:13px}
 .cx .inv li span small{display:block;color:var(--t3)}
 .cx .inv canvas{width:44px;height:22px}
+
+/* ---- the Armoury: the squad's kit across the top; the racks and the dealer; the card ---- */
+.cx-armoury{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(340px,1fr);grid-template-rows:auto minmax(0,1fr);gap:12px;height:100%}
+.cx-armoury .loadouts{grid-column:1/-1}
+.cx .loadouts ul{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.cx .kit{display:flex;gap:8px;align-items:flex-start;padding:6px;background:var(--face2)}
+.cx .kit.sel{background:#33405a;outline:2px solid var(--cyan);outline-offset:-2px}
+.cx .kit.res{opacity:.8}
+.cx .kit .who{display:flex;flex-direction:column;align-items:flex-start;gap:4px;background:none;border:0;padding:0;min-height:0;text-align:left;font-weight:400;min-width:72px}
+.cx .kit .who:hover{background:none}
+.cx .kit .who canvas{width:32px;height:32px;border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.cx .kit .who b{color:var(--t1);letter-spacing:.06em}
+.cx .kit .who small{color:var(--t3);display:block}
+.cx .slots8{display:grid;grid-template-columns:repeat(4,48px);gap:3px;margin-left:auto}
+.cx .tile{position:relative;width:48px;height:30px;padding:0;min-height:0;display:grid;place-items:center;background:var(--well);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.cx button.tile:hover:not(:disabled){background:#1c2433}
+.cx .tile.empty{opacity:.55}
+.cx .tile canvas{width:44px;height:22px}
+.cx .tile em{position:absolute;left:2px;top:0;font:700 9px/1 var(--sans);font-style:normal;color:var(--cyan)}
+.cx .tile i{position:absolute;right:2px;bottom:0;font:700 10px/1 var(--sans);font-style:normal;color:var(--gold)}
+.cx .tile.on,.cx .rk.on,.cx .mkb.on{outline:2px solid var(--cyan);outline-offset:-2px;background:#1d3a48}
+.cx .arm-left{display:grid;grid-template-rows:auto minmax(0,1fr);gap:12px;min-height:0}
+.cx .arm-left>.racks-p{max-height:40vh}
+.cx .arm-left>.panel,.cx-armoury>.arm-card{min-height:0;overflow-y:auto}
+.cx .racks{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px}
+.cx .rk{width:100%;display:grid;grid-template-columns:48px 1fr auto;gap:8px;align-items:center;text-align:left;background:var(--face2);font-weight:400}
+.cx .rk b{display:block;color:var(--t1);font-weight:600}
+.cx .rk .loot{display:block;color:var(--gold)}
+.cx .rk canvas{width:44px;height:22px}
+.cx .rk .ct{font:700 16px/1 var(--sans);font-style:normal;color:var(--cyan)}
+.cx .racks-p .empty{margin:10px 0 0;max-width:52ch}
+.cx .deal{list-style:none;margin:8px 0 12px;padding:0}
+.cx .deal li{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:10px;align-items:center;padding:4px 0;border-top:1px solid var(--divider)}
+.cx .deal li b{color:var(--t1);font-weight:600}
+.cx .deal canvas{width:44px;height:22px}
+.cx .mks{display:flex;gap:4px}
+.cx .mkb{display:flex;flex-direction:column;align-items:center;min-width:62px;min-height:38px;padding:3px 6px;line-height:1.1}
+.cx .mkb small{font-weight:400;color:var(--t2)}
+.cx .mkb.wide{min-width:132px}
+.cx span.mkb{justify-content:center;font:600 13px/1.1 var(--sans);color:#6c7790;border:2px dashed #3a4458}
+.cx span.mkb small{color:#6c7790}
+.cx .arm-card header{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.cx .arm-card header small{color:var(--t3)}
+.cx .arm-card canvas.big{display:block;width:198px;height:84px;margin:12px 0 4px;image-rendering:pixelated;background:radial-gradient(ellipse at 50% 50%,#2c3a52,#121822 75%);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.cx .arm-card p{margin:8px 0;color:var(--t2);max-width:48ch}
+.cx .stats{display:flex;flex-direction:column;gap:5px;margin:10px 0}
+.cx .stats .st{display:grid;grid-template-columns:76px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:12px}
+.cx .stats .st span{color:var(--t3);text-transform:uppercase;letter-spacing:.08em;font-size:11px}
+.cx .stats .st i{height:8px;background:var(--well);border:1px solid #3a4458}
+.cx .stats .st i b{display:block;height:100%;background:var(--cyan)}
+.cx .stats .st em{font-style:normal;color:var(--t1);min-width:12ch;text-align:right}
+.cx .tally{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0}
+.cx .tally div{background:var(--well);padding:5px 8px;border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.cx .tally dt{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em}
+.cx .tally dd{margin:2px 0 0;color:var(--t1);font-weight:700;font-size:15px}
+/* dragging: what can be dragged says so; drop targets light up for what they'd do */
+.cx [data-drag]{cursor:grab;user-select:none}
+.cx [data-drag]:active{cursor:grabbing}
+.cx [data-drag]:focus-visible{outline:2px solid var(--cyan);outline-offset:1px}
+.cx div.mkb{background:var(--btn);border:2px solid;border-color:var(--btn-bevel) var(--lo) var(--lo) var(--btn-bevel);font:600 13px/1.1 var(--sans);color:var(--t1)}
+.cx div.mkb:hover,.cx .rk:hover,.cx div.tile:hover{filter:brightness(1.15)}
+.cx .rk{border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);padding:6px 10px;min-height:44px}
+.cx-armoury.dragging [data-drop]{transition:background .12s}
+.cx-armoury.dragging [data-drop].drop-ok{outline:2px dashed var(--cyan);outline-offset:-2px}
+.cx-armoury.dragging [data-drop].drop-ok.over{outline-style:solid;background:#1d3a48}
+.cx-armoury.dragging .kit.drop-no{opacity:.5}
+.cx-armoury.dragging [data-drop].drop-no.over{outline:2px solid var(--red);outline-offset:-2px}
+.cx .dealer{position:relative}
+.cx-armoury.dragging.from-rack .dealer::after,.cx-armoury.dragging.from-slot .dealer::after{content:"Drop here to sell for half";position:absolute;inset:0;display:grid;place-items:center;background:rgba(122,26,34,.55);color:#fff;font:700 15px var(--sans);letter-spacing:.06em;text-transform:uppercase;pointer-events:none}
+.cx-armoury.dragging.from-rack .dealer.over::after,.cx-armoury.dragging.from-slot .dealer.over::after{background:rgba(122,26,34,.8)}
+.cx-drag{position:fixed;z-index:60;pointer-events:none;padding:5px 9px;font:600 13px/1.2 var(--sans);background:#0c1018;border:2px solid var(--cyan);color:var(--t1);max-width:340px}
+.cx-drag.no{border-color:var(--red);color:var(--red-t)}
+.cx-drag[hidden]{display:none}
 
 /* ---- Casey's Office ---- */
 .cx-office{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(360px,1fr);gap:12px;height:100%}
@@ -351,8 +425,9 @@
   .cx-city{grid-template-rows:auto minmax(0,1fr)}
   .cx-city .cx-mapbox{grid-row:1/3}
   .cx-city .cx-mid{max-height:none}
-  .cx-clinic{grid-template-columns:minmax(220px,.8fr) minmax(0,1.6fr)}
-  .cx-clinic .armoury{grid-column:1/-1}
+  .cx-clinic{grid-template-columns:minmax(220px,.8fr) minmax(0,1.8fr)}
+  .cx-armoury{grid-template-columns:minmax(0,1fr) minmax(300px,.8fr);height:auto}
+  .cx .loadouts ul{grid-template-columns:repeat(2,minmax(0,1fr))}
   .cx-clinic,.cx-lab,.cx-office{height:auto}
   .cx-screen{overflow-y:auto}
 }

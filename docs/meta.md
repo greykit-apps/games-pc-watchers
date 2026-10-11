@@ -136,6 +136,26 @@ money.
 | A mod, fitted at the clinic, per body part per Watcher | MK1 $10,000, MK2 $30,000, MK3 $75,000 |
 | Stims, ammunition, the clinic's patching up | small change |
 
+**The Armoury** is its own screen (key 5), the squad's shared stock, and kit
+moves by dragging. Across the top, every Watcher's loadout: eight slots and
+any BanHammer strikes. Below, **the racks**, what the squad owns, each with a
+count; and **the dealer**, every researched mark of every gun at list price.
+Drag from the racks onto a Watcher to give it; from a Watcher onto the racks to
+put it back, or onto another Watcher to hand it over; from the dealer onto a
+Watcher or the racks to buy it; anything owned onto the dealer to sell it for
+half. While dragging, the places it can go light up and a label by the pointer
+says what the drop will do ("Give to MANX", "Sell for $2,500") or why it
+can't. Giving a gun of a kind the Watcher already carries puts the old one on
+the racks. Anything that costs or fetches a lot (a buy of $40,000 or more, a
+sale of $20,000 or more) asks first. A card shows the numbers of whatever is
+pointed at. From the keyboard, Enter gives an item to the Watcher picked (or
+returns it, from a Watcher's slot) and Delete sells it.
+
+Harvesting the field is a strategy of its own: whatever a Watcher picked up,
+a gun they weren't sent out with or medikits past the 4 they can carry, goes
+onto the racks when the squad comes home, researched or not. Loot that isn't
+researched can be carried or sold, but not bought.
+
 So a Watcher brought all the way to MK3 in everything has had about $850,000
 spent on them: the chassis, six body parts through three marks each, a MK3
 weapon and MK3 gear. Losing one is most of three months of the city's money.
@@ -328,6 +348,39 @@ counts a quarter more gun, as it does in the field (+25% damage, +15%
 range). Every
 researched mark of a weapon is on the racks, MK1 included, and a BanHammer
 strike takes none of a Watcher's eight slots.
+
+## Balance, measured (2026-10-11, every mission kind in the field)
+
+With every kind fought for real in the engine, the bot's rolled outcomes are
+measured per kind: four kits from the starting squad to tier 4, threat one
+under to two over, six fights a cell (`ROLL_KIND` in `tools/campaign.js`).
+At the squad's tier every fighting kind is won 83 to 100% of the time; a
+step over is a coin flip for most (crackdown 58%, Cal's crew 63%, a job 46%,
+a siege 75%, a hit 92%) and costs about two Watchers; two over is lost. The
+bot also now buys a Watcher the one gun that adds most, not a rack of every
+gun (which left it broke at war with recruits carrying pistols).
+
+| Strategy | Wins | Won by mission | War at mission | Watchers lost |
+|---|---|---|---|---|
+| 50% to research (the default) | 12 of 12 | 98 | 61 | 25 |
+| War the moment it's ready | 12 of 12 | 98 | 61 | 25 |
+| Mind control everywhere, story first | 12 of 12 | 108 | 57 | 37 |
+| Research-heavy turtle | 12 of 12 | 95 | 44 | 30 |
+| The default, raw death rates | 12 of 12 | 125 | 59 | 86 |
+
+Most of the dead fall a step over: Cal's crew comes a step over the squad
+more often than not (base threat 3, a step higher in a weak zone), and is
+won about half the time, and that's deliberate: answering Cal's push is a
+stretch, and hired guns and the BanHammer are how a player evens it.
+
+Late in a war, when every zone left is lost to Cal, the only offers used to
+be sieges at threat 5, with no lighter work to rebuild a broken squad on;
+the mind-control bot walked into a hundred of them across twelve campaigns.
+Now, when nothing on offer is within the squad's reach and Cal holds all
+that's left, the fallback job (intel, or a job for the money) turns up in
+one of his zones. That brought the mind-control row to 12 of 12 by mission
+108 with 37 Watchers lost, and sieges taken two or more over the squad to 13
+across 36 campaigns.
 
 ## Balance, measured (2026-10-11, with weapon marks in the field)
 

@@ -87,7 +87,7 @@ W.HUD = class {
     }
     // weapons of the lead Watcher
     const L = this.lead();
-    const sig = L ? L.id + ":" + L.cur + ":" + L.weapons.map(x => x.type + (x.ammo ?? "")).join(",") : "none";
+    const sig = L ? L.id + ":" + L.cur + ":" + L.weapons.map(x => x.type + (x.mk || "") + (x.ammo ?? "")).join(",") : "none";
     if (sig !== this.weapSig || force) {
       this.weapSig = sig;
       this.who.textContent = L ? "· " + L.name : "";
@@ -96,7 +96,7 @@ W.HUD = class {
         const wp = L && L.weapons[i];
         if (!wp) { slots.push(`<button class="wslot empty" disabled aria-label="Empty slot"></button>`); continue; }
         const def = W.WEAPONS[wp.type];
-        slots.push(`<button class="wslot${L.cur === i ? " on" : ""}${wp.ammo === 0 ? " dry" : ""}" data-w="${i}" title="${def.name}: ${def.desc}"><canvas width="44" height="22" data-icon="${wp.type}"></canvas><span>${def.short}</span><em>${wp.ammo == null ? "∞" : wp.ammo}</em></button>`);
+        slots.push(`<button class="wslot${L.cur === i ? " on" : ""}${wp.ammo === 0 ? " dry" : ""}" data-w="${i}" title="${def.name}${wp.mk > 1 ? " MK" + wp.mk : ""}: ${def.desc}"><canvas width="44" height="22" data-icon="${wp.type}"></canvas><span>${def.short}${wp.mk > 1 ? " " + "I".repeat(wp.mk) : ""}</span><em>${wp.ammo == null ? "∞" : wp.ammo}</em></button>`);
       }
       this.weapEl.innerHTML = slots.join("");
       this.weapEl.querySelectorAll("canvas[data-icon]").forEach(cv => {

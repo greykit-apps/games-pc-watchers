@@ -402,8 +402,8 @@ const Game = W.game = {
         const [lbl, col] = this.describe(u);
         if (purr && u.kind !== "target") {
           h.mode = "persuade";
-          const ok = W.canPersuade(this.world, sel[0], u);
-          h.label = ok ? "Persuade " + lbl.toLowerCase() : lbl + ": need more followers";
+          const ok = W.canPersuade(this.world, sel[0], u), mind = this.world.level.mission && this.world.level.mission.mindControl;
+          h.label = ok ? "Persuade " + lbl.toLowerCase() : mind ? lbl + ": mind-controlled, deaf to the Purrsuader" : lbl + ": need more followers";
           h.labelColor = ok ? "#54f2ff" : "#ffb000";
         } else { h.mode = "fire"; h.label = lbl; h.labelColor = col; }
       }

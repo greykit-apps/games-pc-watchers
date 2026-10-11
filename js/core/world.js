@@ -61,6 +61,7 @@ W.World = class {
     this.scanTraffic();
     for (const l of m.loot) this.items.push(Object.assign({}, l));
     level.populate(this, opts);
+    if (!this.attract && level.mission && level.mission.hired) W.spawnHired(this, level.mission.hired);
   }
 
   add(u) { this.units.push(u); return u; }
@@ -111,7 +112,7 @@ W.World = class {
     // (everything they had: a gun, a spare, and now and then a medikit; the squad can take it home)
     const guns = u.isAgent ? u.weapons.filter(w => W.WEAPONS[w.type].gun && w.type !== "pistol") : u.weapons.filter(w => W.WEAPONS[w.type].gun);
     if (!u.isAgent && (u.faction === "crew" || u.kind === "sec") && Math.random() < 0.15) guns.push({ type: "medikit", ammo: 1 });
-    guns.forEach((w, i) => this.items.push({ type: w.type, ammo: w.ammo, x: u.x + (i ? W.rand(-0.3, 0.3) : 0), y: u.y + (i ? W.rand(-0.3, 0.3) : 0) }));
+    guns.forEach((w, i) => this.items.push({ type: w.type, ammo: w.ammo, mk: w.mk, x: u.x + (i ? W.rand(-0.3, 0.3) : 0), y: u.y + (i ? W.rand(-0.3, 0.3) : 0) }));
     if (src && src.isAgent && !u.isAgent) src.kills = (src.kills || 0) + 1;
     if (u.isAgent) { this.stats.lost++; this.msg(`${u.name} is down.`, "#ff5266"); }
     else if (u.kind === "civ" && !u.follower) { if (src && src.accident) this.stats.civAcc++; else this.stats.civ++; }

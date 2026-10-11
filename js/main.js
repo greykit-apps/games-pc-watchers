@@ -95,6 +95,7 @@ const Game = W.game = {
         <tr><td><kbd>R</kbd></td><td>guns out (the one each last had) or away; <kbd>H</kbd> also holsters</td></tr>
         <tr><td><kbd>F</kbd></td><td>first aid: a medikit for each Watcher at half health or worse</td></tr>
         <tr><td><kbd>Q</kbd></td><td>the Purrsuader, out or away</td></tr>
+        <tr><td><kbd>X</kbd></td><td>the BanHammer: click a spot a Watcher can see, and a few seconds later the orbital platform clears it. Everything in the circle dies. <kbd>Esc</kbd> stands it down</td></tr>
         <tr><td>Weapon panel</td><td>click a weapon to draw it</td></tr>
         </table><h3>The view</h3><table>
         <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>, arrows</td><td>scroll; or push the pointer to an edge, or drag with the middle button</td></tr>
@@ -253,7 +254,7 @@ const Game = W.game = {
     const st = w.startAt || this.level.start;
     this.renderer.centerOn(w, st[0], st[1]);
     this.hud.build(w);
-    this.cursorMode = null; this.setCursor("move");
+    this.cursorMode = null; this.ui.aim = null; this.setCursor("move");
     W.audio.ambience(true);
     for (const [t, col] of this.level.intro ? this.level.intro(w) : [["JOYEUSE: You're on, Watchers. Sly's at the cafe, north-east corner. Keep it quiet.", "#54f2ff"], ["Weapons are holstered. Plaza Security will warn anyone with a gun out.", "#94a0c4"]]) w.msg(t, col);
     this.banner(this.level.name.toUpperCase(), `Eliminate ${w.names.target}`, "#54f2ff");
@@ -275,7 +276,7 @@ const Game = W.game = {
   hint(show) {
     const h = document.getElementById("hint");
     h.hidden = !show;
-    h.innerHTML = "<b>Left</b> move · <b>Right</b> fire / persuade · <b>` 1–4</b> select · <b>E</b> go · <b>C</b> calm · <b>R</b> guns · <b>F</b> first aid · <b>Q</b> Purrsuader · <b>Space</b> pause";
+    h.innerHTML = "<b>Left</b> move · <b>Right</b> fire / persuade · <b>` 1–4</b> select · <b>E</b> go · <b>C</b> calm · <b>R</b> guns · <b>F</b> first aid · <b>Q</b> Purrsuader · <b>X</b> BanHammer · <b>Space</b> pause";
     clearTimeout(this.hintT);
     if (show) this.hintT = setTimeout(() => { h.hidden = true; }, 15000);
   },
@@ -396,6 +397,12 @@ const Game = W.game = {
     const sel = this.selectedAgents();
     const purr = sel.some(a => W.curDef(a) && W.curDef(a).persuade);
     const h = { x: ui.x, y: ui.y, mode: "move" };
+    if (ui.aim) {
+      const [x, y] = this.renderer.toWorld(this.world, ui.x, ui.y), why = this.world.canStrike(ui.aim.agent, x, y);
+      ui.aim.ok = !why;
+      h.mode = "fire"; h.label = why ? `BanHammer: ${why}` : "BanHammer: strike here"; h.labelColor = why ? "#94a0c4" : "#ff3048";
+      ui.hover = h; this.setCursor(h.mode); return;
+    }
     if (u) {
       if (u.isAgent) { h.mode = "select"; h.label = u.name; h.labelColor = "#54f2ff"; }
       else if (u.faction === "player") { h.mode = "move"; h.label = "Follower"; h.labelColor = "#54f2ff"; }
@@ -493,6 +500,7 @@ const Game = W.game = {
     const sel = this.selectedAgents(), lead = sel[0];
     if (!lead || !lead.weapons[i]) return;
     const type = lead.weapons[i].type;
+    if (type === "banhammer") return this.armStrike();
     const holster = lead.cur === i && type !== "medikit";
     for (const a of sel) {
       const k = a.weapons.findIndex(x => x.type === type);
@@ -570,6 +578,20 @@ const Game = W.game = {
     W.audio.play("click");
     this.hud.update(true);
   },
+  /* X: the BanHammer. The first selected Watcher carrying a strike paints the
+   * target; X again, Esc or a right click stands it down. */
+  armStrike() {
+    const ui = this.ui;
+    if (ui.aim) return this.standDownStrike();
+    const a = this.selectedAgents().find(x => x.weapons.some(w => w.type === "banhammer" && (w.ammo == null || w.ammo > 0)))
+      || this.world.agents.find(x => x.alive && !x.out && x.weapons.some(w => w.type === "banhammer" && (w.ammo == null || w.ammo > 0)));
+    if (!a) { W.audio.play("deny"); this.world.msg("No BanHammer strike to call.", "#ffb000"); return; }
+    ui.aim = { kind: "banhammer", agent: a, ok: false };
+    W.audio.play("click");
+    this.world.msg(`${a.name}: laser up. Click a spot they can see; Esc to stand down.`, "#ff5266");
+    this.updateHover();
+  },
+  standDownStrike() { this.ui.aim = null; W.audio.play("click"); this.updateHover(); },
   /* F: a medikit for each Watcher at half health or worse; the rest keep theirs. */
   patchUp() {
     let any = false;
@@ -612,6 +634,14 @@ const Game = W.game = {
       v.setPointerCapture(ev.pointerId);
       if (ev.button === 1) { ui.pan = { x: ui.x, y: ui.y, cx: this.world.cam.x, cy: this.world.cam.y }; ev.preventDefault(); return; }
       if (this.paused) return;
+      if (ui.aim) {
+        if (ev.button === 2) { this.standDownStrike(); return; }
+        if (ev.button === 0) {
+          const [x, y] = this.renderer.toWorld(this.world, ui.x, ui.y), why = this.world.canStrike(ui.aim.agent, x, y);
+          if (why) { W.audio.play("deny"); this.world.msg(`${ui.aim.agent.name}: ${why}.`, "#ffb000"); return; }
+          this.world.callStrike(ui.aim.agent, x, y); ui.aim = null; this.hud.update(true); return;
+        }
+      }
       if (ev.button === 0) { ui.drag = { x0: ui.x, y0: ui.y, x1: ui.x, y1: ui.y, box: false, shift: ev.shiftKey || ev.ctrlKey }; return; }
       if (ev.button === 2) {
         const u = this.unitAt(ui.x, ui.y);
@@ -713,9 +743,10 @@ const Game = W.game = {
         case "r": this.toggleGuns(); break;
         case "f": this.patchUp(); break;
         case "q": this.togglePurr(); break;
+        case "x": this.armStrike(); break;
         case "h": this.holster(); break;
         case " ": case "p": ev.preventDefault(); this.paused = !this.paused; this.showPause(); break;
-        case "escape": ev.preventDefault(); this.openMenu(); break;
+        case "escape": ev.preventDefault(); if (this.ui.aim) this.standDownStrike(); else this.openMenu(); break;
         case "?": case "/": this.openMenu(); break;
       }
     });

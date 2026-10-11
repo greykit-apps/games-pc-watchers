@@ -348,6 +348,20 @@ W.Renderer = class {
       const r = 3 + (1 - k) * 6;
       c.beginPath(); c.moveTo(sx + ox, sy + oy - r / 2); c.lineTo(sx + ox + r, sy + oy); c.lineTo(sx + ox, sy + oy + r / 2); c.lineTo(sx + ox - r, sy + oy); c.closePath(); c.stroke();
     }
+    // a BanHammer strike on its way: the painted circle, tightening, and the laser that paints it
+    for (const s of world.strikes || []) {
+      const [sx, sy] = W.proj(s.x, s.y), k = s.t / s.delay, on = Math.sin(t * (10 + 20 * k)) > 0;
+      c.strokeStyle = W.rgba("#ff3048", on ? 0.95 : 0.5); c.lineWidth = 1;
+      c.beginPath(); c.ellipse(Math.round(sx + ox), Math.round(sy + oy), s.r * W.HTW, s.r * W.HTH, 0, 0, Math.PI * 2); c.stroke();
+      const r2 = s.r * (1 - k);
+      c.strokeStyle = W.rgba("#ff3048", 0.6);
+      c.beginPath(); c.ellipse(Math.round(sx + ox), Math.round(sy + oy), r2 * W.HTW, r2 * W.HTH, 0, 0, Math.PI * 2); c.stroke();
+      if (s.by && s.by.alive && !s.by.out) {
+        const [ax, ay] = W.proj(s.by.x, s.by.y, (s.by.z || 0) + 12);
+        c.strokeStyle = W.rgba("#ff3048", on ? 0.9 : 0.55);
+        c.beginPath(); c.moveTo(Math.round(ax + ox), Math.round(ay + oy)); c.lineTo(Math.round(sx + ox), Math.round(sy + oy)); c.stroke();
+      }
+    }
     // the ways out, once the job is done: a pulsing cyan pad
     if (world.phase === "exfil") for (const p of world.exfilPoints || []) {
       const [sx, sy] = W.proj(p.x, p.y), k = 0.5 + 0.5 * Math.sin(t * 4);
@@ -502,6 +516,15 @@ W.Renderer = class {
       c.drawImage(g, px + ox - r, py + oy - r * 0.9, r * 2, r * 2);
       c.globalAlpha = 1;
     }
+    // the BanHammer's beam, straight down from orbit
+    for (const b of world.columns || []) {
+      const [px, py] = W.proj(b.x, b.y), k = b.t / b.life, w = (b.r * W.HTW * 0.5) * (1 - k * 0.6);
+      c.globalAlpha = 1 - k;
+      c.fillStyle = "#e8fbff"; c.fillRect(Math.round(px + ox - w / 3), 0, Math.round(w * 2 / 3), Math.round(py + oy));
+      c.fillStyle = "#54f2ff"; c.globalAlpha = (1 - k) * 0.45; c.fillRect(Math.round(px + ox - w), 0, Math.round(w * 2), Math.round(py + oy));
+      const g = this.glow("#e8fbff", 80); c.globalAlpha = 1 - k; c.drawImage(g, px + ox - 80, py + oy - 60, 160, 120);
+      c.globalAlpha = 1;
+    }
     for (const [x, y, col, r] of glows) c.drawImage(this.glow(col, r), Math.round(x - r), Math.round(y - r));
     c.globalCompositeOperation = "source-over";
 
@@ -626,6 +649,15 @@ W.Renderer = class {
         o.strokeStyle = u.say.color || "#94a0c4"; o.lineWidth = 1; o.strokeRect(X - w / 2 + 0.5, by - 17.5, w - 1, 16);
         o.fillStyle = u.say.color || "#dbe4fb"; o.fillText(txt, X, by - 4);
       }
+    }
+    // aiming the BanHammer: the blast circle under the cursor, and the laser from the Watcher
+    if (ui.aim && ui.mouseIn) {
+      const r = W.WEAPONS.banhammer.strike.r * k, col = ui.aim.ok ? "#ff3048" : "#94a0c4";
+      o.strokeStyle = col; o.lineWidth = 1.5; o.setLineDash(ui.aim.ok ? [] : [5, 4]);
+      o.beginPath(); o.ellipse(ui.x, ui.y, r * W.HTW, r * W.HTH, 0, 0, Math.PI * 2); o.stroke();
+      o.setLineDash([]);
+      const a = ui.aim.agent;
+      if (a && a.alive) { const [ax, ay] = this.toScreen(world, a.x, a.y, (a.z || 0) + 12); o.strokeStyle = col; o.globalAlpha = 0.7; o.beginPath(); o.moveTo(ax * k, ay * k); o.lineTo(ui.x, ui.y); o.stroke(); o.globalAlpha = 1; }
     }
     // the box being dragged
     if (ui.drag && ui.drag.box) {

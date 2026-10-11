@@ -47,6 +47,7 @@ W.World = class {
     this.names = Object.assign({ target: "Vesper Sly", crew: "Vesper's crew", sec: "Plaza Security", guard: "Bodyguard", henchman: "Henchcat", civ: "Civilian" }, level.names || {});
     this.units = []; this.cars = []; this.items = [];
     this.tracers = []; this.particles = []; this.booms = []; this.decals = []; this.smoke = []; this.pings = [];
+    this.strikes = []; this.columns = [];
     this.msgs = [];
     this.time = 0; this.cam = { x: 0, y: 0 };
     this.selected = new Set();
@@ -169,6 +170,43 @@ W.World = class {
     }
     for (const c of this.cars) if (!c.dead && W.dist(x, y, c.x, c.y) < r + 0.6 && !c.boomed) this.damageCar(c, 8, src);
     this.noise(x, y, 14, src);
+  }
+
+  /* ---- the BanHammer ----
+   * A Watcher paints a spot they can see with the laser; a few seconds later
+   * the orbital platform clears it. Everything in the circle dies, ours too,
+   * and the cars in it go up. One strike used per call. */
+  canStrike(a, x, y) {
+    const def = W.WEAPONS.banhammer;
+    if (!a || !a.alive || a.out || !a.weapons.some(w => w.type === "banhammer" && (w.ammo == null || w.ammo > 0))) return "no strike to call";
+    if (W.dist(a.x, a.y, x, y) > def.range) return "out of range";
+    if (!this.map.los(a.x, a.y, x, y)) return "no line of sight";
+    return "";
+  }
+  callStrike(a, x, y) {
+    if (this.canStrike(a, x, y)) return false;
+    const def = W.WEAPONS.banhammer, k = a.weapons.findIndex(w => w.type === "banhammer" && (w.ammo == null || w.ammo > 0)), w = a.weapons[k];
+    w.ammo = (w.ammo ?? 1) - 1;
+    if (w.ammo <= 0) { a.weapons.splice(k, 1); if (a.cur === k) a.cur = -1; else if (a.cur > k) a.cur--; }
+    this.strikes.push({ x, y, by: a, t: 0, delay: def.strike.delay, r: def.strike.r, dmg: def.strike.dmg });
+    this.msg(`${a.name}: target painted. Strike in ${def.strike.delay} seconds. Clear the circle.`, "#ff5266");
+    W.audio.play("alarm", 0.6);
+    return true;
+  }
+  updateStrikes(dt) {
+    for (let i = this.strikes.length - 1; i >= 0; i--) {
+      const s = this.strikes[i];
+      s.t += dt;
+      if (s.t < s.delay) continue;
+      this.strikes.splice(i, 1);
+      this.columns.push({ x: s.x, y: s.y, r: s.r, t: 0, life: 0.9 });
+      this.explode(s.x, s.y, s.r, s.dmg, s.by);
+      for (const c of this.cars) if (!c.dead && W.dist(s.x, s.y, c.x, c.y) < s.r + 0.6) this.damageCar(c, 200, s.by);
+      for (let k = 0; k < 6; k++) { const a = Math.random() * Math.PI * 2, d = Math.random() * s.r * 0.8; this.booms.push({ x: s.x + Math.cos(a) * d, y: s.y + Math.sin(a) * d, t: -Math.random() * 0.2, life: 0.8 }); }
+      this.decals.push({ x: s.x, y: s.y, r: s.r * 0.9 });
+      W.audio.play("boom", 1.6);
+      this.msg("The BanHammer comes down.", "#ffb000");
+    }
   }
 
   /* ---- traffic ---- */
@@ -547,7 +585,8 @@ W.World = class {
     const age = (arr) => { for (let i = arr.length - 1; i >= 0; i--) { arr[i].t += dt; if (arr[i].t >= arr[i].life) arr.splice(i, 1); } };
     for (const p of this.particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; p.vz -= 120 * dt; if (p.z < 0) { p.z = 0; p.vx *= 0.5; p.vy *= 0.5; p.vz = 0; } }
     for (const s of this.smoke) { s.z += 14 * dt; s.x += 0.2 * dt; }
-    age(this.tracers); age(this.particles); age(this.booms); age(this.smoke); age(this.pings);
+    this.updateStrikes(dt);
+    age(this.tracers); age(this.particles); age(this.booms); age(this.smoke); age(this.pings); age(this.columns);
     for (const m of this.msgs) m.t -= dt;
     this.checkMission(dt);
   }

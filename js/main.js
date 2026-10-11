@@ -87,14 +87,18 @@ const Game = W.game = {
     return [
       ["Controls", `<h3>The squad</h3><table>
         <tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>select a Watcher; <kbd>Shift</kbd> adds or drops one</td></tr>
-        <tr><td><kbd>0</kbd> or <kbd>\`</kbd></td><td>select the whole squad</td></tr>
+        <tr><td><kbd>\`</kbd> or <kbd>0</kbd></td><td>select the whole squad; tap twice to look at them</td></tr>
         <tr><td>Left click</td><td>move there (or select a Watcher); drag a box to select several</td></tr>
         <tr><td>Right click</td><td>fire at someone or a car; at the ground, fire at that spot. With the Purrsuader out, right click someone to talk them round</td></tr>
-        <tr><td><kbd>Q</kbd> <kbd>E</kbd></td><td>previous / next weapon; or click a weapon on the panel</td></tr>
-        <tr><td><kbd>H</kbd></td><td>holster</td></tr>
+        <tr><td><kbd>E</kbd></td><td>go: every stim to full, guns out, and the crew shot on sight</td></tr>
+        <tr><td><kbd>C</kbd></td><td>calm: stims to nothing, guns away, nobody shoots first. Lets the dependency wear off</td></tr>
+        <tr><td><kbd>R</kbd></td><td>guns out (the one each last had) or away; <kbd>H</kbd> also holsters</td></tr>
+        <tr><td><kbd>F</kbd></td><td>first aid: a medikit for each Watcher at half health or worse</td></tr>
+        <tr><td><kbd>Q</kbd></td><td>the Purrsuader, out or away</td></tr>
+        <tr><td>Weapon panel</td><td>click a weapon to draw it</td></tr>
         </table><h3>The view</h3><table>
         <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>, arrows</td><td>scroll; or push the pointer to an edge, or drag with the middle button</td></tr>
-        <tr><td><kbd>C</kbd></td><td>centre on the selection; double-click a card to jump to that Watcher</td></tr>
+        <tr><td>Double-tap <kbd>1</kbd>–<kbd>4</kbd></td><td>look at that Watcher; or double-click their card</td></tr>
         <tr><td>Scanner</td><td>click to look there; <kbd>Shift</kbd>-click to send the selection</td></tr>
         <tr><td><kbd>Space</kbd></td><td>pause</td></tr>
         <tr><td><kbd>Esc</kbd></td><td>menu</td></tr>
@@ -440,6 +444,7 @@ const Game = W.game = {
   },
   centerOn(a) { this.renderer.centerOn(this.world, a.x, a.y); },
   centerAt(x, y) { this.renderer.centerOn(this.world, x, y); },
+  centerOnSelection() { const s = this.selectedAgents(); if (s.length) this.centerAt(s.reduce((a, b) => a + b.x, 0) / s.length, s.reduce((a, b) => a + b.y, 0) / s.length); },
   orderMove(x, y) {
     const w = this.world, sel = this.selectedAgents();
     if (!sel.length) return;
@@ -466,7 +471,7 @@ const Game = W.game = {
         let best = -1, sc = -1;
         a.weapons.forEach((x, i) => { const d = W.WEAPONS[x.type]; if (d.gun && (x.ammo == null || x.ammo > 0)) { const s = d.dmg * (d.pellets || 1) / d.cd; if (s > sc) { sc = s; best = i; } } });
         if (best < 0) continue;
-        a.cur = best; a.weaponOut = true;
+        a.cur = best; a.weaponOut = true; a.lastGun = a.weapons[best].type;
       }
       a.manual = t; a.target = null; any = true;
     }
@@ -486,19 +491,88 @@ const Game = W.game = {
       if (k < 0) continue;
       if (type === "medikit") { if (a.hp >= a.maxHp) continue; a.prevCur = a.cur; }
       a.cur = k; a.weaponOut = type !== "medikit"; a.target = null;
+      if (W.WEAPONS[type].gun) a.lastGun = type;
     }
     W.audio.play("click");
     this.hud.update(true);
   },
-  cycleWeapon(step) {
-    const sel = this.selectedAgents(), lead = sel[0];
-    if (!lead || !lead.weapons.length) return;
-    // through the slots, with "holstered" between the last and the first; medikits are skipped
-    const opts = [-1, ...lead.weapons.map((x, i) => x.type === "medikit" ? null : i).filter(i => i !== null)];
-    const at = opts.indexOf(lead.cur);
-    const next = opts[(at + step + opts.length) % opts.length];
-    if (next === -1) return this.holster();
-    this.drawWeapon(next);
+  /* The gun a Watcher last had out, if they still carry it loaded; else
+   * their best loaded gun. -1 if they have none. */
+  gunFor(a) {
+    const ok = x => { const d = W.WEAPONS[x.type]; return d.gun && (x.ammo == null || x.ammo > 0); };
+    let k = a.lastGun ? a.weapons.findIndex(x => x.type === a.lastGun && ok(x)) : -1;
+    if (k < 0) {
+      let sc = -1;
+      a.weapons.forEach((x, i) => { if (!ok(x)) return; const d = W.WEAPONS[x.type], v = d.dmg * (d.pellets || 1) / d.cd; if (v > sc) { sc = v; k = i; } });
+    }
+    return k;
+  },
+  drawGun(a) {
+    const k = this.gunFor(a);
+    if (k < 0) return false;
+    a.cur = k; a.weaponOut = true; a.target = null; a.lastGun = a.weapons[k].type;
+    return true;
+  },
+  /* E: go. Every stim to the top, guns out, and the crew shot on sight. */
+  goLoud() {
+    const sel = this.selectedAgents();
+    if (!sel.length) return;
+    for (const a of sel) {
+      for (const s of W.STIMS) a.ipa[s.id].lvl = 1;
+      this.drawGun(a);
+      a.aggressive = true;
+    }
+    W.audio.play("order");
+    this.hud.update(true);
+  },
+  /* C: calm. Stims to nothing, guns away, nobody shoots first: time to let the
+   * dependency wear off. */
+  calmDown() {
+    const sel = this.selectedAgents();
+    if (!sel.length) return;
+    for (const a of sel) {
+      for (const s of W.STIMS) a.ipa[s.id].lvl = 0;
+      a.aggressive = false;
+      a.cur = -1; a.weaponOut = false; a.manual = null; a.target = null; a.shootAt = null;
+    }
+    W.audio.play("click");
+    this.hud.update(true);
+  },
+  /* R: guns away if any are out; otherwise each draws the gun they last had. */
+  toggleGuns() {
+    const sel = this.selectedAgents();
+    if (!sel.length) return;
+    if (sel.some(a => W.armed(a))) return this.holster();
+    for (const a of sel) this.drawGun(a);
+    W.audio.play("click");
+    this.hud.update(true);
+  },
+  /* Q: the Purrsuader, out or away. */
+  togglePurr() {
+    const sel = this.selectedAgents();
+    if (!sel.length) return;
+    const out = sel.some(a => { const d = W.curDef(a); return d && d.persuade; });
+    for (const a of sel) {
+      const d = W.curDef(a);
+      if (out) { if (d && d.persuade) { a.cur = -1; a.weaponOut = false; a.manual = null; a.target = null; } continue; }
+      const k = a.weapons.findIndex(x => W.WEAPONS[x.type].persuade);
+      if (k >= 0) { a.cur = k; a.weaponOut = true; a.manual = null; a.target = null; a.shootAt = null; }
+    }
+    W.audio.play("click");
+    this.hud.update(true);
+  },
+  /* F: a medikit for each Watcher at half health or worse; the rest keep theirs. */
+  patchUp() {
+    let any = false;
+    for (const a of this.selectedAgents()) {
+      const d = W.curDef(a);
+      if (a.hp > a.maxHp * 0.5 || (d && d.heal)) continue;
+      const k = a.weapons.findIndex(x => x.type === "medikit");
+      if (k < 0) continue;
+      a.prevCur = a.cur; a.cur = k; any = true;
+    }
+    W.audio.play(any ? "click" : "deny");
+    this.hud.update(true);
   },
   holster() {
     for (const a of this.selectedAgents()) { a.cur = -1; a.weaponOut = false; a.manual = null; a.target = null; a.shootAt = null; }
@@ -609,7 +683,13 @@ const Game = W.game = {
       }
       if (ev.code === "Digit1" && ev.shiftKey) return;
       switch (k) {
-        case "0": case "`": this.selectAll(); break;
+        case "0": case "`": {
+          // double-tap: look at the whole squad
+          const now = performance.now();
+          if (this.lastNum === "`" && now - this.lastNumT < 350) this.centerOnSelection();
+          this.lastNum = "`"; this.lastNumT = now;
+          this.selectAll(); break;
+        }
         case "tab": {
           ev.preventDefault();
           const live = w.agents.filter(a => a.alive).sort((a, b) => a.slot - b.slot);
@@ -618,10 +698,13 @@ const Game = W.game = {
           const nx = live[(live.indexOf(cur) + 1) % live.length];
           this.selectAgent(nx, false); this.centerOn(nx); break;
         }
-        case "q": this.cycleWeapon(-1); break;
-        case "e": this.cycleWeapon(1); break;
+        // the left hand's keys, beside WASD: go, calm, guns, first aid, Purrsuader
+        case "e": this.goLoud(); break;
+        case "c": this.calmDown(); break;
+        case "r": this.toggleGuns(); break;
+        case "f": this.patchUp(); break;
+        case "q": this.togglePurr(); break;
         case "h": this.holster(); break;
-        case "c": { const s = this.selectedAgents(); if (s.length) this.centerAt(s.reduce((a, b) => a + b.x, 0) / s.length, s.reduce((a, b) => a + b.y, 0) / s.length); break; }
         case " ": case "p": ev.preventDefault(); this.paused = !this.paused; this.showPause(); break;
         case "escape": ev.preventDefault(); this.openMenu(); break;
         case "?": case "/": this.openMenu(); break;
@@ -733,6 +816,7 @@ const Game = W.game = {
         <tr><td>${W.esc(w.names.crew)} down</td><td>${s.crew}</td></tr>
         <tr><td>${W.esc(w.names.sec)} down</td><td>${s.sec}</td></tr>
         <tr><td>Civilians lost</td><td>${s.civ}</td></tr>
+        ${s.civAcc ? `<tr><td>Traffic accidents (not on you)</td><td>${s.civAcc}</td></tr>` : ""}
         <tr><td>Recruited</td><td>${s.recruited}</td></tr>
         <tr><td>Rounds fired</td><td>${s.shots}</td></tr>
       </table>

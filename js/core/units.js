@@ -117,7 +117,8 @@ W.hostileTo = (world, a, b) => {
   if (!b.alive || a === b || b.inCar || a.faction === b.faction) return false;
   switch (a.faction) {
     case "player":
-      if (b.faction === "crew") return b.hostile || (b.kind === "target" && world.alarm);
+      // a Watcher sent in with E (aggressive) shoots the crew on sight, made or not
+      if (b.faction === "crew") return b.hostile || a.aggressive || (b.kind === "target" && world.alarm);
       if (b.faction === "sec") return b.angryAt.player;
       return false;
     case "crew": return (b.faction === "player" && a.hostile) || (b.faction === "sec" && a.angryAt.sec);
@@ -144,6 +145,7 @@ W.stop = u => { u.path = null; u.dest = null; };
 /* ---- movement, every tick ---- */
 W.moveUnit = (world, u, dt) => {
   u.moving = false;
+  if (u.pushedT > 0) { u.pushedT -= dt; return; }   // a train's push field has them (World.trainPush)
   if (!u.path) return;
   const m = world.map;
   const [tx, ty] = u.path[0];
@@ -155,6 +157,12 @@ W.moveUnit = (world, u, dt) => {
   }
   const sp = W.speedOf(u), step = Math.min(d, sp * dt);
   const nx = u.x + dx / d * step, ny = u.y + dy / d * step;
+  // nobody walks into traffic: wait at the kerb, or beside the train, until it is clear
+  if ((W.inTrafficWay(world, u, nx, ny) && !W.inTrafficWay(world, u, u.x, u.y)) || W.mustWait(world, u, nx, ny)) {
+    if (!u.facingLock) u.dir = Math.atan2(dy, dx);
+    u.stuckT = 0; u.lastX = u.x; u.lastY = u.y;
+    return;
+  }
   if (m.walkable(nx, ny)) { u.x = nx; u.y = ny; }
   else if (m.walkable(nx, u.y)) u.x = nx;
   else if (m.walkable(u.x, ny)) u.y = ny;
@@ -167,6 +175,50 @@ W.moveUnit = (world, u, dt) => {
     if (W.dist(u.x, u.y, u.lastX, u.lastY) < 0.15 && u.dest) W.goTo(world, u, u.dest[0], u.dest[1]);
     u.stuckT = 0; u.lastX = u.x; u.lastY = u.y;
   }
+};
+
+/* Is (x, y) inside a train or its push field? Nobody walks into a train (a
+ * wrecked one is climbed over). Cars are another matter: walk into one's side
+ * and you bounce off it (World.bump). */
+W.inTrafficWay = (world, u, x, y) => {
+  if ((u.z || 0) > 6) return false;   // on a bridge, over all of it
+  for (const I of world.threats) {
+    const off = Math.abs((I.ax ? y : x) - I.lat), a = I.ax ? x : y;
+    if (I.delay !== Infinity && off < I.half + 0.3 && (a - I.tail) * I.dir > -0.3 && (I.nose - a) * I.dir > -0.3) return true;
+    if (W.pushWidth(I, x, y)) return true;
+  }
+  return false;
+};
+/* At the edge of a railway (or, for a civilian, of a road) with the next
+ * step onto it: walk the path across, and wait if anything that will not
+ * stop could be there before we are over and clear. Trains for everyone;
+ * a getaway car or a panicking driver too, for civilians. */
+W.mustWait = (world, u, nx, ny) => {
+  const m = world.map, civ = u.kind === "civ" && !u.follower;
+  const threats = civ ? world.civThreats : world.threats;
+  if (!threats || !threats.length || (u.z || 0) > 6) return false;
+  const strip = (x, y) => { const g = m.groundAt(x, y); return (g === W.G.RAIL || (civ && g === W.G.ROAD)) && W.deckZ(m, x, y) <= 6; };
+  if (!strip(nx, ny) || strip(u.x, u.y)) return false;
+  // the crossing: points along the path from here until it leaves the strip
+  const pts = [];
+  let px = u.x, py = u.y, dist = 0, exitD = 0, on = false;
+  walk: for (const [qx, qy] of u.path) {
+    const seg = Math.hypot(qx - px, qy - py), n = Math.max(1, Math.ceil(seg / 0.4));
+    for (let i = 1; i <= n; i++) {
+      const x = px + (qx - px) * i / n, y = py + (qy - py) * i / n, dd = dist + seg * i / n;
+      if (strip(x, y)) { on = true; pts.push(x, y); exitD = dd; }
+      else if (on) break walk;
+      if (dd > 18) break walk;
+    }
+    px = qx; py = qy; dist += seg;
+  }
+  const clearT = exitD / W.speedOf(u) + 1.5;
+  for (const I of threats) for (let i = 0; i < pts.length; i += 2) {
+    const x = pts[i], y = pts[i + 1];
+    if (Math.abs((I.ax ? y : x) - I.lat) > I.half + 0.6) continue;
+    if (W.etaAt(I, I.ax ? x : y) < clearT) return true;
+  }
+  return false;
 };
 
 /* Bodies push each other apart a little, never into walls. */
@@ -607,6 +659,8 @@ W.updateUnit = (world, u, dt) => {
   if (u.dryT) u.dryT = Math.max(0, u.dryT - dt);
   if (u.denyT) u.denyT = Math.max(0, u.denyT - dt);
   if (u.say) { u.say.t -= dt; if (u.say.t <= 0) u.say = null; }
+  // knocked down or dazed by a car: nothing but getting up again
+  if (u.stunT > 0) { u.stunT -= dt; u.downT = (u.downT || 0) - dt; u.moving = false; return; }
   if (u.isAgent) {
     W.stimTick(u, dt);
     if (u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + (0.12 + 0.15 * W.mod(u, "heart")) * dt);

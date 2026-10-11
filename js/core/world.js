@@ -3,6 +3,29 @@
  * and draws it with the renderer; nothing in here touches the DOM. */
 "use strict";
 
+/* a train's carriages, nose to nose */
+W.CARRIAGE = 4.1;
+/* over this, a car that hits someone kills them (town traffic tops out at 4.6) */
+W.SPEEDING = 5;
+/* When a vehicle (its info: lane, nose, tail, delay, top speed) can reach the
+ * point `a` along its lane: 0 if it is there now, Infinity if it has gone by. */
+W.etaAt = (I, a) => {
+  if ((a - I.tail) * I.dir > -0.4 && (I.nose - a) * I.dir > -0.4) return 0;
+  const d = (a - I.nose) * I.dir;
+  return d < 0 ? Infinity : I.delay + d / I.vmax;
+};
+/* A train's push field at (x, y): how far off the line it reaches there, or
+ * 0 if the spot is outside it. A wedge: it reaches further ahead the faster
+ * the train runs, and is widest at the nose. A train standing at a station
+ * or waiting off the map has none. */
+W.pushWidth = (I, x, y) => {
+  if (!I || (I.speed < 0.3 && I.delay > 1)) return 0;
+  const reach = 3 + I.speed * 2.2, d = ((I.ax ? x : y) - I.nose) * I.dir;
+  if (d < -0.6 || d > reach) return 0;
+  const wide = I.half + 0.45 + 0.6 * (1 - Math.max(0, d) / reach);
+  return Math.abs((I.ax ? y : x) - I.lat) < wide ? wide : 0;
+};
+
 W.World = class {
   constructor(level, opts = {}) {
     this.level = level;
@@ -25,10 +48,13 @@ W.World = class {
     this.selected = new Set();
     this.alarm = false; this.alarmAt = null;
     this.status = "play"; this.endT = 0; this.endReason = "";
-    this.stats = { shots: 0, crew: 0, sec: 0, civ: 0, lost: 0, recruited: 0, time: 0 };
+    // civ: civilians the fight killed, which count against the squad; civAcc: accidents, which do not
+    this.stats = { shots: 0, crew: 0, sec: 0, civ: 0, civAcc: 0, lost: 0, recruited: 0, time: 0 };
+    this.trains = [];
     this.objectives = [];
     this.light = { x: true, y: false };
     this.spawnTraffic();
+    this.scanTraffic();
     for (const l of m.loot) this.items.push(Object.assign({}, l));
     level.populate(this, opts);
   }
@@ -82,7 +108,7 @@ W.World = class {
     guns.forEach((w, i) => this.items.push({ type: w.type, ammo: w.ammo, x: u.x + (i ? W.rand(-0.3, 0.3) : 0), y: u.y + (i ? W.rand(-0.3, 0.3) : 0) }));
     if (src && src.isAgent && !u.isAgent) src.kills = (src.kills || 0) + 1;
     if (u.isAgent) { this.stats.lost++; this.msg(`${u.name} is down.`, "#ff5266"); }
-    else if (u.kind === "civ" && !u.follower) this.stats.civ++;
+    else if (u.kind === "civ" && !u.follower) { if (src && src.accident) this.stats.civAcc++; else this.stats.civ++; }
     else if (u.faction === "crew") this.stats.crew++;
     else if (u.kind === "sec") this.stats.sec++;
     for (const o of this.units) if (o.target === u) o.target = null;
@@ -106,6 +132,10 @@ W.World = class {
       } else if (u.faction === "crew" && src && src.faction === "player" && !this.attract) {
         if (!u.hostile && (d < 6 || W.canSee(this, u, src, 12))) { u.hostile = true; W.drawBest(u); u.seen = [src.x, src.y]; this.raiseAlarm(u, src); }
       }
+    }
+    // a fight in the street: drivers nearby floor it, and stop for nobody
+    if (src && (src.faction === "player" || src.faction === "crew" || src.faction === "sec") && !this.attract) {
+      for (const c of this.cars) if (!c.parked && !c.train && !c.escape && !c.dead && W.dist(x, y, c.x, c.y) < r) c.panicT = W.rand(6, 10);
     }
   }
   raiseAlarm(by, seen) {
@@ -147,8 +177,10 @@ W.World = class {
       for (let i = 0; i < n; i++) {
         const s = lane.from + span * ((i + Math.random() * 0.5) / n);
         if (lane.train) {
-          // a train: three carriages nose to tail
-          for (let k = 0; k < 3; k++) this.addCar(lane, s - lane.dir * k * 4.1, { train: true, len: 3.9, wid: 1.3, maxSpeed: 6, hp: 60, maxHp: 60, color: "#9aa4b8", wait: 0 });
+          // a train: its carriages nose to tail, moved as one by the lead (cars[0])
+          const T = { lane, cars: [], holdT: 0, wait: 0, lastStop: null };
+          for (let k = 0; k < (lane.carriages || 6); k++) T.cars.push(this.addCar(lane, s - lane.dir * k * W.CARRIAGE, { train: true, group: T, k, len: 3.9, wid: 1.3, maxSpeed: 6, hp: 60, maxHp: 60, color: "#9aa4b8" }));
+          this.trains.push(T);
         } else this.addCar(lane, s);
       }
     }
@@ -165,12 +197,6 @@ W.World = class {
     if (car.color === "#c8b040" && !car.train) car.taxi = true;
     this.cars.push(car);
     return car;
-  }
-  /* the leading carriage of the train this one belongs to */
-  leadOf(car) {
-    let lead = car;
-    for (const o of this.cars) if (o.train && o.lane === car.lane && (o.axis === "x" ? o.x - lead.x : o.y - lead.y) * car.dir > 0 && (o.axis === "x" ? o.x - lead.x : o.y - lead.y) * car.dir < 4.6) lead = o;
-    return lead === car ? car : this.leadOf(lead) === lead ? lead : this.leadOf(lead);
   }
   damageCar(car, dmg, src) {
     if (car.dead) return;
@@ -193,32 +219,27 @@ W.World = class {
     W.audio.at("engine", car.x, car.y);
     this.msg(`${this.names.target} is in the car. Stop it!`, "#ffb000");
   }
+  /* A car drives its lane. It keeps its distance, brakes for people and red
+   * lights, and gives way to trains. A getaway car, or a driver panicking
+   * away from a fight, stops for nobody on foot. Train carriages only smoke
+   * here: their train moves them (updateTrain). */
   updateCar(car, dt) {
     if (car.dead) {
       if (Math.random() < dt * 6) this.smoke.push({ x: car.x + W.rand(-0.3, 0.3), y: car.y + W.rand(-0.3, 0.3), z: 8, t: 0, life: 2.2 });
       return;
     }
     if (car.hp < car.maxHp * 0.5 && Math.random() < dt * 4) this.smoke.push({ x: car.x, y: car.y, z: 8, t: 0, life: 1.4 });
-    if (car.parked) return;
+    if (car.parked || car.train) return;
     if (car.startT > 0) { car.startT -= dt; if (Math.random() < dt * 10) this.smoke.push({ x: car.x - car.dir * 1.1, y: car.y, z: 2, t: 0, life: 0.8 }); return; }
+    if (car.panicT > 0) car.panicT -= dt;
+    const reckless = car.escape || car.panicT > 0;
     const ax = car.axis === "x", dir = car.dir;
     const s = ax ? car.x : car.y, lat = ax ? car.y : car.x;
-    let want = car.escape ? 5.5 : car.maxSpeed;
-    // trains wait at their stops, a few seconds each
-    if (car.train) {
-      if (car.wait > 0) { car.wait -= dt; want = 0; }
-      else for (const st of car.lane.stops || []) {
-        const front = s + dir * car.len / 2, ahead = (st - front) * dir;
-        if (ahead > -0.2 && ahead < 0.15 && car.lastStop !== st && car === this.leadOf(car)) { car.wait = 5; car.lastStop = st; want = 0; }
-        if (ahead > 0 && ahead < 4 && car.lastStop !== st && car === this.leadOf(car)) want = Math.min(want, 1 + ahead * 1.5);
-      }
-    }
+    let want = car.escape ? 5.5 : reckless ? Math.max(5.5, car.maxSpeed * 1.4) : car.maxSpeed;
     // whatever is in front: the car ahead in the lane, or anything crossing it
     const front = s + dir * car.len / 2;
     for (const o of this.cars) {
       if (o === car || o.dead && !o.boomed) continue;
-      if (car.train && !o.train) continue;          // trains do not stop for cars
-      const oax = o.axis === "x";
       if (o.axis === car.axis) {
         const os = ax ? o.x : o.y, ol = ax ? o.y : o.x;
         if (Math.abs(ol - lat) > 0.75) continue;
@@ -235,23 +256,35 @@ W.World = class {
         if (ahead > -halfAlong && ahead < 2.6 + halfAlong) want = Math.min(want, Math.max(0, ahead - halfAlong - 0.4) * 2);
       }
     }
-    // people in the road: stop for them, unless you are running; not people on a bridge overhead
+    // a level crossing: nobody, not even a getaway driver, races a train
+    const L = car.lane;
+    for (const T of this.trains) {
+      const I = T.info;
+      if (!I || I.ax === ax || I.lat < L.from || I.lat > L.to) continue;
+      const reach = I.half + 1;
+      const toBand = ((I.lat - dir * reach) - front) * dir;    // our nose to the near side of its track
+      if (toBand < 0 || toBand > 9) continue;                    // already on it (clear it), or far off
+      const clear = (toBand + reach * 2 + car.len) / Math.max(car.speed, 2.5) + 1.5;
+      if (W.etaAt(I, lat) < clear) want = Math.min(want, Math.max(0, toBand - 0.3) * 2.5);
+    }
+    // people in the road (not on a bridge overhead). A driver brakes for
+    // anyone in front, though now and then one is looking the other way; a
+    // runner brakes for nobody. The nose strikes, the sides only bump.
+    if (car.distractT > 0) car.distractT -= dt;
     for (const u of this.units) {
       if (!u.alive || u.inCar || (u.z || 0) > 6) continue;
       const us = ax ? u.x : u.y, ul = ax ? u.y : u.x;
-      if (Math.abs(ul - lat) > 0.75) continue;
-      const ahead = (us - s) * dir;
-      if (car.escape || car.train) {
-        if (ahead > -car.len / 2 && ahead < car.len / 2 + 0.3 && car.speed > 1.5 && !u.hitBy) {
-          u.hitBy = car.id; this.damage(u, car.train ? 30 : 9, { faction: car.train ? "none" : "crew", x: car.x, y: car.y });
-          const k = W.rand(-0.9, 0.9);
-          if (ax) u.y += k > 0 ? 0.9 : -0.9; else u.x += k > 0 ? 0.9 : -0.9;
-        }
-      } else if (ahead > 0 && ahead < car.len / 2 + 1.3) want = 0;
+      if (Math.abs(ul - lat) > car.wid / 2 + 0.3) continue;
+      const d = (us - front) * dir;   // + ahead of the nose, - back along the body
+      if (d > -0.6 && d < 0.3) { if (car.speed > 1.5 && !u.hitBy) this.strike(car, u); }
+      else if (d <= -0.6 && d > -car.len - 0.2) { if (car.speed > 0.5 && !u.hitBy) this.bump(car, u); }
+      if (!reckless && d > -car.len / 2 && d < 1.3) {
+        if (u.seenBy !== car.id) { u.seenBy = car.id; if (Math.random() < 0.06) car.distractT = 0.8; }
+        if (!(car.distractT > 0)) want = 0;
+      }
     }
     // the lights
-    if (!car.escape && !car.train) {
-      const front = s + dir * car.len / 2;
+    if (!reckless) {
       for (const j of this.map.junctions) {
         const lo = ax ? j.y0 : j.x0, hi = ax ? j.y1 : j.x1;
         if (lat < lo || lat > hi) continue;
@@ -260,19 +293,128 @@ W.World = class {
         if (ahead >= -0.05 && ahead < 2.2 && !this.light[car.axis]) want = Math.min(want, Math.max(0, ahead - 0.6) * 2.5);
       }
     }
-    car.speed += W.clamp(want - car.speed, -14 * dt, (car.escape ? 7 : 4) * dt);
+    car.speed += W.clamp(want - car.speed, -14 * dt, (reckless ? 7 : 4) * dt);
     if (car.speed < 0.02) car.speed = 0;
     const ns = s + dir * car.speed * dt;
     if (ax) car.x = ns; else car.y = ns;
-    const L = car.lane;
     if ((dir > 0 && ns > L.to) || (dir < 0 && ns < L.from)) {
       if (car.escape) { car.gone = true; return; }
-      if (car.train) { car.lastStop = null; }
       // round again from the start of the lane, if it is clear
       const start = dir > 0 ? L.from : L.to;
       const clear = !this.cars.some(o => o !== car && o.lane === L && Math.abs((ax ? o.x : o.y) - start) < 3);
-      if (clear) { if (ax) car.x = start; else car.y = start; car.maxSpeed = W.rand(3.2, 4.6); }
+      if (clear) { if (ax) car.x = start; else car.y = start; car.maxSpeed = W.rand(3.2, 4.6); car.panicT = 0; }
       else car.speed = 0;
+    }
+  }
+  /* Struck by a car's nose. Speeding, it kills, and the car takes a dent;
+   * slower, it knocks them down and hurts. A getaway car or a panicked driver
+   * is the fight's doing, and counts; anything else is an accident. */
+  strike(car, u) {
+    const fight = car.escape || car.panicT > 0;
+    const src = { faction: car.escape ? "crew" : "none", accident: !fight, x: car.x, y: car.y };
+    u.hitBy = car.id;
+    if (car.speed > W.SPEEDING) { this.damage(u, 1e6, src); this.damageCar(car, 1, null); }
+    else { this.damage(u, 1.5, src); this.knock(car, u, 0.8, 2.2, true); }
+  }
+  /* Walked into a moving car's side: thrown back and dazed, no worse. */
+  bump(car, u) { u.hitBy = car.id; this.knock(car, u, 0.7, 1.2, false); }
+  /* Out of the car's lane, to whichever side they were on, and stunned a moment. */
+  knock(car, u, dist, stun, down) {
+    const ax = car.axis === "x", off = (ax ? u.y : u.x) - (ax ? car.y : car.x), k = off >= 0 ? dist : -dist;
+    for (const sg of [k, -k]) {
+      const x = ax ? u.x : u.x + sg, y = ax ? u.y + sg : u.y;
+      if (this.map.walkable(x, y)) { u.x = x; u.y = y; break; }
+    }
+    if (!u.alive) return;
+    u.stunT = Math.max(u.stunT || 0, stun);
+    if (down) { u.downT = stun; u.deadSide = off >= 0 ? 1 : -1; }
+  }
+
+  /* A train: the lead carriage drives and the rest ride behind it, nose to
+   * tail. It stops at its stations, runs off the end of the map, and waits
+   * out of sight a good while before it comes round again. It stops for
+   * nobody, and hurts nobody: its push field (trainPush) moves everyone off
+   * the line ahead of it. */
+  updateTrain(T, dt) {
+    const L = T.lane, dir = L.dir, ax = L.axis === "x", lead = T.cars[0];
+    if (T.cars.some(c => c.dead)) { for (const c of T.cars) c.speed = 0; return; }   // a wreck blocks the line
+    const s = ax ? lead.x : lead.y, front = s + dir * lead.len / 2;
+    let want = lead.maxSpeed;
+    if (T.holdT > 0) { T.holdT -= dt; want = 0; }
+    else if (T.wait > 0) { T.wait -= dt; want = 0; }
+    else for (const st of L.stops || []) {
+      if (T.lastStop === st) continue;
+      const ahead = (st - front) * dir;
+      if (ahead > -0.2 && ahead < 0.15) { T.wait = 5; T.lastStop = st; want = 0; }
+      else if (ahead > 0 && ahead < 4) want = Math.min(want, 1 + ahead * 1.5);
+    }
+    // another train ahead on the same track
+    for (const O of this.trains) {
+      if (O === T || O.lane !== L) continue;
+      const tail = O.cars[O.cars.length - 1], gap = ((ax ? tail.x : tail.y) - dir * tail.len / 2 - front) * dir;
+      if (gap > 0 && gap < 8) want = Math.min(want, Math.max(0, gap - 1.5) * 1.5);
+    }
+    lead.speed += W.clamp(want - lead.speed, -14 * dt, 4 * dt);
+    if (lead.speed < 0.02) lead.speed = 0;
+    let ns = s + dir * lead.speed * dt;
+    // the last carriage off the end: back to the start, out of sight, and wait
+    const last = ns - dir * (T.cars.length - 1) * W.CARRIAGE;
+    if ((dir > 0 && last - lead.len / 2 > L.to) || (dir < 0 && last + lead.len / 2 < L.from)) {
+      ns = dir > 0 ? L.from : L.to;
+      lead.speed = 0; T.lastStop = null; T.holdT = W.rand(45, 75);
+    }
+    T.cars.forEach((c, k) => { const a = ns - dir * k * W.CARRIAGE; if (ax) c.x = a; else c.y = a; c.speed = lead.speed; });
+  }
+  /* Where a train is and when it can be somewhere: what walkers and drivers
+   * look at before they cross its line. */
+  trainInfo(T) {
+    const L = T.lane, dir = L.dir, ax = L.axis === "x", lead = T.cars[0], last = T.cars[T.cars.length - 1];
+    const wreck = T.cars.some(c => c.dead);
+    return {
+      ax, dir, lat: L.at, half: lead.wid / 2,
+      nose: (ax ? lead.x : lead.y) + dir * lead.len / 2, tail: (ax ? last.x : last.y) - dir * last.len / 2,
+      delay: wreck ? Infinity : Math.max(T.holdT, T.wait), vmax: lead.maxSpeed, speed: wreck ? 0 : lead.speed,
+    };
+  }
+  /* What is coming down the lines this tick: every train for everyone on
+   * foot, and the cars that stop for nobody, which civilians also watch for. */
+  scanTraffic() {
+    for (const T of this.trains) T.info = this.trainInfo(T);
+    this.threats = this.trains.map(T => T.info);
+    this.civThreats = this.threats.concat(this.cars.filter(c => !c.dead && !c.train && !c.parked && (c.escape || c.panicT > 0)).map(c => {
+      const ax = c.axis === "x", s = ax ? c.x : c.y;
+      return { ax, dir: c.dir, lat: ax ? c.y : c.x, half: c.wid / 2, nose: s + c.dir * c.len / 2, tail: s - c.dir * c.len / 2,
+        delay: Math.max(0, c.startT || 0), vmax: Math.max(c.speed, 5.5) };
+    }));
+  }
+  /* The push field: a wedge out in front of a moving train. Anyone on foot
+   * inside it steps off the line to whichever side is nearer (the other side
+   * if that one is walled off), and does not try to step back in. A squad
+   * crossing as a train comes may end up split either side of it. */
+  trainPush(dt) {
+    const m = this.map;
+    for (const T of this.trains) {
+      const I = T.info;
+      for (const u of this.units) {
+        if (!u.alive || u.inCar || (u.z || 0) > 6) continue;
+        const wide = W.pushWidth(I, u.x, u.y);
+        if (!wide) continue;
+        const off = (I.ax ? u.y : u.x) - I.lat, pref = off >= 0 ? 1 : -1;
+        const step = Math.max(W.speedOf(u), 2.6) * dt;
+        let moved = false;
+        for (const pass of [0, 1]) for (const sg of [pref, -pref]) {
+          if (moved) break;
+          const nx = I.ax ? u.x : u.x + sg * step, ny = I.ax ? u.y + sg * step : u.y;
+          const ex = I.ax ? u.x : I.lat + sg * (wide + 0.15), ey = I.ax ? I.lat + sg * (wide + 0.15) : u.y;
+          // first look for a side with room to stand clear, then take any step at all
+          if (m.walkable(nx, ny) && (pass || m.walkable(ex, ey))) {
+            if (u.kind === "civ" && !(u.pushedT > 0) && Math.random() < 0.3) W.say(u, W.pick(W.LINES.panic), "#94a0c4", 1.2);
+            u.x = nx; u.y = ny; u.dir = I.ax ? (sg > 0 ? Math.PI / 2 : -Math.PI / 2) : (sg > 0 ? 0 : Math.PI);
+            u.moving = true; u.anim += step * 7; u.pushedT = 0.25;
+            moved = true;
+          }
+        }
+      }
     }
   }
 
@@ -310,6 +452,9 @@ W.World = class {
     for (const u of this.units) W.updateUnit(this, u, dt);
     W.separate(this, dt);
     for (const c of this.cars) this.updateCar(c, dt);
+    for (const T of this.trains) this.updateTrain(T, dt);
+    this.scanTraffic();
+    this.trainPush(dt);
     // the escape car carries its passenger
     const ec = this.escapeCar;
     if (ec && ec.passenger) { ec.passenger.x = ec.x; ec.passenger.y = ec.y; }

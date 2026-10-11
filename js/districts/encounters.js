@@ -78,11 +78,14 @@ W.populateEncounters = (world, L, d, opts) => {
   const armedShare = mod ? (mod.armed ?? 1) : 1;
   const crewGun = () => mod ? pick(mod.guns) : pick(T.crewGuns || ["pistol", "pistol", "uzi"]);
   const toughen = u => { if (mod && mod.armour) u.maxHp = u.hp = Math.round(u.maxHp * mod.armour * 10) / 10; return u; };
+  // plain clothes, by the threat; roamers in the crowd twice as often
+  const undercover = W.UNDERCOVER[L.mission ? L.mission.threat : 3] || 0;
+  const plain = (u, k = 1) => { if (R() < undercover * k) W.disguise(u, T.civLook ? T.civLook() : undefined); return u; };
   const spot = (x, y, r) => { for (let k = 0; k < 12; k++) { const a = R() * Math.PI * 2, dd = R() * r; const p = m.nearestWalkable(x + Math.cos(a) * dd, y + Math.sin(a) * dd, 2); if (p) return p; } return m.nearestWalkable(x, y, 4); };
   const facing = (p, x, y) => Math.atan2(y - p[1], x - p[0]);
   const crew = (x, y, r, armed) => {
     const p = spot(x, y, r); if (!p) return null;
-    const u = toughen(world.add(W.makeUnit("crew", p[0], p[1], { post: [p[0], p[1], facing(p, x, y)], dir: facing(p, x, y) })));
+    const u = plain(toughen(world.add(W.makeUnit("crew", p[0], p[1], { post: [p[0], p[1], facing(p, x, y)], dir: facing(p, x, y) }))));
     if (armed) { const g = crewGun(); W.giveWeapon(u, g, g === "uzi" ? 60 : undefined); }
     return u;
   };
@@ -169,7 +172,7 @@ W.populateEncounters = (world, L, d, opts) => {
     const a = m.randomCell(stroll); if (!a) continue;
     const route = [a];
     for (let k = 0; k < 3; k++) { const b = m.randomCell((x, y, g) => stroll(x, y, g) && W.dist(x, y, route[k][0], route[k][1]) < 40 && W.dist(x, y, route[k][0], route[k][1]) > 15); if (b) route.push(b); }
-    const u = toughen(world.add(W.makeUnit("crew", a[0], a[1], { patrol: route, roamer: true })));
+    const u = plain(toughen(world.add(W.makeUnit("crew", a[0], a[1], { patrol: route, roamer: true }))), 2);
     if (R() < armedShare) { const g = crewGun(); W.giveWeapon(u, g, g === "uzi" ? 60 : undefined); }
   }
 };

@@ -119,6 +119,23 @@ blips flare as it passes; a target off the edge gets an arrow on the rim.
 Click to look somewhere, Shift-click to send the squad, and use the wheel
 to zoom.
 
+Its mark is the best any Watcher still in the field carries (the campaign's
+`scannerMk`, sent as `L.scannerMk` or on a roster entry):
+
+- **MK1**: the plain view, and nobody under a roof none of yours is under.
+- **MK2**: guns marked within 12 tiles of a Watcher, and unarmed crew shown
+  apart from armed.
+- **MK3**: guns marked within 22 tiles, and people seen through roofs and
+  walls.
+
+That matters because **not all the crew wear red**. From threat 3 up, some
+dress like everyone else (about one in eight at threat 3, nearly half at
+threat 5; twice as many among those roaming the crowd). A gun under plain
+clothes that the scanner has marked flashes orange on the scanner and over
+the wearer's head. Once one of them shows their hand, a red trim gives them
+away. Watchers sent in with `E` shoot only those plain clothes the scanner
+has marked or that have shown themselves.
+
 ### Mission 1: Market Plaza (Operation Clean Sweep)
 
 Vesper Sly sells Skooma under Casey Benton's price from Cafe Miao, in the

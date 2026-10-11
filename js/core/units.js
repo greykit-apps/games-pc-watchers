@@ -117,8 +117,9 @@ W.hostileTo = (world, a, b) => {
   if (!b.alive || a === b || b.inCar || a.faction === b.faction) return false;
   switch (a.faction) {
     case "player":
-      // a Watcher sent in with E (aggressive) shoots the crew on sight, made or not
-      if (b.faction === "crew") return b.hostile || a.aggressive || (b.kind === "target" && world.alarm);
+      // a Watcher sent in with E (aggressive) shoots the crew on sight, made or not; plain
+      // clothes fool them, unless the scanner has marked the gun or the crew member shows their hand
+      if (b.faction === "crew") return b.hostile || (a.aggressive && !b.broken && (!b.undercover || b.revealed || W.scanArmed(world, b))) || (b.kind === "target" && world.alarm);
       if (b.faction === "sec") return b.angryAt.player;
       return false;
     case "crew": return (b.faction === "player" && a.hostile) || (b.faction === "sec" && a.angryAt.sec);
@@ -571,6 +572,7 @@ W.thinkCrew = (world, u) => {
     }
     return;
   }
+  if (u.hostile && u.undercover && !u.revealed) W.reveal(u);
   if (!u.hostile) {
     // who can they see? An armed Watcher at range, anyone of ours up close
     for (const o of world.units) {
@@ -653,6 +655,28 @@ W.thinkUnarmed = (world, u) => {
     const a = Math.atan2(u.y - foe.y, u.x - foe.x) + W.rand(-0.7, 0.7);
     W.goTo(world, u, u.x + Math.cos(a) * 9, u.y + Math.sin(a) * 9); u.chaseT = 2;
   }
+};
+
+/* ---- plain clothes, and the scanner that sees through them ----
+ * Some of the crew dress like everyone else, more of them the higher the
+ * threat. Once they show their hand, a red trim gives them away. The squad's
+ * scanner (its best mark among the Watchers still in the field) marks armed
+ * people near a Watcher: MK1 not at all, MK2 close by, MK3 further and
+ * through roofs and walls. */
+W.UNDERCOVER = { 1: 0, 2: 0, 3: 0.15, 4: 0.3, 5: 0.45 };
+W.SCAN = { 1: { armed: 0 }, 2: { armed: 12 }, 3: { armed: 22, walls: true } };
+W.disguise = (u, look) => { u.undercover = true; u.look = look || W.lookFor("civ"); return u; };
+W.reveal = u => { u.revealed = true; u.look = Object.assign({}, u.look, { trim: "#ff5266" }); };
+W.scanMk = world => {
+  let mk = world.level.scannerMk || 1;
+  for (const a of world.agents) if (a.alive && !a.out && a.scannerMk > mk) mk = a.scannerMk;
+  return Math.min(3, mk);
+};
+/* does the squad's scanner mark u as armed? */
+W.scanArmed = (world, u) => {
+  const r = (W.SCAN[W.scanMk(world)] || W.SCAN[1]).armed;
+  if (!r || !u.alive || !W.hasGun(u)) return false;
+  return world.agents.some(a => a.alive && !a.out && W.dist(a.x, a.y, u.x, u.y) <= r);
 };
 
 W.thinkTarget = (world, u) => {
@@ -784,7 +808,7 @@ W.spawnSquad = (world, roster, spots) => {
   world.dropAt = spots[0];   // where the squad came in: where the pickup waits when the job is done
   roster.slice(0, spots.length).forEach((a, i) => {
     const mods = Object.assign({}, a.mods || {});
-    const u = world.add(W.makeUnit("agent", spots[i][0], spots[i][1], { name: a.name, slot: i, rosterId: a.id, look: W.agentLook(a), dir: -Math.PI / 2, mods, kills: 0 }));
+    const u = world.add(W.makeUnit("agent", spots[i][0], spots[i][1], { name: a.name, slot: i, rosterId: a.id, look: W.agentLook(a), dir: -Math.PI / 2, mods, kills: 0, scannerMk: a.scannerMk || 0 }));
     // a chest mod: more to hit, and harder to hurt
     u.maxHp = u.hp = 24 + 6 * (mods.chest || 0);
     u.armor = 0.75 * (1 - 0.1 * (mods.chest || 0));

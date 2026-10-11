@@ -607,6 +607,11 @@ W.Renderer = class {
           o.fillStyle = u.hp / u.maxHp > 0.4 ? "#4ade6a" : "#ff5266"; o.fillRect(X - 10, Y - 26 * k, 20 * u.hp / u.maxHp, 3);
         }
       }
+      // the scanner's mark on a gun under plain clothes
+      if (u.undercover && !u.revealed && W.scanArmed(world, u)) {
+        o.fillStyle = Math.sin(world.time * 8) > 0 ? "#ff8a3c" : "#a8541c";
+        o.beginPath(); o.moveTo(X, Y - 25 * k); o.lineTo(X + 4, Y - 25 * k - 6); o.lineTo(X, Y - 25 * k - 12); o.lineTo(X - 4, Y - 25 * k - 6); o.closePath(); o.fill();
+      }
       if (u.kind === "target") {
         const b = Math.sin(world.time * 6) > 0;
         o.fillStyle = b ? "#ffb000" : "#a87400";
@@ -684,12 +689,20 @@ W.Renderer = class {
     for (const it of world.items) blip(it.x, it.y, "#ffb000", 1);
     const blink = Math.sin(t * 8) > 0;
     let target = null;
+    // the squad's scanner: below MK3 it cannot see in under a roof none of ours is under
+    const mk = opts.full ? 3 : W.scanMk(world), walls = opts.full || (W.SCAN[mk] || {}).walls;
+    const open = this.openNow || new Set();
+    const hidden = u => { if (walls || u.faction === "player" || u.kind === "target") return false; const cx = Math.floor(u.x), cy = Math.floor(u.y); if (!m.inb(cx, cy)) return false; const r = m.roofOf[m.i(cx, cy)]; return r >= 0 && !open.has(r) && !m.structures[r].canopy; };
     for (const u of world.units) {
-      if (!u.alive || u.inCar) continue;
+      if (!u.alive || u.inCar || hidden(u)) continue;
       let col, sz = 2;
       if (u.isAgent) { col = world.selected.has(u) ? "#ffffff" : "#54f2ff"; sz = 3; }
       else if (u.kind === "target") { target = u; col = blink ? "#ffb000" : "#7a5500"; sz = 4; }
       else if (u.faction === "player") col = "#2fb8c4";
+      // plain clothes pass for the crowd, unless the scanner marks the gun
+      else if (u.faction === "crew" && u.undercover && !u.revealed) { if (W.scanArmed(world, u)) col = blink ? "#ff8a3c" : "#a8541c"; else { if (opts.noCiv) continue; col = "#56607a"; sz = 1; } }
+      // MK2 and up: the armed apart from the unarmed
+      else if (u.faction === "crew" && mk >= 2 && !W.hasGun(u)) col = u.hostile ? "#a8505c" : "#6e3a44";
       else if (u.faction === "crew") col = u.hostile ? "#ff5266" : "#b8424f";
       else if (u.faction === "sec") col = u.elite ? (u.angryAt.player ? "#ffe08a" : "#b8902a") : u.angryAt.player ? "#9ab8ff" : "#4c6fd0";
       else { if (opts.noCiv) continue; col = "#56607a"; sz = 1; }

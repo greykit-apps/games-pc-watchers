@@ -381,6 +381,9 @@ W.populateMission = (world, L, d, opts) => {
   const armedSlots = new Set(mod ? all.map(i => [R(), i]).sort((a, b) => a[0] - b[0]).slice(0, nArmed).map(([, i]) => i) : all);
   const toughen = u => { if (mod && mod.armour) u.maxHp = u.hp = Math.round(u.maxHp * mod.armour * 10) / 10; return u; };
   const modGun = () => mod.guns[Math.floor(R() * mod.guns.length)];
+  // plain clothes: more of them the higher the threat (Math.random, so the seed's layout stands)
+  const undercover = W.UNDERCOVER[L.mission ? L.mission.threat : 3] || 0;
+  const plain = u => { if (Math.random() < undercover) W.disguise(u, T.civLook ? T.civLook() : undefined); return u; };
   // local security
   for (let i = 0; i < nSec; i++) {
     const base = m.randomCell(stroll) || [L.picks.target.x, L.picks.target.y];
@@ -406,7 +409,7 @@ W.populateMission = (world, L, d, opts) => {
     const p = near(tp[0], tp[1], i % 2 ? 9 : 16);
     if (!p) continue;
     const o = i % 3 === 2 ? { patrol: [p, near(p[0], p[1], 10), near(tp[0], tp[1], 12)] } : { post: [p[0], p[1], R() * 6.28] };
-    const u = toughen(world.add(W.makeUnit("crew", p[0], p[1], o)));
+    const u = plain(toughen(world.add(W.makeUnit("crew", p[0], p[1], o))));
     if (!armedSlots.has(nGuards + i)) continue;
     const gun = mod ? modGun() : W.pick(T.crewGuns || ["pistol", "pistol", "uzi"]);
     W.giveWeapon(u, gun, gun === "uzi" ? 60 : undefined);

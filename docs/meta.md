@@ -179,6 +179,7 @@ improve it, and each needs the one before.
 | **Purrsuader** | MK1 its range and power; MK2 persuades armed people; MK3 holds a bigger following, and they fight better |
 | **BanHammer Orbital Platform** | late-game equipment, one item (needs the scanner at MK2). A Watcher carries the spotter: it fires like a long-range laser, marking a spot, and a few seconds later an orbital energy blast lands there and kills everything in a wide radius. One shot per strike bought, and very dear: a money sink and a siege breaker, made for cracking entrenched positions |
 | **Overseers** | an overseer in every zone who, while the squad is away on a mission, moves pips onto control to stop the zone slipping below its level. They can't stop Cal: a push still takes a zone down |
+| **Propaganda**, then **mind control** | rolled out zone by zone, bought as an event once researched. Under propaganda a zone's control decays to 1.0, not 0, and is drawn back up to it (a quarter a day) when it falls below; under mind control, to 2.0. Cal's pushes and failed missions still drag it down, as far as lost. Framed for what it is, a crime against the people of the city; and it works, which is the worst of it |
 | **Production** | **zone works:** +1 base pip in a zone of your choice, for good. **Requisition:** a free pip each day, placed wherever control is weakest. Both can be researched again, each time 1.5 times dearer |
 | **Countermeasures** | one for each of Cal's tactics as he uses them: the research sink. However well the city is held, he keeps leaving things that need answering |
 
@@ -198,6 +199,8 @@ game.
 | MK3 | $30,000 | 136 |
 | The BanHammer | $60,000 | 160 |
 | Overseers | $80,000 | 290 |
+| Propaganda | $120,000, then $50,000 a zone | 400 |
+| Mind control | $250,000, then $150,000 a zone | 700 |
 | Zone works | $100,000, then 1.5 times as much each time | 380, then 1.5 times as much |
 | Requisition | $160,000, then 1.5 times as much | 580, then 1.5 times as much |
 | A countermeasure | $5,000 | 45 |
@@ -250,6 +253,20 @@ plateau zones back down wherever the squad isn't. So the player chooses:
 hold everything weakly with a zone always in rebellion somewhere, or hold half
 the city strongly and let the rest go, for a stalemate. **Winning takes
 pushing into more zones, which necessarily weakens others.**
+
+**Propaganda and mind control** change the war: a zone under them can't
+slip below level 1 (or 2) by decay alone, so it needs no pips to hold and puts
+everything into production; only Cal's pushes and failed missions take it
+lower. Rolling them out across the city is the cheap way to win the war, and
+the game should make the player feel what it costs.
+
+**There is no clock.** City research (overseers, zone works, requisitions,
+propaganda, mind control) doesn't count toward the war's 30 points, and Cal and
+mission threat scale with the player's upgrades and holdings, not with days. So
+a methodical player chooses when the war comes: pacify the board, roll out the
+propaganda, and only then take the squad's gear past 30 points. A player who
+never does can hold the city as it is for as long as they like. That is
+deliberate.
 
 **Story missions** make that pushing worth doing, and they are how the game
 is won. Once the city is on war footing, every zone has a short chain of

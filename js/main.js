@@ -44,10 +44,10 @@ const Game = W.game = {
     if (this.titleUI) this.titleUI.unmount();
     this.titleUI = mountTitle(host, {
       name: "Watchers",
-      primary: W.C.load() ? "resume" : "new",
+      primary: W.M.load() ? "resume" : "new",
       items: [
-        (c => c && { act: "resume", label: "Resume campaign", key: "R", meta: `Day ${c.day} · ${W.money(c.cash)}` })(W.C.load()),
-        { act: "new", label: "New campaign", key: "N", meta: "four Watchers, $10,000" },
+        (c => c && { act: "resume", label: "Resume campaign", key: "R", meta: `Day ${c.day} · ${W.money(c.cash)}${c.war ? " · at war" : ""}` })(W.M.load()),
+        { act: "new", label: "New campaign", key: "N", meta: "four Watchers, eight zones, one Cal" },
         { act: "skirmish", label: "Skirmish", key: "K", meta: "any district, nothing saved" },
         "gap",
         { act: "settings", label: "Settings", key: "S" },
@@ -59,10 +59,10 @@ const Game = W.game = {
       about: this.aboutHTML(),
       settings: this.settingsSheet(),
       onAct: async (act, ui) => {
-        if (act === "resume") { this.campaign = W.C.load(); this.toOverworld(); }
+        if (act === "resume") { this.campaign = W.M.load(); this.toOverworld(); }
         if (act === "new") {
-          if (W.C.load() && !(await ui.confirm("Start a new campaign? The one in progress, its squad, cash and research, is lost.", "Start a new campaign"))) return;
-          this.campaign = W.C.fresh(); W.C.save(this.campaign); this.toOverworld();
+          if (W.M.load() && !(await ui.confirm("Start a new campaign? The one in progress, its squad, its city and its research, is lost.", "Start a new campaign"))) return;
+          this.campaign = W.M.fresh(); W.M.save(this.campaign); this.toOverworld();
         }
         if (act === "skirmish") { this.campaign = null; this.toMapRoom(); }
       },
@@ -113,8 +113,11 @@ const Game = W.game = {
         <tr><td><b>Red Dot</b></td><td>aim, and how far a Watcher looks for trouble</td></tr>
         <tr><td><b>Silvervine</b></td><td>reflexes and initiative. Too little and a Watcher will not fire unless ordered; a heavy dose also uses a medikit by itself when badly hurt</td></tr></table>
         <p>Above the white midpoint a dose burns off slowly and builds a <b>dependency</b> (the red hatching), which eats into the effect until it fades. Dose for the fight, not the walk.</p>`],
-      ["Campaign", `<p>Casey Benton pays by the contract. The fee is paid on success, with extra for each bonus objective, and scaled by your grade. A contract you have already finished can be run again as a mop-up, for a smaller fee.</p>
-        <p><b>Research</b> turns that cash into new gear. Two labs, weapons and cyber-mods, each work on one project at a time and spend their funding every day that passes. Days pass while you are on a contract, or when you choose to wait.</p>
+      ["Campaign", `<p>Casey Benton has given the Watchers her city to hold: <b>eight zones</b>. Each makes whole <b>pips</b> a day, which you split between <b>research</b>, <b>money</b> and <b>control</b>: click a pip on the board to move it on.</p>
+        <p><b>Control</b> decays every day and must be kept up. Each level of it adds a pip, and a calm zone's pips are worth more; level 3 is hard to reach and, once there, holds itself for a while. At zero the zone is <b>lost</b> until a siege takes it back.</p>
+        <p><b>Cal</b> pushes one zone at a time, and his push is harder the better you are doing. Intel missions show where he goes next. Fight his crew where he is pushing to end it.</p>
+        <p><b>Research</b> costs money to start and research points to finish. Points can't be banked, and split between the projects running. After 30 upgrade points the city goes to <b>war</b>: each zone then has a story to finish, and the last step locks it down. Lock down every zone to win.</p>
+        <p><b>Missions</b> take days, and the pips stand as you set them while the squad is away. They pay research, money or control.</p>
         <p>Finished research goes on sale: weapons in the <b>Armoury</b>, mods in the <b>Clinic</b>. Ammunition is topped up free before every mission; medikits are not.</p>
         <p>Watchers who die on a mission are gone, with whatever they carried. Hire replacements from the <b>Roster</b>. Weapons a Watcher picks up in the field come home with them.</p>`],
       ["About", this.aboutHTML()],
@@ -162,7 +165,7 @@ const Game = W.game = {
     document.getElementById("game").hidden = true;
     W.audio.ambience(false);
     this.mode = "world";
-    if (!this.ow) this.ow = new W.Overworld(this);
+    if (!this.ow) this.ow = new W.Command(this);
     this.ow.open();
   },
 
@@ -181,12 +184,12 @@ const Game = W.game = {
   },
 
   /* ---------------- the briefing ----------------
-   * contractId: a campaign contract, or null for a skirmish with the
-   * standard kit. */
-  toBriefing(contractId, level) {
-    const c = contractId && W.C.CONTRACTS.find(x => x.id === contractId);
-    this.run = { contract: c || null, opts: { roster: c && this.campaign ? W.C.missionRoster(this.campaign) : undefined } };
-    this.level = level || W.LEVELS[c ? c.level : "plaza"];
+   * offerId: a mission on offer in the campaign, or null for a skirmish
+   * with the standard kit. */
+  toBriefing(offerId, level) {
+    const c = offerId && this.campaign && this.campaign.offers.find(x => x.id === offerId);
+    this.run = { contract: c || null, opts: { roster: c ? W.M.missionRoster(this.campaign) : undefined } };
+    this.level = level || (c ? W.M.missionFor(this.campaign, c) : W.LEVELS.plaza);
     if (this.mr) { this.mr.close(); this.mr = null; }
     const L = this.level;
     this.world = new W.World(L, this.run.opts);
@@ -207,11 +210,14 @@ const Game = W.game = {
         <div class="code">OPERATION ${W.esc(L.codename)}</div>
         <div class="from">From: ${W.esc(L.briefing.from)}</div>
         <div class="text">${L.briefing.text.map(p => `<p>${W.esc(p)}</p>`).join("")}</div>
-        ${c ? `<div class="panel"><h3>The contract</h3><table><tr><td>Fee</td><td>${W.money(W.C.contractFee(this.campaign, c))}, plus ${W.money(c.bonusFee)} a bonus, scaled by grade</td></tr>
-          <tr><td>Time</td><td>${c.days} days: the labs keep spending while you are out</td></tr><tr><td>Losses</td><td>Watchers killed are gone for good, with what they carry</td></tr></table></div>` : ""}
+        ${c ? (z => `<div class="panel"><h3>${W.esc(W.M.KINDS[c.kind].name)} in ${W.esc(W.M.zoneDef(c.zone).name)}</h3><table>
+          <tr><td>Reward</td><td>${W.esc(W.M.describeReward(this.campaign, c))}</td></tr>
+          <tr><td>The streets</td><td>${z.lost ? "lost to Cal: the enemy is dug in" : `control level ${W.M.level(z.C)}`}</td></tr>
+          <tr><td>Time</td><td>${c.days} days: the zones' pips stand as they are set while you are out</td></tr>
+          <tr><td>Losses</td><td>Watchers killed are gone for good, with everything spent on them</td></tr></table></div>`)(W.M.zone(this.campaign, c.zone)) : ""}
       </div>
       <div>
-        <div class="panel"><h3>The plaza</h3><canvas class="map" data-map width="300" height="300"></canvas>
+        <div class="panel"><h3>The ground</h3><canvas class="map" data-map width="300" height="300"></canvas>
           <div class="legend"><span><i style="background:#54f2ff"></i>Watchers</span><span><i style="background:#ffb000"></i>${W.esc(w.names.target)}</span><span><i style="background:#ff5266"></i>crew</span><span><i style="background:#4c6fd0"></i>security</span></div></div>
         <div class="panel"><h3>Intel</h3><table>${L.briefing.intel.map(([a, b]) => `<tr><td>${W.esc(a)}</td><td>${W.esc(b)}</td></tr>`).join("")}</table></div>
         <div class="panel"><h3>Your squad</h3><div class="squad">${w.agents.map(a => `<div class="agent"><canvas width="40" height="40" data-agent="${a.slot}"></canvas><div><b>${W.esc(a.name)}</b>${a.weapons.map(x => W.WEAPONS[x.type].name).join(", ")}</div></div>`).join("")}</div></div>
@@ -748,7 +754,7 @@ const Game = W.game = {
       if (a === "rain") { W.prefs.rain = !W.prefs.rain; W.savePrefs(); W.audio.setRain(W.prefs.rain); b.setAttribute("aria-pressed", String(W.prefs.rain)); b.textContent = `Rain ${W.prefs.rain ? "on" : "off"}`; }
       if (a === "abort") {
         const contract = this.run && this.run.contract;
-        const q = contract ? "Abort the mission? It counts as a failed contract: no fee, and anyone already down stays down." : "Abort the mission and go back to the title?";
+        const q = contract ? "Abort the mission? It counts as a failed mission: no reward, the zone loses control, and anyone already down stays down." : "Abort the mission and go back to the title?";
         if (!(await confirmSheet(q, "Abort mission"))) return;
         this.closeMenu();
         if (contract) { this.world.end("lost", "Mission aborted."); this.toDebrief(); }
@@ -793,15 +799,14 @@ const Game = W.game = {
     const quote = won
       ? (s.civ > 4 ? `"That's done. The tourists are not coming back this week, and that's coming out of your budget." -- Casey Benton` : `"Done, and quietly. That's how I like it." -- Casey Benton`)
       : (w.endReason.includes("away") ? `"He walked. You let him walk." -- Casey Benton` : `"I'll need new Watchers. Try not to break these ones." -- Casey Benton`);
-    // a contract settles up: the fee, the dead, the days that passed
+    // a campaign mission settles up: the reward, the dead, the days that passed
     const camp = this.run && this.run.contract && this.campaign;
     let slip = null;
     if (camp) {
-      slip = W.C.settle(this.campaign, {
-        contract: this.run.contract.id, won, grade, bonuses: bonus,
-        agents: w.agents.map(a => ({ id: a.rosterId, alive: a.alive, kills: a.kills || 0, items: a.weapons.map(x => ({ type: x.type, ammo: x.ammo })) })),
+      slip = W.M.settle(this.campaign, this.run.contract, {
+        won, agents: w.agents.map(a => ({ id: a.rosterId, alive: a.alive, kills: a.kills || 0, items: a.weapons.map(x => ({ type: x.type, ammo: x.ammo, mk: x.mk })) })),
       });
-      W.C.save(this.campaign);
+      W.M.save(this.campaign);
     }
     const el = document.createElement("div");
     el.className = "sheet debrief"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Debrief");
@@ -820,7 +825,7 @@ const Game = W.game = {
         <tr><td>Recruited</td><td>${s.recruited}</td></tr>
         <tr><td>Rounds fired</td><td>${s.shots}</td></tr>
       </table>
-      ${slip ? `<h3>Payslip</h3><table class="payslip">${slip.lines.map(([k, v]) => `<tr><td>${W.esc(k)}</td><td>${v ? W.money(v) : "--"}</td></tr>`).join("")}
+      ${slip ? `<h3>Back at command</h3><table class="payslip">${slip.lines.map(([k, v]) => `<tr><td>${W.esc(k)}</td><td>${W.esc(typeof v === "number" ? W.money(v) : v)}</td></tr>`).join("")}
         <tr class="total"><td>Cash now</td><td>${W.money(this.campaign.cash)}</td></tr></table>` : ""}
       <p class="quote">${W.esc(quote)}</p>
       <div class="acts">${camp ? `<button class="primary" data-a="world"><kbd>Enter</kbd>Back to command</button>`

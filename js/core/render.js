@@ -362,6 +362,18 @@ W.Renderer = class {
         c.beginPath(); c.moveTo(Math.round(ax + ox), Math.round(ay + oy)); c.lineTo(Math.round(sx + ox), Math.round(sy + oy)); c.stroke();
       }
     }
+    // an intel job's terminal: a lit console, and a ring that fills as it copies
+    const D = world.terminal;
+    if (D) {
+      const [sx, sy] = W.proj(D.x, D.y);
+      W.box(c, ox, oy, D.x - 0.3, D.y - 0.2, D.x + 0.3, D.y + 0.2, 0, 9, "#1d3346", "#2a3a52", "#1a2638");
+      W.box(c, ox, oy, D.x - 0.24, D.y - 0.14, D.x + 0.24, D.y + 0.14, 9, 10, D.done ? "#2a6a4a" : (Math.sin(t * 6) > 0 ? "#7dffb0" : "#3aa070"), "#1d3346", "#1d3346");
+      if (!D.done) {
+        c.strokeStyle = W.rgba("#7dffb0", 0.5); c.lineWidth = 1;
+        c.beginPath(); c.ellipse(Math.round(sx + ox), Math.round(sy + oy), 1.4 * W.HTW, 1.4 * W.HTH, 0, 0, Math.PI * 2); c.stroke();
+        if (D.t > 0) { c.strokeStyle = "#7dffb0"; c.lineWidth = 2; c.beginPath(); c.ellipse(Math.round(sx + ox), Math.round(sy + oy), 1.4 * W.HTW, 1.4 * W.HTH, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, D.t / D.need)); c.stroke(); }
+      }
+    }
     // the ways out, once the job is done: a pulsing cyan pad
     if (world.phase === "exfil") for (const p of world.exfilPoints || []) {
       const [sx, sy] = W.proj(p.x, p.y), k = 0.5 + 0.5 * Math.sin(t * 4);
@@ -611,6 +623,10 @@ W.Renderer = class {
     o.clearRect(0, 0, this.cssW, this.cssH);
     o.font = "11px ui-monospace,Menlo,Consolas,monospace";
     o.textAlign = "center"; o.textBaseline = "bottom";
+    if (world.terminal && !world.terminal.done) {
+      const D = world.terminal, [sx, sy] = this.toScreen(world, D.x, D.y, 0);
+      o.fillStyle = "#7dffb0"; o.fillText(D.t > 0 ? `COPYING ${Math.floor(100 * Math.min(1, D.t / D.need))}%` : "TERMINAL", sx * k, sy * k - 24 * k);
+    }
     if (world.phase === "exfil") for (const p of world.exfilPoints || []) {
       const [sx, sy] = this.toScreen(world, p.x, p.y, 0);
       o.fillStyle = "#54f2ff"; o.fillText("EXFIL", sx * k, sy * k - 14);
@@ -636,6 +652,11 @@ W.Renderer = class {
         o.fillStyle = cal ? (on ? "#ff5266" : "#8a2a36") : on ? "#ff8a3c" : "#a8541c";
         o.beginPath(); o.moveTo(X, Y - 25 * k); o.lineTo(X + 4, Y - 25 * k - 6); o.lineTo(X, Y - 25 * k - 12); o.lineTo(X - 4, Y - 25 * k - 6); o.closePath(); o.fill();
       }
+      if (u.subject && !u.follower) {
+        o.fillStyle = Math.sin(world.time * 6) > 0 ? "#7dffb0" : "#3aa070";
+        o.beginPath(); o.moveTo(X, Y - 25 * k); o.lineTo(X + 6, Y - 25 * k - 8); o.lineTo(X - 6, Y - 25 * k - 8); o.closePath(); o.fill();
+      }
+      if (u.carries === "data" && !u.out) { o.fillStyle = "#7dffb0"; o.fillText("DATA", X, Y - 36 * k); }
       if (u.kind === "target") {
         const b = Math.sin(world.time * 6) > 0;
         o.fillStyle = b ? "#ffb000" : "#a87400";
@@ -744,6 +765,9 @@ W.Renderer = class {
       blip(u.x, u.y, col, sz);
     }
     if (!target && world.escapeCar && world.escapeCar.passenger && !world.escapeCar.dead) target = world.escapeCar;
+    const S = world.subjectUnit;
+    if (S && S.alive && !S.follower && !S.inCar) { blip(S.x, S.y, blink ? "#7dffb0" : "#2a6a4a", 4); if (!target) target = { x: S.x, y: S.y, mark: true }; }
+    if (world.terminal && !world.terminal.done) { blip(world.terminal.x, world.terminal.y, blink ? "#7dffb0" : "#2a6a4a", 4); if (!target) target = { x: world.terminal.x, y: world.terminal.y, mark: true }; }
     if (world.phase === "exfil") for (const p of world.exfilPoints || []) { blip(p.x, p.y, blink ? "#54f2ff" : "#1c6a74", 4); if (!target) target = { x: p.x, y: p.y, exfil: true }; }
     // the target off the edge: an arrow on the rim
     if (target && !opts.full) {
@@ -753,7 +777,7 @@ W.Renderer = class {
         const rx = Wd / 2 - 9, ry = Ht / 2 - 9, f = Math.min(rx / Math.abs(Math.cos(a) || 1e-6), ry / Math.abs(Math.sin(a) || 1e-6));
         const ax = Wd / 2 + Math.cos(a) * f, ay = Ht / 2 + Math.sin(a) * f;
         c.save(); c.translate(ax, ay); c.rotate(a);
-        c.fillStyle = target.exfil ? (blink ? "#54f2ff" : "#1c6a74") : blink ? "#ffb000" : "#a87400";
+        c.fillStyle = target.exfil ? (blink ? "#54f2ff" : "#1c6a74") : target.mark ? (blink ? "#7dffb0" : "#2a6a4a") : blink ? "#ffb000" : "#a87400";
         c.beginPath(); c.moveTo(7, 0); c.lineTo(-4, -5); c.lineTo(-2, 0); c.lineTo(-4, 5); c.closePath(); c.fill();
         c.restore();
       }

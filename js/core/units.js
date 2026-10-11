@@ -129,7 +129,8 @@ W.hostileTo = (world, a, b) => {
       if (b.faction === "crew") return b.hostile || (a.aggressive && !b.broken && (!b.undercover || b.revealed || W.scanArmed(world, b))) || (b.kind === "target" && world.alarm);
       if (b.faction === "sec") return b.angryAt.player;
       return false;
-    case "crew": return (b.faction === "player" && a.hostile) || (b.faction === "sec" && a.angryAt.sec);
+    // (a persuade job's subject, gone over to us, they want back alive: they go for the Watchers instead)
+    case "crew": return (b.faction === "player" && a.hostile && !b.subject) || (b.faction === "sec" && a.angryAt.sec);
     case "sec": return (b.faction === "player" && a.angryAt.player) || (b.faction === "crew" && a.angryAt.crew);
   }
   return false;
@@ -334,6 +335,9 @@ W.persuadeNeed = (world, agent, t) => {
 };
 W.canPersuade = (world, agent, t) => {
   if (!t.alive || t.inCar || t.faction === "player" || t.isAgent) return false;
+  // a persuade job's subject: their own price in followers (the threat less one; half with a better Purrsuader).
+  // Mind control does not reach them: the job is to turn them.
+  if (t.subject) { const d = W.curDef(agent); let need = t.need || 0; if (d && d.persuade > 1) need = Math.ceil(need / 2); return W.squadFollowers(world) + W.mod(agent, "brain") >= need; }
   // a zone under mind control: nobody there hears the Purrsuader
   if (world.level.mission && world.level.mission.mindControl) return false;
   const need = W.persuadeNeed(world, agent, t);
@@ -487,7 +491,25 @@ W.thinkFollower = (world, u) => {
   }
 };
 
+/* A persuade job's subject: they keep to their spot until the alarm goes up
+ * (or someone hurts them), then run for the way out. Making it ends the job. */
+W.thinkSubject = (world, u) => {
+  if (world.alarm || u.hp < u.maxHp) {
+    u.state = "flee";
+    if (!u.fled) { u.fled = true; W.say(u, "I'm out of here!", "#7dffb0", 2.2); world.msg(`${u.name} is running!`, "#ffb000"); }
+    const ex = world.escapePoint;
+    if (ex) {
+      if (W.dist(u.x, u.y, ex[0], ex[1]) < 1.2) { u.inCar = true; u.path = null; world.subjectGone = true; return; }
+      if (!u.path || u.chaseT <= 0) { W.goTo(world, u, ex[0], ex[1]); u.chaseT = 1.5; }
+    }
+    return;
+  }
+  u.state = "idle";
+  if (u.post && !u.path && W.dist(u.x, u.y, u.post[0], u.post[1]) > 0.5) W.goTo(world, u, u.post[0], u.post[1]);
+  else if (!u.path && u.post) u.dir = u.post[2];
+};
 W.thinkCiv = (world, u) => {
+  if (u.subject) return W.thinkSubject(world, u);
   if (u.state === "panic") {
     if (u.stateT <= 0) { u.state = "idle"; u.stateT = W.rand(1, 3); W.stop(u); }
     else if (!u.path && u.fear) {
@@ -591,16 +613,24 @@ W.thinkCrew = (world, u) => {
   }
   if (u.hostile && u.undercover && !u.revealed) W.reveal(u);
   if (!u.hostile) {
-    // who can they see? An armed Watcher at range, anyone of ours up close
+    // who can they see? An armed Watcher at range, at once. Someone of ours with
+    // empty hands up close only makes them wonder: linger about two seconds and
+    // they work it out. With the alarm up, they know anyone on sight.
+    let close = false;
     for (const o of world.units) {
       if (!o.alive || o.faction !== "player" || o.inCar) continue;
-      const r = world.alarm ? u.sight + 2 : W.armed(o) ? u.sight : 3.2;
-      if (W.canSee(world, u, o, r)) {
-        u.hostile = true; W.drawBest(u);
-        W.say(u, W.pick(W.LINES.crewSpot), "#ff5266");
-        world.raiseAlarm(u, o);
-        break;
-      }
+      const loud = world.alarm || W.armed(o), r = world.alarm ? u.sight + 2 : W.armed(o) ? u.sight : 3.2;
+      if (!W.canSee(world, u, o, r)) continue;
+      if (!loud) { close = true; if ((u.sus || 0) < W.SUSPICION) continue; }
+      u.hostile = true; W.drawBest(u);
+      W.say(u, W.pick(W.LINES.crewSpot), "#ff5266");
+      world.raiseAlarm(u, o);
+      break;
+    }
+    if (!u.hostile) {
+      const was = u.sus || 0;
+      u.sus = close ? was + 0.23 : Math.max(0, was - 0.12);
+      if (close && was === 0) W.say(u, W.pick(["Hey. Who are you?", "You lost?", "Don't I know you?"]), "#ffb000", 1.6);
     }
     if (!u.hostile) {
       if (u.patrol && !u.path && u.stateT <= 0) {
@@ -680,6 +710,8 @@ W.thinkUnarmed = (world, u) => {
  * scanner (its best mark among the Watchers still in the field) marks armed
  * people near a Watcher: MK1 not at all, MK2 close by, MK3 further and
  * through roofs and walls. */
+/* how long (s) a crew member watches someone of ours with empty hands up close before they work it out */
+W.SUSPICION = 2;
 W.UNDERCOVER = { 1: 0, 2: 0, 3: 0.15, 4: 0.3, 5: 0.45 };
 W.SCAN = { 1: { armed: 0 }, 2: { armed: 12 }, 3: { armed: 22, walls: true } };
 W.disguise = (u, look) => { u.undercover = true; u.look = look || W.lookFor("civ"); return u; };

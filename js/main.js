@@ -257,7 +257,9 @@ const Game = W.game = {
     this.cursorMode = null; this.ui.aim = null; this.setCursor("move");
     W.audio.ambience(true);
     for (const [t, col] of this.level.intro ? this.level.intro(w) : [["JOYEUSE: You're on, Watchers. Sly's at the cafe, north-east corner. Keep it quiet.", "#54f2ff"], ["Weapons are holstered. Plaza Security will warn anyone with a gun out.", "#94a0c4"]]) w.msg(t, col);
-    this.banner(this.level.name.toUpperCase(), `Eliminate ${w.names.target}`, "#54f2ff");
+    // the title card names the job: the first objective, which follows the kind
+    const job = w.objectives[0] ? w.objectives[0].text : `Eliminate ${w.names.target}`;
+    this.banner(this.level.name.toUpperCase(), job, "#54f2ff");
     this.hint(true);
     this.view.focus && this.view.focus();
   },
@@ -383,6 +385,7 @@ const Game = W.game = {
   describe(u) {
     const N = this.world.names;
     if (u.kind === "target") return [N.target, "#ffb000"];
+    if (u.subject) return [u.name, "#7dffb0"];
     if (u.follower) return ["Follower", "#54f2ff"];
     if (u.kind === "crew" && u.undercover && !u.revealed && W.scanCal(this.world, u)) return ["One of Cal's", "#ff5266"];
     if (u.kind === "crew" && u.undercover && !u.revealed) return W.scanArmed(this.world, u) ? ["Armed civilian?", "#ff8a3c"] : [N.civ, "#94a0c4"];

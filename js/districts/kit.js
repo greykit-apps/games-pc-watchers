@@ -328,23 +328,49 @@ W.missionLevel = (o) => {
     w: win ? win.w : full.w, h: win ? win.h : full.h, window: win, districtId: d.id,
     picks,
     makeMap: map,
-    briefing: {
-      from: "Watch-Captain Joyeuse",
-      text: [
-        `${names.target} is running ${T.racket} out of ${d.name}. Casey Benton wants it stopped, and ${names.target} with it.`,
-        `Last seen at ${target.name}${area && !target.name.includes(area.toLowerCase()) ? `, ${area}` : ""}. You go in from ${spawn.name}.`,
-        `${T.secNote}`,
-        exit ? `If ${names.target} spooks, expect a run for ${exit.name}. If they make it out, the contract is lost.` : `${names.target} has nowhere to run. Make it count.`,
-      ],
-      intel: [
-        ["Target", `${names.target}, marked in amber, at ${target.name}.`],
-        ["Bodyguards", `${T.guards}, in black. They stay close.`],
-        ["Crew", `${T.crew} of ${names.crew}, in red.`],
-        [names.sec, `${T.sec} on patrol. Neutral until provoked.`],
-        ["Ground", T.ground],
-      ],
+    // the briefing follows the kind of job the campaign attaches (L.mission.kind)
+    get briefing() {
+      const kind = this.mission && this.mission.kind, at = `${target.name}${area && !target.name.includes(area.toLowerCase()) ? `, ${area}` : ""}`;
+      const common = [["Bodyguards", `${T.guards}, in black. They stay close.`], ["Crew", `${T.crew} of ${names.crew}, in red; at the higher threats, not all of them.`], [names.sec, `${T.sec} on patrol. Neutral until provoked.`], ["Ground", T.ground]];
+      if (kind === "persuade") return {
+        from: "Watch-Captain Joyeuse",
+        text: [
+          `${names.target} knows how ${T.racket} runs in ${d.name}, and Casey Benton wants them working for him. Nobody dies for this one.`,
+          `They are at ${at}, with minders. You go in from ${spawn.name}. Get close with the Purrsuader, talk them round, and walk them out: the pickup, or off the edge of the map.`,
+          `${T.secNote}`,
+          exit ? `If the alarm goes up, ${names.target} runs for ${exit.name}. If they make it, or die, the job is lost.` : `If they die, the job is lost.`,
+        ],
+        intel: [["Subject", `${names.target}, marked in green, at ${target.name}. Not to be harmed.`]].concat(common),
+      };
+      if (kind === "intel") return {
+        from: "Watch-Captain Joyeuse",
+        text: [
+          `${names.crew} keep their books on a terminal at ${at}. Casey Benton wants a copy, and nobody needs to know.`,
+          `You go in from ${spawn.name}. A Watcher has to stand at the terminal while it copies, a few seconds, then carry the data out: the pickup, or off the edge of the map.`,
+          `${T.secNote}`,
+          `If whoever carries the data dies, it dies with them.`,
+        ],
+        intel: [["Terminal", `At ${target.name}, marked in green.`]].concat(common),
+      };
+      return {
+        from: "Watch-Captain Joyeuse",
+        text: [
+          `${names.target} is running ${T.racket} out of ${d.name}. Casey Benton wants it stopped, and ${names.target} with it.`,
+          `Last seen at ${at}. You go in from ${spawn.name}.`,
+          `${T.secNote}`,
+          exit ? `If ${names.target} spooks, expect a run for ${exit.name}. If they make it out, the contract is lost.` : `${names.target} has nowhere to run. Make it count.`,
+          `Then get out: the pickup at the drop point, or off the edge of the map.`,
+        ],
+        intel: [["Target", `${names.target}, marked in amber, at ${target.name}.`]].concat(common),
+      };
     },
-    intro: () => [[`JOYEUSE: ${names.target} is at ${target.name}. Go quietly.`, "#54f2ff"], [`Weapons are holstered. ${names.sec} will warn anyone with a gun out.`, "#94a0c4"]],
+    intro() {
+      const kind = this.mission && this.mission.kind;
+      const first = kind === "persuade" ? `JOYEUSE: ${names.target} is at ${target.name}. Talk them round; nobody gets hurt.`
+        : kind === "intel" ? `JOYEUSE: the terminal is at ${target.name}. In, copy, out.`
+        : `JOYEUSE: ${names.target} is at ${target.name}. Go quietly.`;
+      return [[first, "#54f2ff"], [`Weapons are holstered. ${names.sec} will warn anyone with a gun out.`, "#94a0c4"]];
+    },
     populate(world, opts) { W.populateMission(world, this, d, opts); },
   };
 };
@@ -394,12 +420,25 @@ W.populateMission = (world, L, d, opts) => {
   if (opts.attract) return;
   const tg = L.picks.target;
   const tp = m.nearestWalkable(tg.x, tg.y, 6);
-  const target = toughen(world.add(W.makeUnit("target", tp[0], tp[1], { post: [tp[0], tp[1], R() * 6.28], name: L.names.target })));
-  W.giveWeapon(target, "pistol");
-  world.targetUnit = target;
+  const kind = L.mission ? L.mission.kind : "assassinate", threat = L.mission ? L.mission.threat : 3;
+  let target = null;
+  if (kind === "persuade") {
+    // the subject: someone to talk round and walk out, not to kill
+    const s = world.add(W.makeUnit("civ", tp[0], tp[1], { subject: true, name: L.names.target, post: [tp[0], tp[1], R() * 6.28],
+      look: { coat: "#d8c08a", trim: "#7dffb0", legs: "#3a3226", fur: W.pick(W.FURS), hat: "#8a6a3a", long: true }, need: Math.max(0, threat - 1), hp: 8, maxHp: 8 }));
+    world.subjectUnit = s;
+  } else if (kind === "intel") {
+    world.terminal = { x: tp[0], y: tp[1], need: 6, t: 0, name: tg.name };
+  } else {
+    target = toughen(world.add(W.makeUnit("target", tp[0], tp[1], { post: [tp[0], tp[1], R() * 6.28], name: L.names.target })));
+    W.giveWeapon(target, "pistol");
+    world.targetUnit = target;
+  }
+  // bodyguards stand close round a target; on a quiet job they watch the approaches from further out
+  const ring = kind === "persuade" || kind === "intel" ? 5 : 1.6;
   for (let i = 0; i < nGuards; i++) {
     const a = i / nGuards * Math.PI * 2 + R();
-    const p = m.nearestWalkable(tp[0] + Math.cos(a) * 1.6, tp[1] + Math.sin(a) * 1.6, 3) || tp;
+    const p = m.nearestWalkable(tp[0] + Math.cos(a) * ring, tp[1] + Math.sin(a) * ring, 3) || tp;
     const g = toughen(world.add(W.makeUnit("guard", p[0], p[1], { post: [p[0], p[1], a], dir: a })));
     if (!armedSlots.has(i)) continue;
     if (mod) { const gun = modGun(); W.giveWeapon(g, gun); if (gun !== "pistol") W.giveWeapon(g, "pistol"); }
@@ -422,7 +461,9 @@ W.populateMission = (world, L, d, opts) => {
   const spots = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([a, b]) => m.nearestWalkable(sp.x + a - 0.5, sp.y + b - 0.5, 5) || [sp.x, sp.y]);
   W.spawnSquad(world, opts.roster || W.defaultRoster(), spots);
   world.startAt = [sp.x, sp.y];
-  world.objective({ type: "kill", unit: target, text: `Eliminate ${L.names.target}` });
+  if (world.subjectUnit) world.objective({ type: "persuade", unit: world.subjectUnit, text: `Talk ${L.names.target} round, and walk them out` });
+  else if (world.terminal) world.objective({ type: "intel", text: `Copy the data at ${tg.name} (hold the terminal ${world.terminal.need} seconds)` });
+  else world.objective({ type: "kill", unit: target, text: `Eliminate ${L.names.target}` });
   world.objective({ type: "recruit", n: 5, optional: true, text: "Recruit 5 followers with the Purrsuader" });
   world.objective({ type: "civcap", n: 4, optional: true, text: "Lose no more than 4 civilians" });
 };

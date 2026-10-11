@@ -482,7 +482,7 @@ W.World = class {
    * one), or off any edge of the map. Until then it can pick over the dead.
    * Won when every Watcher still alive is out; lost if none of them make it. */
   objective(o) { o.state = "active"; this.objectives.push(o); return o; }
-  startExfil(why) {
+  startExfil(why, task) {
     this.phase = "exfil";
     // the boss is dead: some of the crew lose heart and run, the more so the smaller the outfit
     const mod = this.level.mod, threat = this.level.mission ? this.level.mission.threat : 3;
@@ -499,8 +499,8 @@ W.World = class {
     for (const f of (m.points && m.points.facility) || []) pts.push({ x: f.x, y: f.y, name: f.name || "a PumaCity facility" });
     this.exfilPoints = pts.map(p => { const q = m.nearestWalkable(p.x, p.y, 4) || [p.x, p.y]; return { x: q[0], y: q[1], name: p.name }; });
     this.stats.out = 0;
-    this.objective({ type: "exfil", text: "Get out: to the pickup at the drop point, or off any edge of the map" });
-    this.msg(`${why} Get out: the pickup at the drop point, or off any edge of the map. Take what the dead dropped.`, "#4ade6a");
+    this.objective({ type: "exfil", text: task || "Get out: to the pickup at the drop point, or off any edge of the map" });
+    this.msg(`${why} ${task ? task + "." : "Get out: the pickup at the drop point, or off any edge of the map. Take what the dead dropped."}`, "#4ade6a");
     W.audio.play("order");
   }
   /* is (x, y) somewhere a Watcher can leave from? */
@@ -529,18 +529,71 @@ W.World = class {
   checkMission(dt) {
     if (this.attract || this.status !== "play") return;
     if (this.phase === "exfil") {
+      const S = this.subjectUnit;
+      if (S && S.alive && !S.out && S.follower && (this.atExit(S.x, S.y) || this.agents.some(a => a.out && W.dist(a.x, a.y, S.x, S.y) < 3))) {
+        S.out = true; S.inCar = true; S.path = null; this.msg(`${S.name} is out.`, "#4ade6a");
+      }
+      if (S && !S.alive) { this.end("lost", `${S.name} is dead.`); return; }
+      if (this.carrier && !this.carrier.alive) { this.end("lost", `The data died with ${this.carrier.name}.`); return; }
       for (const a of this.agents) {
         if (!a.alive || a.out || !this.atExit(a.x, a.y)) continue;
         a.out = true; a.inCar = true; a.path = null; a.target = null; a.manual = null;
         this.selected.delete(a); this.stats.out++;
-        this.msg(`${a.name} is out.`, "#4ade6a");
+        this.msg(`${a.name} is out${a === this.carrier ? ", with the data" : ""}.`, "#4ade6a");
+        // the subject, right behind them, comes too
+        if (S && S.alive && !S.out && S.follower && W.dist(a.x, a.y, S.x, S.y) < 3) { S.out = true; S.inCar = true; S.path = null; this.msg(`${S.name} is out.`, "#4ade6a"); }
         if (!this.selected.size) { const next = this.agents.find(b => b.alive && !b.out); if (next) this.selected.add(next); }
       }
       for (const o of this.objectives) if (o.state === "active" && o.type === "civcap" && this.stats.civ > o.n) { o.state = "failed"; this.msg(`Bonus lost: ${o.text}.`, "#ffb000"); }
       for (const o of this.objectives) if (o.state === "active" && o.type === "recruit" && this.stats.recruited >= o.n) { o.state = "done"; this.msg(`Bonus: ${o.text}.`, "#4ade6a"); }
       if (!this.agents.some(a => a.alive && !a.out)) {
-        if (this.stats.out) this.end("won", `${this.names.target} is dead, and the squad is out.`);
+        // the squad is out and the subject a few steps behind: they finish the walk on their own
+        if (S && S.alive && S.follower && !S.out) {
+          S.aloneT = (S.aloneT || 0) + dt;
+          if (S.aloneT > 60) { this.end("lost", `The squad got out, and left ${S.name} behind.`); return; }
+          if (!S.path) { const p = this.exitFor(S); if (p) W.goTo(this, S, p[0], p[1]); else this.end("lost", `The squad got out, and left ${S.name} behind.`); }
+          return;
+        }
+        if (S) S.out ? this.end("won", `${S.name} is out, and talking.`) : this.end("lost", `The squad got out, and left ${S.name} behind.`);
+        else if (this.carrier) this.carrier.out ? this.end("won", "The data is out.") : this.end("lost", "The data never left.");
+        else if (this.stats.out) this.end("won", `${this.names.target} is dead, and the squad is out.`);
         else this.end("lost", `${this.names.target} is dead, but nobody got out.`);
+      }
+      return;
+    }
+    // a persuade job: talk them round; lose them, and it is over
+    const S = this.subjectUnit;
+    if (S) {
+      if (!S.alive) { this.end("lost", `${S.name} is dead.`); return; }
+      if (this.subjectGone) { this.end("lost", `${S.name} got away.`); return; }
+      if (S.follower) {
+        for (const o of this.objectives) if (o.type === "persuade" && o.state === "active") { o.state = "done"; this.msg(`Objective complete: ${o.text}.`, "#4ade6a"); }
+        this.startExfil(`${S.name} is with you.`, `Walk ${S.name} out: to the pickup at the drop point, or off any edge of the map`);
+        return;
+      }
+    }
+    // an intel job: a Watcher stands at the terminal while it copies; whoever finishes carries the data
+    const D = this.terminal;
+    if (D && !D.done) {
+      const at = this.agents.find(a => a.alive && !a.out && W.dist(a.x, a.y, D.x, D.y) < 1.4);
+      if (at) {
+        if (!D.t) this.msg(`${at.name}: on the terminal. Copying.`, "#54f2ff");
+        D.t += dt; D.by = at;
+        if (D.t >= D.need) {
+          D.done = true; this.carrier = at; at.carries = "data";
+          for (const o of this.objectives) if (o.type === "intel" && o.state === "active") { o.state = "done"; this.msg(`Objective complete: ${o.text}.`, "#4ade6a"); }
+          W.audio.play("order");
+          this.startExfil(`${at.name} has the data.`, `Get the data out with ${at.name}: to the pickup at the drop point, or off any edge of the map`);
+          return;
+        }
+      }
+    }
+    if (!this.agents.some(u => u.alive)) { this.end("lost", "Every Watcher is down."); return; }
+    if (S || D) {
+      for (const o of this.objectives) {
+        if (o.state !== "active") continue;
+        if (o.type === "recruit" && this.stats.recruited >= o.n) { o.state = "done"; this.msg(`Bonus: ${o.text}.`, "#4ade6a"); }
+        if (o.type === "civcap" && this.stats.civ > o.n) { o.state = "failed"; this.msg(`Bonus lost: ${o.text}.`, "#ffb000"); }
       }
       return;
     }

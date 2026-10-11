@@ -49,13 +49,41 @@ function run(W, seed, attract, quiet, camp, roster, level) {
     if (orderT <= 0) {
       orderT = 2;
       // the job done: everyone out by the nearest way
-      // (guns out, returning fire as they go)
+      // (guns out, returning fire as they go; on a quiet job, only once the alarm is up)
       if (world.phase === "exfil") {
+        const quiet = world.subjectUnit || world.terminal;
         for (const a of world.agents) {
           if (!a.alive || a.out) continue;
-          if (!W.armed(a)) W.drawBest(a);
+          if (!W.armed(a) && (!quiet || world.alarm)) W.drawBest(a);
           a.manual = null;
           if (!a.path) { const p = world.exitFor(a); if (p) W.goTo(world, a, p[0], p[1]); }
+        }
+        continue;
+      }
+      // a persuade job: whoever has the Purrsuader talks the subject round, the rest stay close
+      const S = world.subjectUnit;
+      if (S) {
+        const talker = world.agents.find(a => a.alive && a.weapons.some(w => W.WEAPONS[w.type].persuade));
+        for (const a of world.agents) {
+          if (!a.alive) continue;
+          if (a === talker && !S.follower) {
+            const k = a.weapons.findIndex(w => W.WEAPONS[w.type].persuade); a.cur = k; a.weaponOut = true;
+            // short of the crowd the subject needs: talk round a passer-by first
+            let mark = S;
+            if (!W.canPersuade(world, a, S)) mark = world.units.filter(c => c.kind === "civ" && !c.subject && !c.follower && c.alive && !c.inCar && W.canPersuade(world, a, c)).sort((p, q) => W.dist(a.x, a.y, p.x, p.y) - W.dist(a.x, a.y, q.x, q.y))[0] || S;
+            a.manual = mark; if (!a.path || a.chaseT <= 0) W.goTo(world, a, mark.x, mark.y);
+          }
+          // the rest hang back, out of the minders' way, until the subject is with us
+          else { if (world.alarm && !W.armed(a)) W.drawBest(a); if (!a.path && talker && W.dist(a.x, a.y, S.x, S.y) < 8) { const ang = Math.atan2(a.y - S.y, a.x - S.x); const p = world.map.nearestWalkable(S.x + Math.cos(ang) * 10, S.y + Math.sin(ang) * 10, 4); if (p) W.goTo(world, a, p[0], p[1]); } }
+        }
+        continue;
+      }
+      // an intel job: everyone to the terminal
+      if (world.terminal) {
+        for (const a of world.agents) {
+          if (!a.alive) continue;
+          if (world.alarm && !W.armed(a)) W.drawBest(a);
+          if (!a.path && W.dist(a.x, a.y, world.terminal.x, world.terminal.y) > 1) W.goTo(world, a, world.terminal.x + (a.slot % 2) * 0.4, world.terminal.y + (a.slot >> 1) * 0.4);
         }
         continue;
       }

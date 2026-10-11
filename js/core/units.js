@@ -583,6 +583,7 @@ W.thinkCrew = (world, u) => {
       return;
     }
   }
+  if (!W.hasGun(u)) return W.thinkUnarmed(world, u);
   if (!W.armed(u)) W.drawBest(u);
   const foe = W.nearestFoe(world, u, u.sight + 2);
   if (foe) { W.engage(world, u, foe, true); return; }
@@ -598,6 +599,49 @@ W.thinkCrew = (world, u) => {
   if (spot && (!u.path || u.chaseT <= 0) && W.dist(u.x, u.y, spot[0], spot[1]) > 1.5) {
     W.goTo(world, u, spot[0] + W.rand(-1.5, 1.5), spot[1] + W.rand(-1.5, 1.5)); u.chaseT = 2.5;
   } else if (spot && W.dist(u.x, u.y, spot[0], spot[1]) <= 1.5) { u.seen = null; }
+};
+
+/* A crew member with nothing to shoot with, once they have made you (the
+ * alarm is already up): grab a gun off the ground if one is near, else run to
+ * the nearest armed friend and set them on you, else just run. Corner one and
+ * they will swing at you, and that is all. */
+W.thinkUnarmed = (world, u) => {
+  u.target = null; u.cur = -1; u.weaponOut = false; u.state = "flee";
+  let foe = null, fd = Infinity;
+  for (const b of world.units) {
+    if (!W.hostileTo(world, u, b)) continue;
+    const d = W.dist(u.x, u.y, b.x, b.y);
+    if (d < fd) { fd = d; foe = b; }
+  }
+  // hand to hand
+  if (foe && fd < 0.9) {
+    W.stop(u); u.dir = Math.atan2(foe.y - u.y, foe.x - u.x);
+    if (u.cd <= 0) { u.cd = 1.1; world.damage(foe, 1, u); if (Math.random() < 0.3) W.say(u, W.pick(["Hsss!", "Get off!", "Rrrah!"]), "#ff5266", 1.2); }
+    return;
+  }
+  // a gun on the ground
+  let it = null, id = 8;
+  for (const i of world.items) { if (!W.WEAPONS[i.type].gun) continue; const d = W.dist(u.x, u.y, i.x, i.y); if (d < id) { id = d; it = i; } }
+  if (it) { if (!u.path || u.chaseT <= 0) { W.goTo(world, u, it.x, it.y); u.chaseT = 1; } return; }
+  // help: the nearest armed friend
+  let pal = null, pd = Infinity;
+  for (const b of world.units) {
+    if (!b.alive || b.inCar || b.follower || b.faction !== "crew" || b === u || !W.hasGun(b)) continue;
+    const d = W.dist(u.x, u.y, b.x, b.y);
+    if (d < pd) { pd = d; pal = b; }
+  }
+  if (pal) {
+    if (pd <= 2.5) {
+      if (!pal.hostile) { pal.hostile = true; W.drawBest(pal); W.say(u, W.pick(["They're here!", "Watchers!", "Over there!"]), "#ff5266", 1.6); }
+      if (u.seen && !pal.seen) pal.seen = u.seen;
+    } else if (!u.path || u.chaseT <= 0) { W.goTo(world, u, pal.x + W.rand(-1, 1), pal.y + W.rand(-1, 1)); u.chaseT = 1.5; }
+    return;
+  }
+  // nobody to run to: away from the nearest of us
+  if (foe && fd < 12 && (!u.path || u.chaseT <= 0)) {
+    const a = Math.atan2(u.y - foe.y, u.x - foe.x) + W.rand(-0.7, 0.7);
+    W.goTo(world, u, u.x + Math.cos(a) * 9, u.y + Math.sin(a) * 9); u.chaseT = 2;
+  }
 };
 
 W.thinkTarget = (world, u) => {
@@ -689,10 +733,12 @@ W.updateUnit = (world, u, dt) => {
   }
   W.moveUnit(world, u, dt);
   // walking over a dropped weapon picks it up
-  if ((u.isAgent || u.follower) && world.items.length) {
+  // (and an unarmed crew member who has made you grabs any gun lying about)
+  if ((u.isAgent || u.follower || (u.faction === "crew" && u.hostile && !W.hasGun(u))) && world.items.length) {
     for (let i = world.items.length - 1; i >= 0; i--) {
       const it = world.items[i];
       if (W.dist(u.x, u.y, it.x, it.y) > 0.55) continue;
+      if (u.faction === "crew" && !W.WEAPONS[it.type].gun) continue;
       if (!u.isAgent && u.weapons.some(w => W.WEAPONS[w.type].gun)) continue;
       if (u.weapons.length >= 8 && !u.weapons.some(w => w.type === it.type)) continue;
       W.giveWeapon(u, it.type, it.ammo);

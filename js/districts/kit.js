@@ -370,8 +370,22 @@ W.populateMission = (world, L, d, opts) => {
   }
   // standing garrisons
   W.spawnGarrisons(world);
+  // the enemy at the campaign's threat (L.mod, see docs/missions.md); without
+  // one, the district's usual strength, everyone armed
+  const mod = L.mod;
+  const count = (n, k) => mod ? Math.round(n * (mod[k] ?? 1)) : n;
+  const nSec = count(T.sec, "sec"), nGuards = count(T.guards, "guards"), nCrew = count(T.crew, "crew");
+  // who carries anything: an exact share of crew and guards together, picked by the seed
+  const nArmed = mod ? Math.round((nGuards + nCrew) * (mod.armed ?? 1)) : nGuards + nCrew;
+  const all = [...Array(nGuards + nCrew).keys()];
+  const armedSlots = new Set(mod ? all.map(i => [R(), i]).sort((a, b) => a[0] - b[0]).slice(0, nArmed).map(([, i]) => i) : all);
+  const toughen = u => { if (mod && mod.armour) u.maxHp = u.hp = Math.round(u.maxHp * mod.armour * 10) / 10; return u; };
+  const modGun = () => mod.guns[Math.floor(R() * mod.guns.length)];
+  // plain clothes: more of them the higher the threat (Math.random, so the seed's layout stands)
+  const undercover = W.UNDERCOVER[L.mission ? L.mission.threat : 3] || 0;
+  const plain = u => { if (Math.random() < undercover) W.disguise(u, T.civLook ? T.civLook() : undefined); return u; };
   // local security
-  for (let i = 0; i < T.sec; i++) {
+  for (let i = 0; i < nSec; i++) {
     const base = m.randomCell(stroll) || [L.picks.target.x, L.picks.target.y];
     const route = [base, near(base[0], base[1], 9), near(base[0], base[1], 9)];
     const u = world.add(W.makeUnit("sec", base[0], base[1], { home: base, patrol: route, look: T.secLook ? T.secLook() : undefined }));
@@ -380,23 +394,28 @@ W.populateMission = (world, L, d, opts) => {
   if (opts.attract) return;
   const tg = L.picks.target;
   const tp = m.nearestWalkable(tg.x, tg.y, 6);
-  const target = world.add(W.makeUnit("target", tp[0], tp[1], { post: [tp[0], tp[1], R() * 6.28], name: L.names.target }));
+  const target = toughen(world.add(W.makeUnit("target", tp[0], tp[1], { post: [tp[0], tp[1], R() * 6.28], name: L.names.target })));
   W.giveWeapon(target, "pistol");
   world.targetUnit = target;
-  for (let i = 0; i < T.guards; i++) {
-    const a = i / T.guards * Math.PI * 2 + R();
+  for (let i = 0; i < nGuards; i++) {
+    const a = i / nGuards * Math.PI * 2 + R();
     const p = m.nearestWalkable(tp[0] + Math.cos(a) * 1.6, tp[1] + Math.sin(a) * 1.6, 3) || tp;
-    const g = world.add(W.makeUnit("guard", p[0], p[1], { post: [p[0], p[1], a], dir: a }));
-    W.giveWeapon(g, T.guardGun || "shotgun", 40); W.giveWeapon(g, "pistol");
+    const g = toughen(world.add(W.makeUnit("guard", p[0], p[1], { post: [p[0], p[1], a], dir: a })));
+    if (!armedSlots.has(i)) continue;
+    if (mod) { const gun = modGun(); W.giveWeapon(g, gun); if (gun !== "pistol") W.giveWeapon(g, "pistol"); }
+    else { W.giveWeapon(g, T.guardGun || "shotgun", 40); W.giveWeapon(g, "pistol"); }
   }
-  for (let i = 0; i < T.crew; i++) {
+  for (let i = 0; i < nCrew; i++) {
     const p = near(tp[0], tp[1], i % 2 ? 9 : 16);
     if (!p) continue;
     const o = i % 3 === 2 ? { patrol: [p, near(p[0], p[1], 10), near(tp[0], tp[1], 12)] } : { post: [p[0], p[1], R() * 6.28] };
-    const u = world.add(W.makeUnit("crew", p[0], p[1], o));
-    const gun = W.pick(T.crewGuns || ["pistol", "pistol", "uzi"]);
+    const u = plain(toughen(world.add(W.makeUnit("crew", p[0], p[1], o))));
+    if (!armedSlots.has(nGuards + i)) continue;
+    const gun = mod ? modGun() : W.pick(T.crewGuns || ["pistol", "pistol", "uzi"]);
     W.giveWeapon(u, gun, gun === "uzi" ? 60 : undefined);
   }
+  // what else is going on: gangs, deals, the police, crowds, roaming crew (encounters.js)
+  W.populateEncounters(world, L, d, opts);
   if (L.picks.exit) world.escapePoint = m.nearestWalkable(L.picks.exit.x, L.picks.exit.y, 6);
   // the squad
   const sp = L.picks.spawn;

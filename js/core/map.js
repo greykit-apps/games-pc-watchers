@@ -201,8 +201,10 @@ W.Map = class {
     }
     if (axis === "x") { this.fill(from, at, len, 4, W.G.RAIL); this.setMark(from, at, len, 4, W.MARK.RAIL_X); }
     else { this.fill(at, from, 4, len, W.G.RAIL); this.setMark(at, from, 4, len, W.MARK.RAIL_Y); }
-    this.lanes.push({ axis, at: at + 1, dir: 1, from: from - 12, to: to + 12, cars: trains, train: true, stops });
-    this.lanes.push({ axis, at: at + 3, dir: -1, from: from - 12, to: to + 12, cars: trains, train: true, stops });
+    // few trains, and long ones: a tram is four carriages, a train six
+    const carriages = open ? 4 : 6;
+    this.lanes.push({ axis, at: at + 1, dir: 1, from: from - 12, to: to + 12, cars: trains, carriages, train: true, stops });
+    this.lanes.push({ axis, at: at + 3, dir: -1, from: from - 12, to: to + 12, cars: trains, carriages, train: true, stops });
   }
 
   /* An enterable building. Outer walls one tile thick, a floor inside, a

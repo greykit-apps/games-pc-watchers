@@ -348,8 +348,16 @@ W.Renderer = class {
       const r = 3 + (1 - k) * 6;
       c.beginPath(); c.moveTo(sx + ox, sy + oy - r / 2); c.lineTo(sx + ox + r, sy + oy); c.lineTo(sx + ox, sy + oy + r / 2); c.lineTo(sx + ox - r, sy + oy); c.closePath(); c.stroke();
     }
+    // the ways out, once the job is done: a pulsing cyan pad
+    if (world.phase === "exfil") for (const p of world.exfilPoints || []) {
+      const [sx, sy] = W.proj(p.x, p.y), k = 0.5 + 0.5 * Math.sin(t * 4);
+      for (const [r, a] of [[1.6, 0.9], [1.1 + 0.4 * k, 0.5]]) {
+        c.strokeStyle = W.rgba("#54f2ff", a); c.lineWidth = 1;
+        c.beginPath(); c.ellipse(Math.round(sx + ox), Math.round(sy + oy), r * W.HTW, r * W.HTH, 0, 0, Math.PI * 2); c.stroke();
+      }
+    }
     for (const u of world.units) {
-      if (!u.alive) continue;
+      if (!u.alive || u.out) continue;
       const sel = world.selected && world.selected.has(u);
       const isT = u.kind === "target";
       if (!sel && !isT && !(u.isAgent)) continue;
@@ -446,7 +454,7 @@ W.Renderer = class {
         j++;
         if (b.kind === "unit") {
           const u = b.u;
-          if (!vis(u.x, u.y)) continue;
+          if (u.out || !vis(u.x, u.y)) continue;
           const [px, py] = W.proj(u.x, u.y, u.z || 0);
           if ((u.z || 0) > 3 && u.alive && (world.selected.has(u) || u.isAgent || u.kind === "target")) {
             c.strokeStyle = world.selected.has(u) ? "#54f2ff" : u.kind === "target" ? "#ffb000" : "rgba(84,242,255,.35)"; c.lineWidth = 1;
@@ -580,8 +588,12 @@ W.Renderer = class {
     o.clearRect(0, 0, this.cssW, this.cssH);
     o.font = "11px ui-monospace,Menlo,Consolas,monospace";
     o.textAlign = "center"; o.textBaseline = "bottom";
+    if (world.phase === "exfil") for (const p of world.exfilPoints || []) {
+      const [sx, sy] = this.toScreen(world, p.x, p.y, 0);
+      o.fillStyle = "#54f2ff"; o.fillText("EXFIL", sx * k, sy * k - 14);
+    }
     for (const u of world.units) {
-      if (!u.alive) continue;
+      if (!u.alive || u.out) continue;
       const [sx, sy] = this.toScreen(world, u.x, u.y, u.z || 0);
       const X = sx * k, Y = sy * k;
       if (X < -100 || X > this.cssW + 100 || Y < -60 || Y > this.cssH + 80) continue;
@@ -594,6 +606,12 @@ W.Renderer = class {
           o.fillStyle = "rgba(5,7,15,.8)"; o.fillRect(X - 10, Y - 26 * k, 20, 3);
           o.fillStyle = u.hp / u.maxHp > 0.4 ? "#4ade6a" : "#ff5266"; o.fillRect(X - 10, Y - 26 * k, 20 * u.hp / u.maxHp, 3);
         }
+      }
+      // the scanner's mark on a gun under plain clothes
+      if (u.undercover && !u.revealed && (W.scanArmed(world, u) || W.scanCal(world, u))) {
+        const cal = W.scanCal(world, u), on = Math.sin(world.time * 8) > 0;
+        o.fillStyle = cal ? (on ? "#ff5266" : "#8a2a36") : on ? "#ff8a3c" : "#a8541c";
+        o.beginPath(); o.moveTo(X, Y - 25 * k); o.lineTo(X + 4, Y - 25 * k - 6); o.lineTo(X, Y - 25 * k - 12); o.lineTo(X - 4, Y - 25 * k - 6); o.closePath(); o.fill();
       }
       if (u.kind === "target") {
         const b = Math.sin(world.time * 6) > 0;
@@ -672,18 +690,29 @@ W.Renderer = class {
     for (const it of world.items) blip(it.x, it.y, "#ffb000", 1);
     const blink = Math.sin(t * 8) > 0;
     let target = null;
+    // the squad's scanner: below MK3 it cannot see in under a roof none of ours is under
+    const mk = opts.full ? 3 : W.scanMk(world), walls = opts.full || (W.SCAN[mk] || {}).walls;
+    const open = this.openNow || new Set();
+    const hidden = u => { if (walls || u.faction === "player" || u.kind === "target") return false; const cx = Math.floor(u.x), cy = Math.floor(u.y); if (!m.inb(cx, cy)) return false; const r = m.roofOf[m.i(cx, cy)]; return r >= 0 && !open.has(r) && !m.structures[r].canopy; };
     for (const u of world.units) {
-      if (!u.alive || u.inCar) continue;
+      if (!u.alive || u.inCar || hidden(u)) continue;
       let col, sz = 2;
       if (u.isAgent) { col = world.selected.has(u) ? "#ffffff" : "#54f2ff"; sz = 3; }
       else if (u.kind === "target") { target = u; col = blink ? "#ffb000" : "#7a5500"; sz = 4; }
       else if (u.faction === "player") col = "#2fb8c4";
+      // plain clothes pass for the crowd, unless the scanner marks the gun
+      // MK3, against Cal: his people show as what they are, plain clothes or not
+      else if (u.faction === "crew" && u.undercover && !u.revealed && W.scanCal(world, u)) col = u.hostile ? "#ff5266" : "#b8424f";
+      else if (u.faction === "crew" && u.undercover && !u.revealed) { if (W.scanArmed(world, u)) col = blink ? "#ff8a3c" : "#a8541c"; else { if (opts.noCiv) continue; col = "#56607a"; sz = 1; } }
+      // MK2 and up: the armed apart from the unarmed
+      else if (u.faction === "crew" && mk >= 2 && !W.hasGun(u)) col = u.hostile ? "#a8505c" : "#6e3a44";
       else if (u.faction === "crew") col = u.hostile ? "#ff5266" : "#b8424f";
       else if (u.faction === "sec") col = u.elite ? (u.angryAt.player ? "#ffe08a" : "#b8902a") : u.angryAt.player ? "#9ab8ff" : "#4c6fd0";
       else { if (opts.noCiv) continue; col = "#56607a"; sz = 1; }
       blip(u.x, u.y, col, sz);
     }
     if (!target && world.escapeCar && world.escapeCar.passenger && !world.escapeCar.dead) target = world.escapeCar;
+    if (world.phase === "exfil") for (const p of world.exfilPoints || []) { blip(p.x, p.y, blink ? "#54f2ff" : "#1c6a74", 4); if (!target) target = { x: p.x, y: p.y, exfil: true }; }
     // the target off the edge: an arrow on the rim
     if (target && !opts.full) {
       const [px, py] = P(target.x, target.y);
@@ -692,7 +721,7 @@ W.Renderer = class {
         const rx = Wd / 2 - 9, ry = Ht / 2 - 9, f = Math.min(rx / Math.abs(Math.cos(a) || 1e-6), ry / Math.abs(Math.sin(a) || 1e-6));
         const ax = Wd / 2 + Math.cos(a) * f, ay = Ht / 2 + Math.sin(a) * f;
         c.save(); c.translate(ax, ay); c.rotate(a);
-        c.fillStyle = blink ? "#ffb000" : "#a87400";
+        c.fillStyle = target.exfil ? (blink ? "#54f2ff" : "#1c6a74") : blink ? "#ffb000" : "#a87400";
         c.beginPath(); c.moveTo(7, 0); c.lineTo(-4, -5); c.lineTo(-2, 0); c.lineTo(-4, 5); c.closePath(); c.fill();
         c.restore();
       }

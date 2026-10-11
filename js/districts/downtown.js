@@ -292,7 +292,7 @@ W.district({
       m.light(sx + 11, 157, 5, "#9ff7ff", 0.15); m.light(sx + 11, 163, 5, "#9ff7ff", 0.15);
     }
     // the tram line is open: no fences, crossable anywhere, and the trams do not stop for anyone
-    m.rail("x", 158, 0, 224, [BX[0] + 19, BX[2] + 20, BX[4] + 19], 2, true);
+    m.rail("x", 158, 0, 224, [BX[0] + 19, BX[2] + 20, BX[4] + 19], 1, true);
 
     // ================= row 4 =================
     // Pounce Park: two blocks of it, a lake and a bandstand

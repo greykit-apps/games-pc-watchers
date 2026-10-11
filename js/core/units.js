@@ -117,7 +117,9 @@ W.hostileTo = (world, a, b) => {
   if (!b.alive || a === b || b.inCar || a.faction === b.faction) return false;
   switch (a.faction) {
     case "player":
-      if (b.faction === "crew") return b.hostile || (b.kind === "target" && world.alarm);
+      // a Watcher sent in with E (aggressive) shoots the crew on sight, made or not; plain
+      // clothes fool them, unless the scanner has marked the gun or the crew member shows their hand
+      if (b.faction === "crew") return b.hostile || (a.aggressive && !b.broken && (!b.undercover || b.revealed || W.scanArmed(world, b))) || (b.kind === "target" && world.alarm);
       if (b.faction === "sec") return b.angryAt.player;
       return false;
     case "crew": return (b.faction === "player" && a.hostile) || (b.faction === "sec" && a.angryAt.sec);
@@ -144,6 +146,7 @@ W.stop = u => { u.path = null; u.dest = null; };
 /* ---- movement, every tick ---- */
 W.moveUnit = (world, u, dt) => {
   u.moving = false;
+  if (u.pushedT > 0) { u.pushedT -= dt; return; }   // a train's push field has them (World.trainPush)
   if (!u.path) return;
   const m = world.map;
   const [tx, ty] = u.path[0];
@@ -155,6 +158,12 @@ W.moveUnit = (world, u, dt) => {
   }
   const sp = W.speedOf(u), step = Math.min(d, sp * dt);
   const nx = u.x + dx / d * step, ny = u.y + dy / d * step;
+  // nobody walks into traffic: wait at the kerb, or beside the train, until it is clear
+  if ((W.inTrafficWay(world, u, nx, ny) && !W.inTrafficWay(world, u, u.x, u.y)) || W.mustWait(world, u, nx, ny)) {
+    if (!u.facingLock) u.dir = Math.atan2(dy, dx);
+    u.stuckT = 0; u.lastX = u.x; u.lastY = u.y;
+    return;
+  }
   if (m.walkable(nx, ny)) { u.x = nx; u.y = ny; }
   else if (m.walkable(nx, u.y)) u.x = nx;
   else if (m.walkable(u.x, ny)) u.y = ny;
@@ -167,6 +176,50 @@ W.moveUnit = (world, u, dt) => {
     if (W.dist(u.x, u.y, u.lastX, u.lastY) < 0.15 && u.dest) W.goTo(world, u, u.dest[0], u.dest[1]);
     u.stuckT = 0; u.lastX = u.x; u.lastY = u.y;
   }
+};
+
+/* Is (x, y) inside a train or its push field? Nobody walks into a train (a
+ * wrecked one is climbed over). Cars are another matter: walk into one's side
+ * and you bounce off it (World.bump). */
+W.inTrafficWay = (world, u, x, y) => {
+  if ((u.z || 0) > 6) return false;   // on a bridge, over all of it
+  for (const I of world.threats) {
+    const off = Math.abs((I.ax ? y : x) - I.lat), a = I.ax ? x : y;
+    if (I.delay !== Infinity && off < I.half + 0.3 && (a - I.tail) * I.dir > -0.3 && (I.nose - a) * I.dir > -0.3) return true;
+    if (W.pushWidth(I, x, y)) return true;
+  }
+  return false;
+};
+/* At the edge of a railway (or, for a civilian, of a road) with the next
+ * step onto it: walk the path across, and wait if anything that will not
+ * stop could be there before we are over and clear. Trains for everyone;
+ * a getaway car or a panicking driver too, for civilians. */
+W.mustWait = (world, u, nx, ny) => {
+  const m = world.map, civ = u.kind === "civ" && !u.follower;
+  const threats = civ ? world.civThreats : world.threats;
+  if (!threats || !threats.length || (u.z || 0) > 6) return false;
+  const strip = (x, y) => { const g = m.groundAt(x, y); return (g === W.G.RAIL || (civ && g === W.G.ROAD)) && W.deckZ(m, x, y) <= 6; };
+  if (!strip(nx, ny) || strip(u.x, u.y)) return false;
+  // the crossing: points along the path from here until it leaves the strip
+  const pts = [];
+  let px = u.x, py = u.y, dist = 0, exitD = 0, on = false;
+  walk: for (const [qx, qy] of u.path) {
+    const seg = Math.hypot(qx - px, qy - py), n = Math.max(1, Math.ceil(seg / 0.4));
+    for (let i = 1; i <= n; i++) {
+      const x = px + (qx - px) * i / n, y = py + (qy - py) * i / n, dd = dist + seg * i / n;
+      if (strip(x, y)) { on = true; pts.push(x, y); exitD = dd; }
+      else if (on) break walk;
+      if (dd > 18) break walk;
+    }
+    px = qx; py = qy; dist += seg;
+  }
+  const clearT = exitD / W.speedOf(u) + 1.5;
+  for (const I of threats) for (let i = 0; i < pts.length; i += 2) {
+    const x = pts[i], y = pts[i + 1];
+    if (Math.abs((I.ax ? y : x) - I.lat) > I.half + 0.6) continue;
+    if (W.etaAt(I, I.ax ? x : y) < clearT) return true;
+  }
+  return false;
 };
 
 /* Bodies push each other apart a little, never into walls. */
@@ -514,6 +567,18 @@ W.thinkSec = (world, u) => {
 };
 
 W.thinkCrew = (world, u) => {
+  // broken (their boss is dead): away from the Watchers, and no more of it unless shot at
+  if (u.broken) {
+    u.state = "flee";
+    const ag = world.agents.filter(a => a.alive && !a.out);
+    const near = ag.sort((a, b) => W.dist(u.x, u.y, a.x, a.y) - W.dist(u.x, u.y, b.x, b.y))[0];
+    if (near && W.dist(u.x, u.y, near.x, near.y) < 20 && (!u.path || u.chaseT <= 0)) {
+      const a = Math.atan2(u.y - near.y, u.x - near.x) + W.rand(-0.6, 0.6);
+      W.goTo(world, u, u.x + Math.cos(a) * 12, u.y + Math.sin(a) * 12); u.chaseT = 2.5;
+    }
+    return;
+  }
+  if (u.hostile && u.undercover && !u.revealed) W.reveal(u);
   if (!u.hostile) {
     // who can they see? An armed Watcher at range, anyone of ours up close
     for (const o of world.units) {
@@ -537,6 +602,7 @@ W.thinkCrew = (world, u) => {
       return;
     }
   }
+  if (!W.hasGun(u)) return W.thinkUnarmed(world, u);
   if (!W.armed(u)) W.drawBest(u);
   const foe = W.nearestFoe(world, u, u.sight + 2);
   if (foe) { W.engage(world, u, foe, true); return; }
@@ -552,6 +618,79 @@ W.thinkCrew = (world, u) => {
   if (spot && (!u.path || u.chaseT <= 0) && W.dist(u.x, u.y, spot[0], spot[1]) > 1.5) {
     W.goTo(world, u, spot[0] + W.rand(-1.5, 1.5), spot[1] + W.rand(-1.5, 1.5)); u.chaseT = 2.5;
   } else if (spot && W.dist(u.x, u.y, spot[0], spot[1]) <= 1.5) { u.seen = null; }
+};
+
+/* A crew member with nothing to shoot with, once they have made you (the
+ * alarm is already up): grab a gun off the ground if one is near, else run to
+ * the nearest armed friend and set them on you, else just run. Corner one and
+ * they will swing at you, and that is all. */
+W.thinkUnarmed = (world, u) => {
+  u.target = null; u.cur = -1; u.weaponOut = false; u.state = "flee";
+  let foe = null, fd = Infinity;
+  for (const b of world.units) {
+    if (!W.hostileTo(world, u, b)) continue;
+    const d = W.dist(u.x, u.y, b.x, b.y);
+    if (d < fd) { fd = d; foe = b; }
+  }
+  // hand to hand
+  if (foe && fd < 0.9) {
+    W.stop(u); u.dir = Math.atan2(foe.y - u.y, foe.x - u.x);
+    if (u.cd <= 0) { u.cd = 1.1; world.damage(foe, 1, u); if (Math.random() < 0.3) W.say(u, W.pick(["Hsss!", "Get off!", "Rrrah!"]), "#ff5266", 1.2); }
+    return;
+  }
+  // a gun on the ground
+  let it = null, id = 8;
+  for (const i of world.items) { if (!W.WEAPONS[i.type].gun) continue; const d = W.dist(u.x, u.y, i.x, i.y); if (d < id) { id = d; it = i; } }
+  if (it) { if (!u.path || u.chaseT <= 0) { W.goTo(world, u, it.x, it.y); u.chaseT = 1; } return; }
+  // help: the nearest armed friend
+  let pal = null, pd = Infinity;
+  for (const b of world.units) {
+    if (!b.alive || b.inCar || b.follower || b.faction !== "crew" || b === u || !W.hasGun(b)) continue;
+    const d = W.dist(u.x, u.y, b.x, b.y);
+    if (d < pd) { pd = d; pal = b; }
+  }
+  if (pal) {
+    if (pd <= 2.5) {
+      if (!pal.hostile) { pal.hostile = true; W.drawBest(pal); W.say(u, W.pick(["They're here!", "Watchers!", "Over there!"]), "#ff5266", 1.6); }
+      if (u.seen && !pal.seen) pal.seen = u.seen;
+    } else if (!u.path || u.chaseT <= 0) { W.goTo(world, u, pal.x + W.rand(-1, 1), pal.y + W.rand(-1, 1)); u.chaseT = 1.5; }
+    return;
+  }
+  // nobody to run to: away from the nearest of us
+  if (foe && fd < 12 && (!u.path || u.chaseT <= 0)) {
+    const a = Math.atan2(u.y - foe.y, u.x - foe.x) + W.rand(-0.7, 0.7);
+    W.goTo(world, u, u.x + Math.cos(a) * 9, u.y + Math.sin(a) * 9); u.chaseT = 2;
+  }
+};
+
+/* ---- plain clothes, and the scanner that sees through them ----
+ * Some of the crew dress like everyone else, more of them the higher the
+ * threat. Once they show their hand, a red trim gives them away. The squad's
+ * scanner (its best mark among the Watchers still in the field) marks armed
+ * people near a Watcher: MK1 not at all, MK2 close by, MK3 further and
+ * through roofs and walls. */
+W.UNDERCOVER = { 1: 0, 2: 0, 3: 0.15, 4: 0.3, 5: 0.45 };
+W.SCAN = { 1: { armed: 0 }, 2: { armed: 12 }, 3: { armed: 22, walls: true } };
+W.disguise = (u, look) => { u.undercover = true; u.look = look || W.lookFor("civ"); return u; };
+W.reveal = u => { u.revealed = true; u.look = Object.assign({}, u.look, { trim: "#ff5266" }); };
+W.scanMk = world => {
+  let mk = world.level.scannerMk || 1;
+  for (const a of world.agents) if (a.alive && !a.out && a.scannerMk > mk) mk = a.scannerMk;
+  return Math.min(3, mk);
+};
+/* Is this mission against Cal's people? The campaign says so (L.mission.cal),
+ * or it follows from the kind: a hit on Cal's crew, a siege, a zone he holds. */
+W.isCal = level => { const M = level.mission; return !!M && (M.cal ?? (M.kind === "cal" || M.kind === "siege" || M.zoneLevel === -1)); };
+/* does the squad's MK3 scanner know u for one of Cal's, plain clothes or not? */
+W.scanCal = (world, u) => {
+  if (W.scanMk(world) < 3 || !W.isCal(world.level) || !u.alive || u.faction !== "crew") return false;
+  return world.agents.some(a => a.alive && !a.out && W.dist(a.x, a.y, u.x, u.y) <= W.SCAN[3].armed);
+};
+/* does the squad's scanner mark u as armed? */
+W.scanArmed = (world, u) => {
+  const r = (W.SCAN[W.scanMk(world)] || W.SCAN[1]).armed;
+  if (!r || !u.alive || !W.hasGun(u)) return false;
+  return world.agents.some(a => a.alive && !a.out && W.dist(a.x, a.y, u.x, u.y) <= r);
 };
 
 W.thinkTarget = (world, u) => {
@@ -613,6 +752,8 @@ W.updateUnit = (world, u, dt) => {
   if (u.dryT) u.dryT = Math.max(0, u.dryT - dt);
   if (u.denyT) u.denyT = Math.max(0, u.denyT - dt);
   if (u.say) { u.say.t -= dt; if (u.say.t <= 0) u.say = null; }
+  // knocked down or dazed by a car: nothing but getting up again
+  if (u.stunT > 0) { u.stunT -= dt; u.downT = (u.downT || 0) - dt; u.moving = false; return; }
   if (u.isAgent) {
     W.stimTick(u, dt);
     if (u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + (0.12 + 0.15 * W.mod(u, "heart")) * dt);
@@ -641,10 +782,12 @@ W.updateUnit = (world, u, dt) => {
   }
   W.moveUnit(world, u, dt);
   // walking over a dropped weapon picks it up
-  if ((u.isAgent || u.follower) && world.items.length) {
+  // (and an unarmed crew member who has made you grabs any gun lying about)
+  if ((u.isAgent || u.follower || (u.faction === "crew" && u.hostile && !W.hasGun(u))) && world.items.length) {
     for (let i = world.items.length - 1; i >= 0; i--) {
       const it = world.items[i];
       if (W.dist(u.x, u.y, it.x, it.y) > 0.55) continue;
+      if (u.faction === "crew" && !W.WEAPONS[it.type].gun) continue;
       if (!u.isAgent && u.weapons.some(w => W.WEAPONS[w.type].gun)) continue;
       if (u.weapons.length >= 8 && !u.weapons.some(w => w.type === it.type)) continue;
       W.giveWeapon(u, it.type, it.ammo);
@@ -676,9 +819,10 @@ W.spawnGarrisons = (world) => {
 };
 W.agentLook = a => ({ coat: "#1b2130", trim: "#54f2ff", legs: "#10131c", fur: a.fur, patch: a.patch || null, visor: "#54f2ff", long: true });
 W.spawnSquad = (world, roster, spots) => {
+  world.dropAt = spots[0];   // where the squad came in: where the pickup waits when the job is done
   roster.slice(0, spots.length).forEach((a, i) => {
     const mods = Object.assign({}, a.mods || {});
-    const u = world.add(W.makeUnit("agent", spots[i][0], spots[i][1], { name: a.name, slot: i, rosterId: a.id, look: W.agentLook(a), dir: -Math.PI / 2, mods, kills: 0 }));
+    const u = world.add(W.makeUnit("agent", spots[i][0], spots[i][1], { name: a.name, slot: i, rosterId: a.id, look: W.agentLook(a), dir: -Math.PI / 2, mods, kills: 0, scannerMk: a.scannerMk || 0 }));
     // a chest mod: more to hit, and harder to hurt
     u.maxHp = u.hp = 24 + 6 * (mods.chest || 0);
     u.armor = 0.75 * (1 - 0.1 * (mods.chest || 0));

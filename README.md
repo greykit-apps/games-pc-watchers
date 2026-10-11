@@ -76,10 +76,28 @@ What makes them play:
   outside, the roof hides whoever is in there.
 - **Traffic.** Streets with traffic lights, all on one clock: one set per
   approach, and a divided road's crossing counts as one junction. Divided
-  boulevards are one-way each side. Trams and commuter trains stop at their
-  stations, under glass canopies that fade like any roof, and do not stop for
-  anyone on the tracks. Car parks have a loop road, aisles and gates; every
-  driveway runs through the sidewalk to a road.
+  boulevards are one-way each side. Trams (four carriages) and commuter
+  trains (six), one each way per line and a long wait between them, stop at
+  their stations, under glass canopies that fade like any roof. A train stops
+  for nobody, but hurts nobody either: people wait at the tracks for it to
+  pass, and anyone on the line is pushed off ahead of it, to the nearer side
+  (so a squad can be split by one). Cars give way at level crossings. Car
+  parks have a loop road, aisles and gates; every driveway runs through the
+  sidewalk to a road.
+- **Encounters.** The district goes on without you. Each mission puts
+  something at a handful of its places of interest (inside buildings, open
+  spaces, big back alleys, two-way streets): a gang drinking in a bar or a
+  club, a deal going down, the police round a body in the road with their
+  cars across both lanes (traffic turns round), a patrol, a crowd. A few of
+  the crew walk the streets among everyone else. The hostile ones scale with
+  the threat, none are near the drop point, and nobody has to die: going
+  round is often the answer.
+- **Cars and people.** Drivers brake for pedestrians, now and then too late:
+  a knockdown and some damage. A speeding car (a getaway, or a driver
+  panicking away from gunfire) kills whoever it hits. Walking into a car's
+  side knocks you back, dazed. Only the fight's deaths count against the
+  squad: gunfire and blasts, the getaway car, panicked drivers. Other traffic
+  deaths are accidents, and the debrief lists them apart.
 - **Choke points.** Railways are fenced their whole length: the way across
   is a street crossing, a station, or a footbridge, Syndicate-style, whose
   walkers are up out of the trains' way.
@@ -100,6 +118,24 @@ centred on the lead Watcher. A radar ping sweeps out every two seconds and
 blips flare as it passes; a target off the edge gets an arrow on the rim.
 Click to look somewhere, Shift-click to send the squad, and use the wheel
 to zoom.
+
+Its mark is the best any Watcher still in the field carries (the campaign's
+`scannerMk`, sent as `L.scannerMk` or on a roster entry):
+
+- **MK1**: the plain view, and nobody under a roof none of yours is under.
+- **MK2**: guns marked within 12 tiles of a Watcher, and unarmed crew shown
+  apart from armed.
+- **MK3**: guns marked within 22 tiles, and people seen through roofs and
+  walls. Against Cal (his crew, a siege, a zone he holds) his people within
+  range show as crew, plain clothes or not.
+
+That matters because **not all the crew wear red**. From threat 3 up, some
+dress like everyone else (about one in eight at threat 3, nearly half at
+threat 5; twice as many among those roaming the crowd). A gun under plain
+clothes that the scanner has marked flashes orange on the scanner and over
+the wearer's head. Once one of them shows their hand, a red trim gives them
+away. Watchers sent in with `E` shoot only those plain clothes the scanner
+has marked or that have shown themselves.
 
 ### Mission 1: Market Plaza (Operation Clean Sweep)
 
@@ -122,18 +158,27 @@ the map.
   effect.
 - Bonuses: recruit 5 followers, and lose no more than 4 civilians. The
   debrief grades the run from S to D.
+- **Then get out.** With the target dead the job is not over: every Watcher
+  still standing has to reach the pickup at the drop point, or walk off any
+  edge of the map. Some of the crew lose heart and run when their boss goes
+  down (most of a small outfit, few of an army); the rest keep coming. On the
+  way out, pick over the dead: they drop every gun they had, and sometimes a
+  medikit, and a Watcher carries up to eight things home, guns you have not
+  researched included. Lost if nobody makes it out.
 
 ### Controls
 
 | | |
 |---|---|
-| `1`–`4` | select a Watcher (`Shift` adds; double-tap centres the view) |
-| `0` or `` ` `` | select the whole squad |
+| `` ` `` `1`–`4` | select the whole squad / a Watcher (`Shift` adds; double-tap centres the view) |
 | Left click / drag | move there / box-select |
 | Right click | fire at a person or car, or at a spot on the ground (hold to keep firing); with the Purrsuader out, persuade |
-| `Q` `E` · `H` | previous / next weapon · holster |
+| `E` | go: every stim to full, guns out, the crew shot on sight |
+| `C` | calm: stims to nothing, guns away, nobody shoots first |
+| `R` · `Q` | guns (each one's last) out or away · the Purrsuader out or away |
+| `F` | first aid: a medikit for each Watcher at half health or worse |
 | `WASD`, arrows, screen edge, middle-drag | scroll |
-| `C` · `Tab` | centre on the selection · next Watcher |
+| `Tab` | next Watcher |
 | `Space` · `Esc` · `M` | pause · menu · sound |
 
 ## How it's built
@@ -153,6 +198,7 @@ js/core/units.js      units, stims, hostility, AI per kind, firing, Purrsuader
 js/core/world.js      a mission in progress: traffic, damage, effects, win/lose
 js/levels/plaza.js    Mission 1: map, population, briefing, objectives
 js/districts/kit.js   district registry, warrens, fences, lamps, parking, mission generator
+js/districts/encounters.js  places of interest, and what is going on at them
 js/districts/*.js     Downtown, Suburbs, Convention Center, The Ranch, Starport
 js/campaign/meta.js   the campaign: zones, Cal, research, missions, squad (no DOM)
 js/ui/hud.js          the mission's left panel

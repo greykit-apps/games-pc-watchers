@@ -1414,6 +1414,7 @@ W.drawUnit = (c, u, sx, sy, t) => {
   const L = u.look;
   sx = Math.round(sx); sy = Math.round(sy);
   if (!u.alive) return W.drawCorpse(c, u, sx, sy);
+  if (u.downT > 0) return W.drawCorpse(c, u, sx, sy, true);
   // which way the body faces on screen
   const dx = Math.cos(u.dir), dy = Math.sin(u.dir);
   const scx = dx - dy, scy = (dx + dy) * 0.5;
@@ -1478,16 +1479,67 @@ W.drawUnit = (c, u, sx, sy, t) => {
   if (u.follower && !u.isAgent) { c.fillStyle = "#54f2ff"; c.fillRect(sx - 1, hy - 9, 2, 2); }
 };
 
-W.drawCorpse = (c, u, sx, sy) => {
+/* The dead, or (down) someone knocked flat and getting up: no blood for them. */
+W.drawCorpse = (c, u, sx, sy, down) => {
   const L = u.look;
-  if (!u.pool) u.pool = { r: 0, rx: W.rand(-2, 2) };
-  u.pool.r = Math.min(7, u.pool.r + 0.05);
-  c.fillStyle = u.isAgent ? "rgba(20,60,70,.85)" : "rgba(95,10,22,.85)";
-  c.beginPath(); c.ellipse(sx + u.pool.rx, sy, u.pool.r + 2, (u.pool.r + 2) * 0.5, 0, 0, Math.PI * 2); c.fill();
+  if (!down) {
+    if (!u.pool) u.pool = { r: 0, rx: W.rand(-2, 2) };
+    u.pool.r = Math.min(7, u.pool.r + 0.05);
+    c.fillStyle = u.isAgent ? "rgba(20,60,70,.85)" : "rgba(95,10,22,.85)";
+    c.beginPath(); c.ellipse(sx + u.pool.rx, sy, u.pool.r + 2, (u.pool.r + 2) * 0.5, 0, 0, Math.PI * 2); c.fill();
+  }
   const s = u.deadSide || 1;
   c.fillStyle = L.coat; c.fillRect(sx - 6 * s - (s < 0 ? 0 : 0), sy - 3, 10, 4);
   c.fillStyle = L.legs; c.fillRect(sx + (s > 0 ? 4 : -8), sy - 2, 4, 2);
   c.fillStyle = L.fur; c.beginPath(); c.arc(sx - 7 * s, sy - 2, 2.6, 0, Math.PI * 2); c.fill();
+};
+
+/* A train carriage: a long box with a lit window band. The carriages at
+ * either end of a train carry a bullet nose, stepped down in height and
+ * width toward the tip, with the windshield over the cab: white headlights
+ * at the front, red at the back. Drawn back to front along the track, so the
+ * steps overlap the right way whichever end faces the camera. */
+W.drawCarriage = (c, car, ox, oy) => {
+  const col = car.color || "#9aa4b8", top = W.shade(col, 0.6), left = col, right = W.shade(col, 0.7);
+  const glass = "#1d3346", band = "#9ff7ff";
+  const ax = car.axis === "x", G = car.group;
+  const a = ax ? car.x : car.y, l = ax ? car.y : car.x, hw = car.wid / 2;
+  let a0 = a - car.len / 2, a1 = a + car.len / 2;
+  // which end has a nose: +1 the far (+x/+y) end, -1 the near end, 0 none
+  const nose = !G ? 0 : car.k === 0 ? car.dir : car.k === G.cars.length - 1 ? -car.dir : 0;
+  const N = 1.5, n = 10, step = N / n;
+  const bx = (u0, u1, v0, v1, z1, t, lf, rt) => W.box(c, ox, oy, ax ? u0 : v0, ax ? v0 : u0, ax ? u1 : v1, ax ? v1 : u1, 2, z1, t, lf, rt);
+  const body = () => {
+    bx(a0, a1, l - hw, l + hw, 16, top, left, right);
+    // the window band, on whichever long side faces the camera
+    const P = (u, v, z) => [ox + (u - v) * W.HTW, oy + (u + v) * W.HTH - z];
+    const w0 = a0 + 0.2, w1 = a1 - 0.2, s = l + hw;
+    c.beginPath();
+    [[w0, 8], [w1, 8], [w1, 13], [w0, 13]].forEach(([u, z], i) => { const [px, py] = ax ? P(u, s, z) : P(s, u, z); i ? c.lineTo(px, py) : c.moveTo(px, py); });
+    c.closePath(); c.fillStyle = ax ? band : "#7fd8e0"; c.fill();
+  };
+  if (!nose) { body(); return; }
+  if (nose > 0) a1 -= N; else a0 += N;
+  const slice = i => {
+    // t: 0 at the body, 1 at the tip; a bullet's curve in both height and width
+    const t = (i + 0.5) / n, h = 2 + 14 * Math.sqrt(1 - (t * 0.95) ** 2), w = hw * Math.sqrt(1 - (t * 0.8) ** 2);
+    const u0 = nose > 0 ? a1 + i * step : a0 - (i + 1) * step, u1 = u0 + step;
+    const cab = t < 0.45;   // the windshield: the cab's glass sweeps down the first half of the nose
+    // the nose is one sloped surface: each step's top and its face toward the tip share a shade
+    // (that face is the right one on an x train, the left on a y train)
+    const slope = cab ? glass : right, endFace = nose > 0 ? slope : null;
+    bx(u0, u1, l - w, l + w, h, slope, ax ? left : endFace || left, ax ? endFace || right : right);
+    if (i === n - 1) {
+      // the lamps, at the tip
+      const P = (u, v, z) => [ox + (u - v) * W.HTW, oy + (u + v) * W.HTH - z];
+      const lamp = car.k === 0 ? "#fff3c4" : "#ff5266", tip = nose > 0 ? u1 : u0;
+      c.fillStyle = lamp;
+      for (const v of [l - w * 0.6, l + w * 0.6]) { const [px, py] = ax ? P(tip, v, 5) : P(v, tip, 5); c.fillRect(Math.round(px) - 1, Math.round(py) - 1, 2, 2); }
+    }
+  };
+  // back to front: the near end of the track last
+  if (nose > 0) { body(); for (let i = 0; i < n; i++) slice(i); }
+  else { for (let i = n - 1; i >= 0; i--) slice(i); body(); }
 };
 
 /* ---- cars ----
@@ -1502,16 +1554,7 @@ W.drawCar = (c, car, ox, oy) => {
     W.box(c, ox, oy, x0, y0, x1, y1, 0, 5, "#141414", "#1c1a18", "#100f0e");
     return;
   }
-  if (car.train) {
-    // a tram carriage: a long box with a lit window band
-    const col = car.color || "#9aa4b8";
-    W.box(c, ox, oy, x0, y0, x1, y1, 2, 16, W.shade(col, 0.6), col, W.shade(col, 0.7));
-    const P2 = (u, v, z) => [ox + (u - v) * W.HTW, oy + (u + v) * W.HTH - z];
-    const q = (pts, f) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fillStyle = f; c.fill(); };
-    if (ax) q([P2(x0 + 0.2, y1, 8), P2(x1 - 0.2, y1, 8), P2(x1 - 0.2, y1, 13), P2(x0 + 0.2, y1, 13)], "#9ff7ff");
-    else q([P2(x1, y0 + 0.2, 8), P2(x1, y1 - 0.2, 8), P2(x1, y1 - 0.2, 13), P2(x1, y0 + 0.2, 13)], "#7fd8e0");
-    return;
-  }
+  if (car.train) { W.drawCarriage(c, car, ox, oy); return; }
   // shadow
   c.fillStyle = "rgba(0,0,0,.45)";
   const sh = [P(x0 - 0.1, y0 - 0.1, 0), P(x1 + 0.1, y0 - 0.1, 0), P(x1 + 0.1, y1 + 0.1, 0), P(x0 - 0.1, y1 + 0.1, 0)];
@@ -1525,6 +1568,13 @@ W.drawCar = (c, car, ox, oy) => {
   else { if (f > 0) { cy0 = y0 + cut * 0.6; cy1 = y1 - cut * 1.6; } else { cy0 = y0 + cut * 1.6; cy1 = y1 - cut * 0.6; } cx0 += 0.08; cx1 -= 0.08; }
   W.box(c, ox, oy, cx0, cy0, cx1, cy1, 6, 10, W.shade(col, 0.95), "#1d3346", "#122232");
   if (car.taxi) W.box(c, ox, oy, (cx0 + cx1) / 2 - 0.12, (cy0 + cy1) / 2 - 0.12, (cx0 + cx1) / 2 + 0.12, (cy0 + cy1) / 2 + 0.12, 10, 12, "#ffe08a", "#d9b85a", "#b8973c");
+  if (car.police) {
+    // the light bar, across the roof: red and blue, taking turns
+    const mx = (cx0 + cx1) / 2, my = (cy0 + cy1) / 2, on = (Date.now() / 260 | 0) % 2;
+    const half = (a, red) => { const lit = red === !!on; const col = red ? (lit ? "#ff3048" : "#5a1a22") : (lit ? "#3a8bff" : "#1a2a5a");
+      W.box(c, ox, oy, ax ? mx - 0.14 : mx + (a - 1) * 0.3, ax ? my + (a - 1) * 0.3 : my - 0.14, ax ? mx + 0.14 : mx + a * 0.3, ax ? my + a * 0.3 : my + 0.14, 10, 11.5, col, W.shade(col, 0.8), W.shade(col, 0.7)); };
+    half(0, true); half(1, false);
+  }
   // lights: front white-yellow, back red
   const fx = ax ? (f > 0 ? x1 : x0) : null, fy = ax ? null : (f > 0 ? y1 : y0);
   const bx = ax ? (f > 0 ? x0 : x1) : null, by = ax ? null : (f > 0 ? y0 : y1);

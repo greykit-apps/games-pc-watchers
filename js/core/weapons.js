@@ -37,8 +37,8 @@ W.WEAPONS = {
     sound: "purr", desc: "Talks anyone into following you. The armed need a crowd behind you first."
   },
   purr2: {
-    name: "Purrsuader II", short: "PUR2", gun: false, persuade: 2, range: 4, cd: 0.8, ammo: null,
-    sound: "purr", desc: "Longer reach, and needs half the crowd to work on the armed."
+    name: "Purrsuader II", short: "PUR2", gun: false, persuade: 2, range: 5.5, cd: 0.45, ammo: null,
+    sound: "purr", desc: "Twice the reach, twice as quick. Talks round anyone who isn't already fighting you; the angry ones need half the crowd."
   },
   medikit: {
     name: "Medikit", short: "MEDI", gun: false, heal: true, ammo: 1, sound: "heal", desc: "Patches one Watcher to full. One use."

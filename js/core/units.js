@@ -262,14 +262,20 @@ W.tryFire = (world, u, tx, ty, victim) => {
 
 /* ---- the Purrsuader ---- */
 W.squadFollowers = world => world.units.filter(o => o.alive && o.follower && !o.isAgent).length;
+/* how many followers it takes to talk t round (before the brain mods count) */
+W.persuadeNeed = (world, agent, t) => {
+  let need = t.kind === "target" ? Infinity : t.kind === "crew" ? (t.guard ? 6 : W.PERSUADE_NEED.crew) : W.PERSUADE_NEED[t.kind];
+  if (need === undefined || need === Infinity) return need;
+  // the Purrsuader II needs no crowd for anyone not already fighting us, and half the crowd for those who are
+  const def = W.curDef(agent);
+  if (def && def.persuade > 1) need = W.hostileTo(world, agent, t) ? Math.ceil(need / 2) : 0;
+  return need;
+};
 W.canPersuade = (world, agent, t) => {
   if (!t.alive || t.inCar || t.faction === "player" || t.isAgent) return false;
-  let need = t.kind === "target" ? Infinity : t.kind === "crew" ? (t.guard ? 6 : W.PERSUADE_NEED.crew) : W.PERSUADE_NEED[t.kind];
-  if (need === undefined) return false;
-  // a better Purrsuader halves the crowd needed; a better brain counts as followers
-  const def = W.curDef(agent);
-  if (def && def.persuade > 1) need = Math.ceil(need / 2);
-  return W.squadFollowers(world) + W.mod(agent, "brain") >= need;
+  const need = W.persuadeNeed(world, agent, t);
+  // a better brain counts as followers
+  return need !== undefined && W.squadFollowers(world) + W.mod(agent, "brain") >= need;
 };
 W.persuade = (world, agent, t) => {
   t.faction = "player"; t.follower = true; t.leader = agent;
@@ -362,7 +368,7 @@ W.thinkAgent = (world, u) => {
         if (u.manual === pick) u.manual = null;
       } else if (m) {
         if (!W.canPersuade(world, u, m)) {
-          if (!u.denyT) { world.msg(`${u.name}: need ${m.kind === "sec" ? W.PERSUADE_NEED.sec : m.guard ? 6 : W.PERSUADE_NEED.crew} followers to work on that one.`, "#ffb000"); u.denyT = 3; W.audio.play("deny"); }
+          if (!u.denyT) { world.msg(`${u.name}: need ${W.persuadeNeed(world, u, m)} followers to work on that one.`, "#ffb000"); u.denyT = 3; W.audio.play("deny"); }
           u.manual = null;
         } else if (!u.path || u.chaseT <= 0) { W.goTo(world, u, m.x, m.y); u.chaseT = 1; }
       }

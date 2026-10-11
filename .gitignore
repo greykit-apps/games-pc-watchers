@@ -3,3 +3,6 @@ Source/
 .DS_Store
 # map renders saved by tools/serve.py for review
 screenshots/*-iso*.png
+# Impeccable scratch: review captures and the hook cache
+.impeccable/review/
+.impeccable/hook.cache.json

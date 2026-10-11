@@ -75,7 +75,7 @@ M.WEAPON_LINES = [
 ];
 M.GEAR_LINES = [
   { id: "scanner", name: "Scanner", what: ["a longer reach", "armed people marked apart from unarmed", "people seen through roofs and walls; Cal's gang in red"] },
-  { id: "purrsuader", name: "Purrsuader", start: 1, what: ["talks people round", "a longer reach; works on the armed with a smaller crowd", "a bigger following, and they fight better"] },
+  { id: "purrsuader", name: "Purrsuader", start: 1, what: ["talks people round", "twice the reach and speed; talks round anyone not already fighting, and the rest with half the crowd", "a bigger following, and they fight better"] },
 ];
 M.catalogue = () => {
   const out = [];
@@ -242,8 +242,46 @@ M.cyclePip = (s, z, from) => {
   if (P[from] <= 0) return;
   P[from]--; P[next]++;
 };
+/* The tax dial and the city balance (the command screen's controls). Each
+ * zone's dial sets its pips on control; what's left of every zone's pips is
+ * split between research and money by one city-wide balance, s.balance (the
+ * share to research). The split is spread over the zones so the city's total
+ * comes out right: a running sum, rounded as it goes. A save without a
+ * balance keeps whatever split its policies have. */
+M.balance = s => s.balance == null ? 0.5 : s.balance;
+M.spread = s => {
+  const b = M.balance(s);
+  let acc = 0, given = 0;
+  for (const z of s.zones) {
+    if (z.lost) continue;
+    const P = M.fitPolicy(s, z), rest = P.r + P.m;
+    acc += rest * b;
+    P.r = Math.min(rest, Math.max(0, Math.round(acc) - given));
+    P.m = rest - P.r;
+    given += P.r;
+  }
+};
+M.setDial = (s, z, c) => {
+  const P = M.fitPolicy(s, z), p = M.pips(s, z);
+  if (z.lost || z.locked) return;
+  P.c = Math.max(0, Math.min(p, Math.round(c)));
+  P.m = p - P.c; P.r = 0;
+  M.spread(s);
+};
+M.setBalance = (s, b) => { s.balance = Math.max(0, Math.min(1, b)); M.spread(s); };
 // a day's net change in control, as the policy stands
 M.netControl = (s, z) => z.lost || z.locked ? 0 : M.fitPolicy(s, z).c * M.gainOf(s, z) + M.drift(s, z) + (z.festival > 0 ? 0.5 / 3 : 0);
+/* Where the zone is heading at today's rate: the next level up and the days
+ * to it, or the level down (or the loss) and the days to that. Rough: decay
+ * changes with control, so it's a guide, not a promise. */
+M.forecast = (s, z) => {
+  if (z.lost || z.locked) return null;
+  const net = M.netControl(s, z), L = M.level(z.C);
+  if (Math.abs(net) < 0.005) return { steady: true };
+  if (net > 0) return L >= 3 ? { steady: true, top: true } : { to: L + 1, days: Math.max(1, Math.ceil((Math.floor(z.C) + 1 - z.C) / net)) };
+  const room = z.C - Math.max(0, Math.ceil(z.C) - 1);
+  return L <= 0 ? { lost: true, days: Math.max(1, Math.ceil(z.C / -net)) } : { to: L - 1, days: Math.max(1, Math.ceil(room / -net)) };
+};
 M.yieldOf = z => M.N.YIELD[Math.max(0, z.locked ? 3 : M.level(z.C))];
 
 /* ---------------- Cal ---------------- */
@@ -365,6 +403,8 @@ M.advanceDay = (s, onMission = false) => {
   }
   s.cash += Math.round(money);
   s.today = { rp, money };
+  // levels moved, so pips did: keep the city's research and money split where the balance has it
+  if (s.balance != null) M.spread(s);
   M.feedResearch(s, rp);
   s.day++;
   M.refreshOffers(s);
@@ -490,10 +530,11 @@ M.buy = (s, a, it) => {
   if (have) { have.type = it.type; have.mk = it.mk; } else a.items.push({ type: it.type, mk: it.mk });
   return true;
 };
+// what an item fetches: half what it cost
+M.sellPrice = it => Math.floor((it.type === "medikit" ? M.PRICE.medikit : it.type === "banhammer" ? M.PRICE.banhammer : it.type === "purrsuader" || it.type === "purr2" ? M.PRICE.purrsuader[it.mk || 1] : M.PRICE.weapon[it.mk || 1]) / 2);
 M.sell = (s, a, idx) => {
   const it = a.items[idx]; if (!it) return false;
-  const price = it.type === "medikit" ? M.PRICE.medikit : it.type === "banhammer" ? M.PRICE.banhammer : it.type === "purrsuader" || it.type === "purr2" ? M.PRICE.purrsuader[it.mk || 1] : M.PRICE.weapon[it.mk || 1];
-  s.cash += Math.floor(price / 2);
+  s.cash += M.sellPrice(it);
   if ((it.type === "medikit" || it.type === "banhammer") && it.count > 1) it.count--; else a.items.splice(idx, 1);
   return true;
 };
@@ -532,8 +573,10 @@ M.missionFor = (s, o) => {
   const D = M.zoneDef(o.zone), z = M.zone(s, o.zone);
   const L = W.missionLevel({ district: D.district, landmark: o.landmark, seed: o.seed });
   const threat = o.threat || M.threatOf(s, o.kind, z, o.step || 0);
-  L.mission = { kind: o.kind, threat, quiet: !!M.KINDS[o.kind].quiet, zoneLevel: z.lost ? -1 : M.level(z.C), step: o.step };
+  // cal: the crew on the ground are Cal's own (his push, or a zone he holds)
+  L.mission = { kind: o.kind, threat, quiet: !!M.KINDS[o.kind].quiet, zoneLevel: z.lost ? -1 : M.level(z.C), step: o.step, cal: o.kind === "cal" || o.kind === "siege" || z.lost };
   L.mod = Object.assign({}, M.THREAT[threat]);
+  L.scannerMk = s.scannerMk || 0;
   L.offer = o;
   return L;
 };
@@ -625,7 +668,11 @@ M.settle = (s, o, res) => {
       if (!w.mk && had[type]) w.mk = had[type];
       if (type === "medikit") { if (w.ammo > 0) items.push({ type, count: Math.min(4, w.ammo) }); }
       else if (type === "banhammer") { if (w.ammo > 0) items.push({ type, count: w.ammo }); }
-      else if (!items.some(i => i.type === type)) items.push({ type, mk: w.mk || 1 });
+      else if (!items.some(i => i.type === type)) {
+        items.push({ type, mk: w.mk || 1 });
+        // loot from the field: a gun nobody sent them out with, researched or not, is theirs to keep or sell
+        if (!had[type] && W.WEAPONS[type]) lines.push([`${a.name} brought home`, `${W.WEAPONS[type].name}${M.isDone(s, `${type}:1`) ? "" : " (not researched)"}`]);
+      }
     }
     a.items = items.slice(0, 8);
   }

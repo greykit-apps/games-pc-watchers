@@ -14,6 +14,7 @@ L.mission = {
   quiet: true|false, // can be done without a shot fired
   zoneLevel: -1..3,  // the zone's control level (-1: lost to Cal)
   step: 0..2,        // story missions only: which step of the zone's chain
+  cal: true|false,   // the crew are Cal's own: his push, a siege, or a zone he holds
 };
 L.mod = {            // the enemy at this threat, against the district's usual numbers
   crew: 0.35..1.7,   // multiplies theme.crew
@@ -25,7 +26,7 @@ L.mod = {            // the enemy at this threat, against the district's usual n
 };
 ```
 
-The squad arrives as now (`opts.roster`), each weapon with an `mk` (1 to 3).
+The squad arrives as now (`opts.roster`), each weapon with an `mk` (1 to 3). The squad's scanner mark (0 to 3) is on the level as `L.scannerMk`.
 The campaign reads the result as the debrief does today: won or lost, and for
 each Watcher alive or dead, kills, and the items they carried home. It would
 help if the items came home with their `mk` (today the engine drops it; the
@@ -64,6 +65,11 @@ the target spooked) and should cost something in the result.
 | **Hit Cal's crew** | a crackdown on Cal's people where he is pushing | as crackdown | as crackdown |
 | **Siege** | the enemy dug in, in a building, behind cover; the BanHammer's job | every defender down | the squad is wiped out |
 | **Story** | the zone's chain: find a lieutenant (step 1), turn their network (step 2, quiet), lock it down (step 3, a siege-like assault) | per step | per step |
+
+A kill target (assassination, Cal's lieutenants, a story step's mark) can
+never be persuaded, at any Purrsuader mark: Casey wants them dead. The one a
+persuade mission walks out is not a kill target, and should be its own kind
+of unit (or flag) that the Purrsuader can reach.
 
 The rewards are the campaign's business; the engine only has to say won or
 lost. A grade (as the debrief gives now) and whether a quiet mission stayed

@@ -102,20 +102,21 @@ const Game = W.game = {
       ["Tactics", `<p><b>Local security</b> (Plaza Security, Port Authority, ranch hands) do not know who you are. A gun in plain view earns one warning; keep it out and they open fire, and call their friends. Holster before you walk past them.</p>
         <p><b>The crew</b> in red spot an armed Watcher from far off, an unarmed one only up close. Walk in with your hands empty, and draw at the last moment.</p>
         <p>Once they make you, <b>the target runs</b>: for a car, or for a way out on foot (watch the scanner). If they get away, the mission is lost. A car takes a few rounds and then goes up, taking anyone beside it.</p>
-        <p><b>The Purrsuader</b> talks people into following you. Civilians come at once; security once you have 2 followers; the crew in red at 4, bodyguards in black at 6. Followers pick up guns the dead drop, and fight for you.</p>
+        <p><b>The Purrsuader</b> talks people into following you. Civilians come at once; security once you have 2 followers; the crew in red at 4, bodyguards in black at 6. Followers pick up guns the dead drop, and fight for you. The <b>Purrsuader II</b> reaches twice as far, works twice as fast, and talks round anyone who isn't already shooting at you, crowd or no crowd; those who are need half the crowd.</p>
         <p>Watchers <b>pick up</b> any weapon they walk over. Ammunition is finite; the pistol never runs dry.</p>`],
       ["Stims", `<p>Every Watcher carries three stims, on the bars under the portrait. Click or drag a bar to set the dose. With several Watchers selected, the dose goes to them all.</p>
         <table><tr><td><b>Zoomers</b></td><td>speed and rate of fire</td></tr>
         <tr><td><b>Red Dot</b></td><td>aim, and how far a Watcher looks for trouble</td></tr>
         <tr><td><b>Silvervine</b></td><td>reflexes and initiative. Too little and a Watcher will not fire unless ordered; a heavy dose also uses a medikit by itself when badly hurt</td></tr></table>
         <p>Above the white midpoint a dose burns off slowly and builds a <b>dependency</b> (the red hatching), which eats into the effect until it fades. Dose for the fight, not the walk.</p>`],
-      ["Campaign", `<p>Casey Benton has given the Watchers her city to hold: <b>eight zones</b>. Each makes whole <b>pips</b> a day, which you split between <b>research</b>, <b>money</b> and <b>control</b>: click a pip on the board to move it on.</p>
+      ["Campaign", `<p>Casey Benton has given the Watchers her city to hold: <b>eight zones</b>. Each makes whole <b>pips</b> a day. On the <b>City</b> map, pick a zone and turn its <b>tax dial</b>: squeeze it and its pips go on <b>control</b>; take from it and they go to the city. The <b>city split</b> in the top bar shares what the zones don't put on control between <b>research</b> and <b>money</b>. The dial's HOLD mark is what keeps a zone where it is.</p>
         <p><b>Control</b> decays every day and must be kept up. Each level of it adds a pip, and a calm zone's pips are worth more; level 3 is hard to reach and, once there, holds itself for a while. At zero the zone is <b>lost</b> until a siege takes it back.</p>
         <p><b>Cal</b> pushes one zone at a time, and his push is harder the better you are doing. Intel missions show where he goes next. Fight his crew where he is pushing to end it.</p>
         <p><b>Research</b> costs money to start and research points to finish. Points can't be banked, and split between the projects running. After 30 upgrade points the city goes to <b>war</b>: each zone then has a story to finish, and the last step locks it down. Lock down every zone to win.</p>
         <p><b>Missions</b> take days, and the pips stand as you set them while the squad is away. They pay research, money or control.</p>
         <p>Finished research goes on sale: weapons in the <b>Armoury</b>, mods in the <b>Clinic</b>. Ammunition is topped up free before every mission; medikits are not.</p>
-        <p>Watchers who die on a mission are gone, with whatever they carried. Hire replacements from the <b>Roster</b>. Weapons a Watcher picks up in the field come home with them.</p>`],
+        <p>Watchers who die on a mission are gone, with whatever they carried. Hire replacements from the <b>Roster</b>. Weapons a Watcher picks up in the field come home with them, researched or not: keep them or sell them in the Armoury.</p>
+        <p>On the command screens: <kbd>1</kbd>–<kbd>4</kbd> the City, the Lab, the Clinic and Casey's Office; <kbd>W</kbd> wait a day (or <b>Until…</b> for longer); arrow keys walk the map from zone to zone; <kbd>Esc</kbd> steps back, and twice from the City leaves for the title.</p>`],
       ["About", this.aboutHTML()],
     ];
   },

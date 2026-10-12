@@ -203,6 +203,7 @@
 .cx .dial-ends{display:flex;justify-content:space-between;font-size:12px;color:var(--t3)}
 .cx .dial-out{display:flex;flex-wrap:wrap;gap:4px 14px;margin:8px 0 0;font-weight:700}
 .cx .dial-out small{color:var(--t3);font-weight:400}
+.cx .dial-out .kept{flex-basis:100%;margin-top:-2px}
 .cx .flags{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13px}
 .cx .flags li{padding:5px 8px;background:var(--face2)}
 .cx .flags li.bad{background:#3a1218;color:#ffd0d3} .cx .flags li.warn{background:#3a2a12;color:#ffe0bc}

@@ -249,7 +249,7 @@ W.Command = class {
         <h3 class="sub">A day</h3>
         <p>Every zone makes pips each day. Its <b>tax</b> dial, in the zone's dossier, sets how many it hands the city; the rest it spends on <b>control</b>. What the city takes is split between <b>research</b> and <b>money</b> by the slider in the top bar. <b>Wait a day</b> (<kbd>W</kbd>) runs it. <b>Until…</b> waits longer, and stops early if a zone falls or Cal moves.</p>
         <h3 class="sub">Control</h3>
-        <p>Control decays every day. A zone's <b>tax</b> is what it hands the city; what it keeps goes on control. <b>HOLD</b> on the dial is the tax that stops the fall. Tax under it to <b>invest</b>, and the zone climbs; over it to <b>milk</b>, and the city takes more while the zone slips. Levels run 0 to 3, and each level adds a pip. At zero the zone is <b>lost</b>, and makes nothing until a siege takes it back.</p>
+        <p>Control decays every day. A zone's <b>tax</b> is what it hands the city; what it keeps goes on control. <b>HOLD</b> on the dial is the tax that stops the fall. Tax under it to <b>invest</b>, and the zone climbs; over it to <b>milk</b>, and the city takes more while the zone slips. Levels run 0 to 3, and each level adds a pip. If control runs out altogether, the zone is <b>lost</b>, and makes nothing until a siege takes it back.</p>
         <h3 class="sub">Cal</h3>
         <p>Cal pushes one zone at a time, harder the better you are doing. A mission against his crew there ends the push. Intel missions and informants show where he goes next.</p>
         <h3 class="sub">Missions</h3>
@@ -358,11 +358,11 @@ W.Command = class {
   }
   fcLine(z, f, net) { return `<b>${this.px(f && !f.steady ? (f.lost || f.to < W.M.level(z.C) ? "▼" : "▲") : "■", "glyph", 2)} ${this.fcText(f)}</b> <span>${net >= 0 ? "+" : ""}${net.toFixed(2)} control a day</span>`; }
   dialHead(z, P, p, hold, y) {
-    const d = P.c - hold, cost = P.c * y * W.M.N.PIP_MONEY;
-    return `${W.money(cost)} a day on control · ${d > 0 ? `investing: ${d} pip${d > 1 ? "s" : ""} more than holds it` : d < 0 ? `milking: ${-d} pip${-d > 1 ? "s" : ""} less than holds it` : "at HOLD: it won't fall"}`;
+    const d = P.c - hold;
+    return d > 0 ? "Under HOLD: control climbs" : d < 0 ? "Over HOLD: the zone slips" : "At HOLD: it won't fall";
   }
-  dialSay(P, p, head) { return `tax ${p - P.c} of ${p}: ${P.c} pip${P.c === 1 ? "" : "s"} kept for control, ${head}`; }
-  dialOut(z, P, y) { return `To the city: <span class="c-m">${W.money(P.m * W.M.moneyYield(z) * W.M.N.PIP_MONEY)}</span> and <span class="c-r">${(P.r * y).toFixed(1)} RP</span> a day`; }
+  dialSay(P, p, head) { return `tax ${p - P.c} of ${p}. ${head}`; }
+  dialOut(z, P, y) { return `To the city: <span class="c-m">${W.money(P.m * W.M.moneyYield(z) * W.M.N.PIP_MONEY)}</span> and <span class="c-r">${(P.r * y).toFixed(1)} RP</span> a day<small class="kept">Kept for control: ${W.money(P.c * y * W.M.N.PIP_MONEY)} a day</small>`; }
 
   // the next move: the mission B briefs, and why it's the one; or what the squad needs when nothing's in reach
   nextHTML() {
@@ -384,7 +384,7 @@ W.Command = class {
       : c.revealed && c.next ? `<p>Cal is resting. <b class="warn">Next: ${W.esc(M.zoneDef(c.next).name)}, in ${c.nextIn} day${c.nextIn === 1 ? "" : "s"}.</b> Bank control there now.</p>`
       : `<p>Cal is resting. Where he goes next is anyone's guess: intel missions, or informants from the Office, would tell you.</p>`;
     const watch = s.zones.filter(z => !z.locked).map(z => ({ z, f: M.forecast(s, z) }))
-      .filter(({ z, f }) => z.lost || (f && (f.lost || (f.to != null && f.to < M.level(z.C)))))
+      .filter(({ z, f }) => z.lost || (f && f.days <= 10 && (f.lost || (f.to != null && f.to < M.level(z.C)))))
       .sort((a, b) => (b.z.lost - a.z.lost) || ((a.f && a.f.days) || 0) - ((b.f && b.f.days) || 0));
     // what he has made of the Watchers (M.noteHabits)
     const A = c.reads && M.CAL_ANSWER[c.reads];
@@ -419,7 +419,7 @@ W.Command = class {
     const shown = new Set(d ? since : [from]);
     const days = logDays.filter(day => !shown.has(day)).slice(0, 8);
     return `<section class="panel dispatch" aria-label="Dispatch">
-      <header>${this.hx("DISPATCH", "sub-t", 2)}<small>${span(from, to)}</small></header>
+      <header>${this.hx("DISPATCH", "sub-t", 2)}<small>${span(from, to)}${to < s.day ? ` · now Day ${s.day}` : ""}</small></header>
       <div class="d-body" data-scroll="dispatch">${body}
       ${days.length ? `<button class="link" data-a="log" data-fk="log" aria-expanded="${this.showLog}">${this.showLog ? "Hide" : "Show"} earlier days</button>` : ""}
       ${this.showLog ? days.map(day => `<h4>Day ${day}</h4><ul class="old">${this.logDay(day).map(l => li(l)).join("")}</ul>`).join("") : ""}</div>
@@ -549,7 +549,7 @@ W.Command = class {
   clinicHTML() {
     const s = this.s, M = W.M, a = M.agentById(s, this.agentId), why = M.canHire(s);
     const roster = `<section class="panel roster" data-scroll="roster">${this.hx("ROSTER", "sub-t", 2)}
-      <p class="hint">${s.roster.length} of ${M.ROSTER_MAX} Watchers. ${M.SQUAD} go out; the rest wait in reserve.</p>
+      <p class="hint">${s.roster.length} of ${M.ROSTER_MAX} Watchers. ${s.roster.length > M.SQUAD ? `${M.SQUAD} go out; the rest wait in reserve.` : s.roster.length === M.SQUAD ? `All ${M.SQUAD} go out.` : `All ${s.roster.length} go out, ${M.SQUAD - s.roster.length} short of a full squad: recruit below.`}</p>
       <ul>${s.roster.map(x => `<li class="${x.id === this.agentId ? "sel" : ""} ${x.deployed ? "on" : ""}">
           <button class="who" data-a="agent" data-id="${x.id}" data-fk="agent-${x.id}" aria-pressed="${x.id === this.agentId}"><canvas width="44" height="44" data-port="${x.id}"></canvas>
             <span><b>${W.esc(x.name)}</b><small>${W.RANK.names[M.rank(x)]} · ${x.missions} mission${x.missions === 1 ? "" : "s"} · ${x.kills} down</small><small>worth ${W.money(M.worth(x))}</small></span>
@@ -955,14 +955,17 @@ W.Command = class {
   }
   wait(mode) {
     const s = this.s, M = W.M, before = this.snap();
-    let rp = 0, wasted0 = s.research.wasted || 0, days = 0;
+    let rp = 0, wasted0 = s.research.wasted || 0, days = 0, stopped = "";
     const runIds = s.research.running.map(p => p.id).join(",");
     for (;;) {
       M.advanceDay(s); days++;
       rp += (s.today && s.today.rp) || 0;
       const lostNow = s.zones.some(z => z.lost && !before.zones[z.id].lost);
       const calNew = s.cal.zone && s.cal.zone !== before.cal;
-      if (mode === 1 || lostNow || calNew || s.war !== before.war || s.won || days >= 30) break;
+      if (mode === 1) break;
+      // what stops a longer wait before its time: said in the dispatch, unless it's what the wait was for
+      const halt = lostNow ? "a zone fell" : calNew ? "Cal moved in" : s.war !== before.war ? "the city is being taken" : s.won ? "the city is won" : days >= 30 ? "thirty days passed" : "";
+      if (halt) { if (!(mode === "cal" && calNew)) stopped = halt; break; }
       if (mode === "research" && s.research.running.map(p => p.id).join(",") !== runIds) break;
       if (mode === "cal" && (s.cal.zone || null) !== (before.cal || null)) break;
       if (mode === "week" && days >= 7) break;
@@ -970,7 +973,9 @@ W.Command = class {
     const after = this.snap(), wasted = (s.research.wasted || 0) - wasted0;
     // the lines: money and research, each zone that changed level, then what the log said, once each
     const lines = [];
-    lines.push({ cls: "good", text: `${W.money(after.cash - before.cash)} into the treasury, ${rp.toFixed(1)} research points${wasted > 0.05 ? ` (${wasted.toFixed(1)} wasted: nothing running)` : ""}.` });
+    if (stopped) lines.push({ cls: "warn", text: `Stopped after ${days} day${days > 1 ? "s" : ""}${mode === "week" ? " of 7" : ""}: ${stopped}.` });
+    lines.push({ cls: "good", text: `${W.money(after.cash - before.cash)} into the treasury, ${rp.toFixed(1)} research points.` });
+    if (wasted > 0.05) lines.push({ cls: "warn", text: `${wasted.toFixed(1)} research points wasted: nothing was running in the Lab.` });
     for (const z of s.zones) {
       const b = before.zones[z.id], D = M.zoneDef(z.id), L = M.level(z.C);
       if (z.lost && !b.lost) continue;      // the log says it

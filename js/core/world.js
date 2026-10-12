@@ -98,7 +98,10 @@ W.World = class {
   ping(x, y, color = "#54f2ff") { this.pings.push({ x, y, color, t: 0, life: 0.6 }); }
 
   /* ---- harm ---- */
-  damage(u, dmg, src) {
+  /* silent: a silenced round. Whoever it kills says nothing; whoever it only
+   * hurts turns on the shooter, but their shout carries no further than
+   * W.SILENT_R from them or the shooter (raiseAlarm). */
+  damage(u, dmg, src, silent = false) {
     if (!u.alive) return;
     if (u.isAgent) dmg *= u.armor;
     u.hp -= dmg;
@@ -108,13 +111,13 @@ W.World = class {
       if (u.kind === "civ" && !u.follower) this.panic(u, src.x, src.y);
       if (u.kind === "sec" && !u.follower) { if (src.faction === "player") W.secCall(this, u, "player"); else if (src.faction === "crew") W.secCall(this, u, "crew"); }
       if (u.faction === "crew") {
-        if (src.faction === "player") { u.broken = false; if (!u.hostile) { u.hostile = true; W.drawBest(u); } u.seen = [src.x, src.y]; this.raiseAlarm(u, src); }
+        if (src.faction === "player" && !(silent && u.hp <= 0)) { u.broken = false; if (!u.hostile) { u.hostile = true; W.drawBest(u); } u.seen = [src.x, src.y]; this.raiseAlarm(u, src, silent); }
         if (src.faction === "sec") u.angryAt.sec = true;
       }
     }
-    if (u.hp <= 0) this.kill(u, src);
+    if (u.hp <= 0) this.kill(u, src, silent);
   }
-  kill(u, src) {
+  kill(u, src, silent = false) {
     u.alive = false; u.hp = 0; u.path = null; u.target = null; u.say = null;
     u.deadSide = Math.random() < 0.5 ? -1 : 1;
     this.selected.delete(u);
@@ -133,7 +136,7 @@ W.World = class {
     else if (u.faction === "crew") this.stats.crew++;
     else if (u.kind === "sec") this.stats.sec++;
     for (const o of this.units) if (o.target === u) o.target = null;
-    this.noise(u.x, u.y, 5, src || u);
+    this.noise(u.x, u.y, silent ? W.SILENT_R : 5, src || u);
   }
   panic(u, fx, fy) {
     if (u.kind !== "civ" || u.follower || !u.alive) return;
@@ -159,8 +162,21 @@ W.World = class {
       for (const c of this.cars) if (!c.parked && !c.train && !c.escape && !c.dead && W.dist(x, y, c.x, c.y) < r) c.panicT = W.rand(6, 10);
     }
   }
-  raiseAlarm(by, seen) {
+  /* quiet: raised by someone hurt by a silenced round. It reaches only those
+   * within W.SILENT_R of them or of the shooter (the mark too, if it's that
+   * close), and if that's nobody it's no alarm at all. */
+  raiseAlarm(by, seen, quiet = false) {
     if (this.attract) return;
+    if (quiet) {
+      const near = u => W.dist(u.x, u.y, by.x, by.y) < W.SILENT_R || (seen && W.dist(u.x, u.y, seen.x, seen.y) < W.SILENT_R);
+      let heard = 0;
+      for (const u of this.units) if (u !== by && u.alive && u.faction === "crew" && !u.follower && near(u)) {
+        u.alert = true; u.seen = seen ? [seen.x, seen.y] : u.seen;
+        if (u.kind === "target") this.markAlarm = true;
+        else if (!u.hostile) { u.hostile = true; W.drawBest(u); heard++; }
+      }
+      if (!heard) return;
+    }
     this.alarmAt = [seen ? seen.x : by.x, seen ? seen.y : by.y];
     // the mark only hears of it from its own people, or from close by: a fight across the district is someone else's
     if (!this.markAt || by.op || by.kind === "target" || W.dist(this.alarmAt[0], this.alarmAt[1], this.markAt[0], this.markAt[1]) < W.ALARM_REACH) this.markAlarm = true;

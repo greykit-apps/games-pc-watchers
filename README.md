@@ -119,6 +119,12 @@ What makes them play:
   people or within 40 tiles. The rest of the district carries on as it was,
   so a fight on the far side of town does not spook the mark, but each
   fight on the way leaves its block awake for the way back.
+- **Silenced guns.** The pistol and the Longwhisker are heard only within 3
+  tiles of the shooter or of where the round lands. Whoever a silenced round
+  kills raises no alarm; one it only wounds turns on the shooter, but their
+  shout reaches no further than those 3 tiles. So a lone lookout can be
+  picked off from range without waking the block; two together, and the
+  second calls it in. (The crew's own pistols are silenced too.)
 - **Cars and people.** Drivers brake for pedestrians, now and then too late:
   a knockdown and some damage. A speeding car (a getaway, or a driver
   panicking away from gunfire) kills whoever it hits, but a Watcher's

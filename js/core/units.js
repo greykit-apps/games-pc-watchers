@@ -359,11 +359,13 @@ W.tryFire = (world, u, tx, ty, victim) => {
     world.tracer(u.x + Math.cos(ang) * 0.3, u.y + Math.sin(ang) * 0.3, mz, ex, ey, ez, def.tracer, def.beam ? 2 : 1, def.beam ? 0.25 : 0.07);
     if (hit) {
       if (hit.isCar) world.damageCar(hit, dmg, u);
-      else world.damage(hit, dmg, u);
+      else world.damage(hit, dmg, u, def.silenced);
     }
     if (def.blast) world.explode(ex, ey, def.blast.r, def.blast.dmg * blastMul, u);
+    // a silenced round is heard where it lands, close by, and nowhere else
+    if (def.silenced) world.noise(ex, ey, W.SILENT_R, u);
   }
-  world.noise(u.x, u.y, 9, u);
+  world.noise(u.x, u.y, def.silenced ? W.SILENT_R : 9, u);
   return true;
 };
 

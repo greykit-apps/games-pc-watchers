@@ -444,7 +444,7 @@
         if (ch) {
           const tw = W.pix.width(ch.text, pk) + 6 * pk, th = 11 * pk, rx = bx + Math.round((bw - tw) / 2), ry = by - th - pk;
           c.fillStyle = ch.up ? "#9be36a" : "#ff4552"; c.fillRect(rx, ry, tw, th);
-          W.pix.draw(c, ch.text, rx + 3 * pk, ry + 2 * pk, { scale: pk, color: ch.up ? "#0d1f06" : "#eef2f8" });
+          W.pix.draw(c, ch.text, rx + 3 * pk, ry + 2 * pk, { scale: pk, color: ch.up ? "#0d1f06" : "#1c0d00" });   // dark ink: white on red reads 3:1
         }
       }
       this.chrome(pk);

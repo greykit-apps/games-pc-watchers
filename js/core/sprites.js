@@ -1574,6 +1574,9 @@ W.drawCar = (c, car, ox, oy) => {
   if (ax) { if (f > 0) { cx0 = x0 + cut * 0.6; cx1 = x1 - cut * 1.6; } else { cx0 = x0 + cut * 1.6; cx1 = x1 - cut * 0.6; } cy0 += 0.08; cy1 -= 0.08; }
   else { if (f > 0) { cy0 = y0 + cut * 0.6; cy1 = y1 - cut * 1.6; } else { cy0 = y0 + cut * 1.6; cy1 = y1 - cut * 0.6; } cx0 += 0.08; cx1 -= 0.08; }
   W.box(c, ox, oy, cx0, cy0, cx1, cy1, 6, 10, W.shade(col, 0.95), "#1d3346", "#122232");
+  // the getaway car: the Watchers' cyan, a strip along the roof, the light low until the job is done
+  if (car.getaway) { const mx = (cx0 + cx1) / 2, my = (cy0 + cy1) / 2, on = car.ready && (Date.now() / 400 | 0) % 2;
+    W.box(c, ox, oy, ax ? cx0 + 0.05 : mx - 0.06, ax ? my - 0.06 : cy0 + 0.05, ax ? cx1 - 0.05 : mx + 0.06, ax ? my + 0.06 : cy1 - 0.05, 10, 11, on ? "#b8fbff" : "#54f2ff", on ? "#54f2ff" : "#2a8a94", "#1c6a74"); }
   if (car.taxi) W.box(c, ox, oy, (cx0 + cx1) / 2 - 0.12, (cy0 + cy1) / 2 - 0.12, (cx0 + cx1) / 2 + 0.12, (cy0 + cy1) / 2 + 0.12, 10, 12, "#ffe08a", "#d9b85a", "#b8973c");
   if (car.police) {
     // the light bar, across the roof: red and blue, taking turns

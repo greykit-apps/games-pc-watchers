@@ -380,10 +380,10 @@ W.Renderer = class {
         if (D.t > 0) { c.strokeStyle = "#7dffb0"; c.lineWidth = 2; c.beginPath(); c.ellipse(Math.round(sx + ox), Math.round(sy + oy), 1.4 * W.HTW, 1.4 * W.HTH, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, D.t / D.need)); c.stroke(); }
       }
     }
-    // the ways out, once the job is done: a pulsing cyan pad
-    if (world.phase === "exfil") for (const p of world.exfilPoints || []) {
-      const [sx, sy] = W.proj(p.x, p.y), k = 0.5 + 0.5 * Math.sin(t * 4);
-      for (const [r, a] of [[1.6, 0.9], [1.1 + 0.4 * k, 0.5]]) {
+    // the ways out: a faint ring round the getaway car from the start, a pulsing cyan pad once the job is done
+    for (const p of W.waysOut(world)) {
+      const [sx, sy] = W.proj(p.x, p.y), k = 0.5 + 0.5 * Math.sin(t * 4), live = world.phase === "exfil";
+      for (const [r, a] of live ? [[W.PICKUP_R, 0.9], [1.4 + 0.6 * k, 0.5]] : [[W.PICKUP_R, 0.3]]) {
         c.strokeStyle = W.rgba("#54f2ff", a); c.lineWidth = 1;
         c.beginPath(); c.ellipse(Math.round(sx + ox), Math.round(sy + oy), r * W.HTW, r * W.HTH, 0, 0, Math.PI * 2); c.stroke();
       }
@@ -641,9 +641,9 @@ W.Renderer = class {
       const [sx, sy] = this.toScreen(world, world.siege.x, world.siege.y, 0);
       o.fillStyle = "#ff5266"; o.fillText(`${world.siege.left} INSIDE`, sx * k, sy * k - 30 * k);
     }
-    if (world.phase === "exfil") for (const p of world.exfilPoints || []) {
+    for (const p of W.waysOut(world)) {
       const [sx, sy] = this.toScreen(world, p.x, p.y, 0);
-      o.fillStyle = "#54f2ff"; o.fillText("EXFIL", sx * k, sy * k - 14);
+      o.fillStyle = world.phase === "exfil" ? "#54f2ff" : "rgba(84,242,255,.55)"; o.fillText(world.phase === "exfil" ? "EXFIL" : "PICKUP", sx * k, sy * k - 14);
     }
     for (const u of world.units) {
       if (!u.alive || u.out) continue;
@@ -786,6 +786,7 @@ W.Renderer = class {
     if (world.stash && !world.stash.dead) { blip(world.stash.x, world.stash.y, blink ? "#7dffb0" : "#2a6a4a", 4); if (!target) target = { x: world.stash.x, y: world.stash.y, mark: true }; }
     if (world.siege && world.siege.left && world.phase !== "exfil" && !target) target = { x: world.siege.x, y: world.siege.y, mark: true };
     if (world.phase === "exfil") for (const p of world.exfilPoints || []) { blip(p.x, p.y, blink ? "#54f2ff" : "#1c6a74", 4); if (!target) target = { x: p.x, y: p.y, exfil: true }; }
+    else for (const p of W.waysOut(world)) blip(p.x, p.y, "#1c6a74", 3);
     // the target off the edge: an arrow on the rim
     if (target && !opts.full) {
       const [px, py] = P(target.x, target.y);

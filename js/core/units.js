@@ -126,7 +126,7 @@ W.hostileTo = (world, a, b) => {
     case "player":
       // a Watcher sent in with E (aggressive) shoots the crew on sight, made or not; plain
       // clothes fool them, unless the scanner has marked the gun or the crew member shows their hand
-      if (b.faction === "crew") return b.hostile || (a.aggressive && !b.broken && (!b.undercover || b.revealed || W.scanArmed(world, b))) || (b.kind === "target" && world.alarm);
+      if (b.faction === "crew") return b.hostile || (a.aggressive && !b.broken && (!b.undercover || b.revealed || W.scanArmed(world, b))) || (b.kind === "target" && world.markAlarm);
       if (b.faction === "sec") return b.angryAt.player;
       return false;
     // (a persuade job's subject, gone over to us, they want back alive: they go for the Watchers instead)
@@ -233,22 +233,34 @@ W.mustWait = (world, u, nx, ny) => {
 /* Bodies push each other apart a little, never into walls. */
 W.separate = (world, dt) => {
   const us = world.units, m = world.map;
+  // only neighbours can touch: bucket everyone by tile, then each looks at the 3x3 round them
+  const grid = new Map(), key = (x, y) => y * 4096 + x;
   for (let i = 0; i < us.length; i++) {
     const a = us[i];
     if (!a.alive || a.inCar) continue;
-    for (let j = i + 1; j < us.length; j++) {
-      const b = us[j];
-      if (!b.alive || b.inCar) continue;
-      const dx = b.x - a.x, dy = b.y - a.y;
-      if (Math.abs(dx) > 0.45 || Math.abs(dy) > 0.45) continue;
-      const d = Math.hypot(dx, dy) || 0.01;
-      if (d >= 0.42) continue;
-      const push = (0.42 - d) * 0.5, ux = dx / d * push, uy = dy / d * push;
-      // the one standing still gives way more
-      const wa = a.moving && !b.moving ? 0.3 : !a.moving && b.moving ? 0.7 : 0.5;
-      const ax = a.x - ux * wa * 2, ay = a.y - uy * wa * 2, bx = b.x + ux * (1 - wa) * 2, by = b.y + uy * (1 - wa) * 2;
-      if (m.walkable(ax, ay)) { a.x = ax; a.y = ay; }
-      if (m.walkable(bx, by)) { b.x = bx; b.y = by; }
+    const k = key(Math.floor(a.x), Math.floor(a.y));
+    const cell = grid.get(k); if (cell) cell.push(i); else grid.set(k, [i]);
+  }
+  for (let i = 0; i < us.length; i++) {
+    const a = us[i];
+    if (!a.alive || a.inCar) continue;
+    const cx = Math.floor(a.x), cy = Math.floor(a.y);
+    for (let gy = cy - 1; gy <= cy + 1; gy++) for (let gx = cx - 1; gx <= cx + 1; gx++) {
+      const cell = grid.get(key(gx, gy)); if (!cell) continue;
+      for (const j of cell) {
+        if (j <= i) continue;
+        const b = us[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        if (Math.abs(dx) > 0.45 || Math.abs(dy) > 0.45) continue;
+        const d = Math.hypot(dx, dy) || 0.01;
+        if (d >= 0.42) continue;
+        const push = (0.42 - d) * 0.5, ux = dx / d * push, uy = dy / d * push;
+        // the one standing still gives way more
+        const wa = a.moving && !b.moving ? 0.3 : !a.moving && b.moving ? 0.7 : 0.5;
+        const ax = a.x - ux * wa * 2, ay = a.y - uy * wa * 2, bx = b.x + ux * (1 - wa) * 2, by = b.y + uy * (1 - wa) * 2;
+        if (m.walkable(ax, ay)) { a.x = ax; a.y = ay; }
+        if (m.walkable(bx, by)) { b.x = bx; b.y = by; }
+      }
     }
   }
 };
@@ -515,7 +527,7 @@ W.thinkFollower = (world, u) => {
 /* A persuade job's subject: they keep to their spot until the alarm goes up
  * (or someone hurts them), then run for the way out. Making it ends the job. */
 W.thinkSubject = (world, u) => {
-  if (world.alarm || u.hp < u.maxHp) {
+  if (world.markAlarm || u.hp < u.maxHp) {
     u.state = "flee";
     if (!u.fled) { u.fled = true; W.say(u, "I'm out of here!", "#7dffb0", 2.2); world.msg(`${u.name} is running!`, "#ffb000"); }
     const ex = world.escapePoint;
@@ -636,11 +648,11 @@ W.thinkCrew = (world, u) => {
   if (!u.hostile) {
     // who can they see? An armed Watcher at range, at once. Someone of ours with
     // empty hands up close only makes them wonder: linger about two seconds and
-    // they work it out. With the alarm up, they know anyone on sight.
+    // they work it out. Once an alarm near them has gone up, they know anyone on sight.
     let close = false;
     for (const o of world.units) {
       if (!o.alive || o.faction !== "player" || o.inCar) continue;
-      const loud = world.alarm || W.armed(o), r = world.alarm ? u.sight + 2 : W.armed(o) ? u.sight : 3.2;
+      const loud = u.alert || W.armed(o), r = u.alert ? u.sight + 2 : W.armed(o) ? u.sight : 3.2;
       if (!W.canSee(world, u, o, r)) continue;
       if (!loud) { close = true; if ((u.sus || 0) < W.SUSPICION) continue; }
       u.hostile = true; W.drawBest(u);
@@ -654,6 +666,17 @@ W.thinkCrew = (world, u) => {
       if (close && was === 0) W.say(u, W.pick(["Hey. Who are you?", "You lost?", "Don't I know you?"]), "#ffb000", 1.6);
     }
     if (!u.hostile) {
+      // one of a crew walking the streets together: keep up with whoever leads
+      if (u.pack) {
+        const P = u.pack;
+        if (P.alive && !P.hostile && !P.broken) {
+          const tx = P.x + u.packAt[0], ty = P.y + u.packAt[1];
+          if (W.dist(u.x, u.y, tx, ty) > 1.4 && (!u.path || u.chaseT <= 0)) { const q = world.map.nearestWalkable(tx, ty, 2); if (q) W.goTo(world, u, q[0], q[1]); u.chaseT = 0.9; }
+          else if (!u.path) u.dir = P.dir;
+          return;
+        }
+        u.pack = null;
+      }
       if (u.patrol && !u.path && u.stateT <= 0) {
         u.patrolI = ((u.patrolI ?? -1) + 1) % u.patrol.length;
         W.goTo(world, u, u.patrol[u.patrolI][0], u.patrol[u.patrolI][1]);
@@ -682,7 +705,7 @@ W.thinkCrew = (world, u) => {
     return;
   }
   // hunt: the last place they saw one of us, or where the alarm came from
-  const spot = u.seen || world.alarmAt;
+  const spot = u.seen || (world.alarmAt && W.dist(u.x, u.y, world.alarmAt[0], world.alarmAt[1]) < W.ALERT_R ? world.alarmAt : null);
   if (spot && (!u.path || u.chaseT <= 0) && W.dist(u.x, u.y, spot[0], spot[1]) > 1.5) {
     W.goTo(world, u, spot[0] + W.rand(-1.5, 1.5), spot[1] + W.rand(-1.5, 1.5)); u.chaseT = 2.5;
   } else if (spot && W.dist(u.x, u.y, spot[0], spot[1]) <= 1.5) { u.seen = null; }
@@ -710,8 +733,8 @@ W.thinkUnarmed = (world, u) => {
   let it = null, id = 8;
   for (const i of world.items) { if (!W.WEAPONS[i.type].gun) continue; const d = W.dist(u.x, u.y, i.x, i.y); if (d < id) { id = d; it = i; } }
   if (it) { if (!u.path || u.chaseT <= 0) { W.goTo(world, u, it.x, it.y); u.chaseT = 1; } return; }
-  // help: the nearest armed friend
-  let pal = null, pd = Infinity;
+  // help: the nearest armed friend, if there is one near enough to run to
+  let pal = null, pd = W.ALERT_R;
   for (const b of world.units) {
     if (!b.alive || b.inCar || b.follower || b.faction !== "crew" || b === u || !W.hasGun(b)) continue;
     const d = W.dist(u.x, u.y, b.x, b.y);
@@ -793,7 +816,7 @@ W.thinkTarget = (world, u) => {
     }
     return;
   }
-  if (world.alarm || u.hp < u.maxHp) {
+  if (world.markAlarm || u.hp < u.maxHp) {
     u.state = "alerted"; u.hostile = true; u.stateT = u.hp < u.maxHp ? 0.6 : 2.2;
     W.say(u, "What was that?", "#ffb000", 1.8);
     return;

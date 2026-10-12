@@ -5,8 +5,17 @@
 
 /* when the target dies, the share of the hostile crew that breaks and runs, by threat */
 W.BREAK = { 1: 0.85, 2: 0.75, 3: 0.6, 4: 0.35, 5: 0.15 };
-/* how deep the strip along the map's edge is that a Watcher can leave by */
-W.EDGE = 3;
+/* how far an alarm reaches: the crew this close turn on the squad at once; this
+ * close, they know a Watcher on sight from then on; and this close to the mark
+ * (the target, the subject), it reaches them too. Nobody further off hears it. */
+W.HOSTILE_R = 20;
+W.ALERT_R = 32;
+W.ALARM_REACH = 40;
+/* how close to the pickup a Watcher has to come to be out */
+W.PICKUP_R = 2.4;
+/* where the squad gets out: the live ways out once the job is done, and
+ * before that the pickup alone, so the way home can be planned */
+W.waysOut = world => world.phase === "exfil" ? (world.exfilPoints || []) : world.pickupAt ? [{ x: world.pickupAt[0], y: world.pickupAt[1] }] : [];
 /* a train's carriages, nose to nose */
 W.CARRIAGE = 4.1;
 /* over this, a car that hits someone kills them (town traffic tops out at 4.6) */
@@ -51,7 +60,7 @@ W.World = class {
     this.msgs = [];
     this.time = 0; this.cam = { x: 0, y: 0 };
     this.selected = new Set();
-    this.alarm = false; this.alarmAt = null;
+    this.alarm = false; this.alarmAt = null; this.markAlarm = false;
     this.status = "play"; this.endT = 0; this.endReason = "";
     // civ: civilians the fight killed, which count against the squad; civAcc: accidents, which do not
     this.stats = { shots: 0, crew: 0, sec: 0, civ: 0, civAcc: 0, lost: 0, recruited: 0, time: 0 };
@@ -149,13 +158,23 @@ W.World = class {
   raiseAlarm(by, seen) {
     if (this.attract) return;
     this.alarmAt = [seen ? seen.x : by.x, seen ? seen.y : by.y];
-    if (this.alarm) return;
-    this.alarm = true;
-    this.msg(`${this.names.crew} has made you. They're on the radio.`, "#ff5266");
-    W.audio.play("alarm", 0.8);
-    for (const u of this.units) if (u.alive && u.faction === "crew" && !u.follower && W.dist(u.x, u.y, this.alarmAt[0], this.alarmAt[1]) < 20) {
-      if (!u.hostile && u.kind !== "target") { u.hostile = true; W.drawBest(u); }
+    // the mark only hears of it from its own people, or from close by: a fight across the district is someone else's
+    if (!this.markAt || by.op || by.kind === "target" || W.dist(this.alarmAt[0], this.alarmAt[1], this.markAt[0], this.markAt[1]) < W.ALARM_REACH) this.markAlarm = true;
+    // an alarm is local: those close by turn on the squad at once, those a little further out
+    // know a Watcher on sight from now on, and the rest of the district carries on as it was
+    const [ax, ay] = this.alarmAt;
+    for (const u of this.units) if (u.alive && u.faction === "crew" && !u.follower) {
+      const d = W.dist(u.x, u.y, ax, ay);
+      if (d < W.ALERT_R) u.alert = true;
+      if (d < W.HOSTILE_R && !u.hostile && u.kind !== "target") { u.hostile = true; W.drawBest(u); }
     }
+    // a new alarm, away from any before it, gets its own word on the radio
+    const spots = this.alarmSpots || (this.alarmSpots = []);
+    if (spots.some(p => W.dist(p[0], p[1], ax, ay) < W.ALERT_R)) return;
+    spots.push([ax, ay]);
+    this.msg(spots.length === 1 ? `${this.names.crew} has made you. They're on the radio.` : `${this.names.crew}: more of them have made you.`, "#ff5266");
+    W.audio.play("alarm", 0.8);
+    this.alarm = true;
   }
   explode(x, y, r, dmg, src) {
     this.booms.push({ x, y, t: 0, life: 0.6 });
@@ -245,6 +264,7 @@ W.World = class {
   }
   damageCar(car, dmg, src) {
     if (car.dead) return;
+    if (car.getaway) { this.spark(car.x, car.y, 4, "#ffd27a", 2); return; }   // armoured: it waits for the squad
     car.hp -= dmg;
     this.spark(car.x, car.y, 6, "#ffd27a", 2);
     if (src && src.faction === "player") this.noise(car.x, car.y, 6, src);
@@ -478,8 +498,10 @@ W.World = class {
 
   /* ---- the mission ----
    * The job done (the target dead), the squad still has to get out: to the
-   * pickup at the drop point (or a PumaCity facility, where a district marks
-   * one), or off any edge of the map. Until then it can pick over the dead.
+   * getaway car at the pickup, near the map's edge, picked with the mission
+   * (the drop point, on a map without one), or a PumaCity facility where a
+   * district marks one. Walking off the map anywhere else does not count.
+   * Until then it can pick over the dead.
    * Won when every Watcher still alive is out; lost if none of them make it. */
   objective(o) { o.state = "active"; this.objectives.push(o); return o; }
   startExfil(why, task) {
@@ -494,34 +516,25 @@ W.World = class {
     }
     if (broke) this.msg(`${this.names.crew}: ${broke > 3 ? "they're running" : "some of them are running"}.`, "#94a0c4");
     const m = this.map, pts = [];
-    const drop = this.dropAt || this.startAt;
-    if (drop) pts.push({ x: drop[0], y: drop[1], name: "the pickup" });
+    const pick = this.pickupAt || this.dropAt || this.startAt;
+    if (pick) pts.push({ x: pick[0], y: pick[1], name: "the pickup" });
     for (const f of (m.points && m.points.facility) || []) pts.push({ x: f.x, y: f.y, name: f.name || "a PumaCity facility" });
+    for (const c of this.cars) if (c.getaway) c.ready = true;
     this.exfilPoints = pts.map(p => { const q = m.nearestWalkable(p.x, p.y, 4) || [p.x, p.y]; return { x: q[0], y: q[1], name: p.name }; });
     this.stats.out = 0;
-    this.objective({ type: "exfil", text: task || "Get out: to the pickup at the drop point, or off any edge of the map" });
-    this.msg(`${why} ${task ? task + "." : "Get out: the pickup at the drop point, or off any edge of the map. Take what the dead dropped."}`, "#4ade6a");
+    this.objective({ type: "exfil", text: task || `Get out: to ${this.pickupText}` });
+    this.msg(`${why} ${task ? task + "." : `Get out: to ${this.pickupText}. Take what the dead dropped.`}`, "#4ade6a");
     W.audio.play("order");
   }
+  /* where the squad is told to go once the job is done */
+  get pickupText() { return this.pickupName ? `the pickup at ${this.pickupName}` : "the pickup at the drop point"; }
   /* is (x, y) somewhere a Watcher can leave from? */
   atExit(x, y) {
-    const m = this.map;
-    if (x < W.EDGE || y < W.EDGE || x > m.w - W.EDGE || y > m.h - W.EDGE) return true;
-    return (this.exfilPoints || []).some(p => W.dist(x, y, p.x, p.y) < 1.6);
+    return (this.exfilPoints || []).some(p => W.dist(x, y, p.x, p.y) < W.PICKUP_R);
   }
-  /* the nearest way out for u that a path reaches: a pickup, or the nearest point of each map edge */
+  /* the nearest way out for u that a path reaches */
   exitFor(u) {
-    const m = this.map, c = (this.exfilPoints || []).map(p => [p.x, p.y]);
-    // each edge: the walkable spot in its band nearest to straight across from u
-    const band = (side) => {
-      for (let k = 0; k < Math.max(m.w, m.h); k++) for (const sg of [1, -1]) for (let dpt = 0.5; dpt < W.EDGE; dpt += 1) {
-        const along = (side < 2 ? u.y : u.x) + sg * k;
-        const x = side === 0 ? dpt : side === 1 ? m.w - dpt : along, y = side === 0 || side === 1 ? along : side === 2 ? dpt : m.h - dpt;
-        if (m.walkable(x, y)) return [x, y];
-      }
-      return null;
-    };
-    for (let side = 0; side < 4; side++) { const q = band(side); if (q) c.push(q); }
+    const c = (this.exfilPoints || []).map(p => [p.x, p.y]), m = this.map;
     c.sort((a, b) => W.dist(u.x, u.y, a[0], a[1]) - W.dist(u.x, u.y, b[0], b[1]));
     for (const p of c) { const path = m.path(u.x, u.y, p[0], p[1]); if (path) return p; }
     return null;
@@ -574,7 +587,7 @@ W.World = class {
       if (this.subjectGone) { this.end("lost", `${S.name} got away.`); return; }
       if (S.follower) {
         for (const o of this.objectives) if (o.type === "persuade" && o.state === "active") { o.state = "done"; this.msg(`Objective complete: ${o.text}.`, "#4ade6a"); }
-        this.startExfil(`${S.name} is with you.`, `Walk ${S.name} out: to the pickup at the drop point, or off any edge of the map`);
+        this.startExfil(`${S.name} is with you.`, `Walk ${S.name} out: to ${this.pickupText}`);
         return;
       }
     }
@@ -619,14 +632,14 @@ W.World = class {
           D.done = true; W.giveWeapon(at, "goods");
           for (const o of this.objectives) if (o.type === "job" && o.state === "active") { o.state = "done"; this.msg(`Objective complete: ${o.text}.`, "#4ade6a"); }
           W.audio.play("order");
-          this.startExfil(`${at.name} has the goods.`, "Get the goods out: to the pickup at the drop point, or off any edge of the map");
+          this.startExfil(`${at.name} has the goods.`, `Get the goods out: to ${this.pickupText}`);
           return;
         }
         if (D.t >= D.need) {
           D.done = true; this.carrier = at; at.carries = "data";
           for (const o of this.objectives) if (o.type === "intel" && o.state === "active") { o.state = "done"; this.msg(`Objective complete: ${o.text}.`, "#4ade6a"); }
           W.audio.play("order");
-          this.startExfil(`${at.name} has the data.`, `Get the data out with ${at.name}: to the pickup at the drop point, or off any edge of the map`);
+          this.startExfil(`${at.name} has the data.`, `Get the data out with ${at.name}: to ${this.pickupText}`);
           return;
         }
       }

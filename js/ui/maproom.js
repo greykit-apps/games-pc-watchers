@@ -50,7 +50,7 @@ W.MapRoom = class {
         </nav>
         <section class="mr-map">
           <canvas data-map width="560" height="560"></canvas>
-          <div class="legend"><span><i style="background:#54f2ff"></i>squad drops in</span><span><i style="background:#ffb000"></i>target</span><span><i style="background:#ff5266"></i>target runs for</span><span>faint dots: every other spot</span></div>
+          <div class="legend"><span><i style="background:#54f2ff"></i>squad drops in</span><span><i style="background:#ffb000"></i>target</span><span><i style="background:#ff5266"></i>target runs for</span><span><i style="border:2px solid #7dffb0;box-sizing:border-box"></i>getaway car</span><span>faint dots: every other spot</span></div>
         </section>
         <aside class="mr-info">
           <h2>${W.esc(d.name)}</h2>
@@ -67,7 +67,8 @@ W.MapRoom = class {
             <tr><td>Target</td><td>${W.esc(L.names.target)}, at ${W.esc(L.picks.target.name)}</td></tr>
             <tr><td>Drop</td><td>${W.esc(L.picks.spawn.name)}</td></tr>
             <tr><td>Escape</td><td>${L.picks.exit ? W.esc(L.picks.exit.name) : "nowhere to run"}</td></tr>
-            <tr><td>Distance</td><td>${Math.round(W.dist(L.picks.spawn.x, L.picks.spawn.y, L.picks.target.x, L.picks.target.y))} tiles to the target</td></tr>
+            <tr><td>Pickup</td><td>${W.esc(L.picks.pickup.name)}</td></tr>
+            <tr><td>Distance</td><td>${Math.round(W.dist(L.picks.spawn.x, L.picks.spawn.y, L.picks.target.x, L.picks.target.y))} tiles to the target, ${Math.round(W.dist(L.picks.target.x, L.picks.target.y, L.picks.pickup.x, L.picks.pickup.y))} back out</td></tr>
           </table>` : `<p class="note">No mission can be made here.</p>`}
           <div class="col">
             <button class="primary" data-a="play" ${L ? "" : "disabled"}><kbd>Enter</kbd>Brief &amp; play</button>
@@ -92,12 +93,14 @@ W.MapRoom = class {
     for (const p of full.points.target) dot(p, this.landmark && W.areaOf(d.id, p) === this.landmark ? "rgba(255,176,0,.8)" : "rgba(255,176,0,.3)", 2);
     for (const p of full.points.exit) dot(p, "rgba(255,82,102,.35)", 2);
     if (!L) return;
-    const { spawn, target, exit } = L.picks;
-    const [sx, sy] = P(spawn.x, spawn.y), [tx, ty] = P(target.x, target.y);
+    const { spawn, target, exit, pickup } = L.picks;
+    const [sx, sy] = P(spawn.x, spawn.y), [tx, ty] = P(target.x, target.y), [qx, qy] = P(pickup.x, pickup.y);
     c.strokeStyle = "rgba(84,242,255,.5)"; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(sx, sy); c.lineTo(tx, ty); c.stroke();
+    c.strokeStyle = "rgba(125,255,176,.5)"; c.beginPath(); c.moveTo(tx, ty); c.lineTo(qx, qy); c.stroke();
     if (exit) { const [ex, ey] = P(exit.x, exit.y); c.strokeStyle = "rgba(255,82,102,.5)"; c.beginPath(); c.moveTo(tx, ty); c.lineTo(ex, ey); c.stroke(); }
     c.setLineDash([]);
     dot(spawn, "#54f2ff", 5);
+    c.strokeStyle = "#7dffb0"; c.lineWidth = 2.5; c.strokeRect(qx - 5, qy - 5, 10, 10); c.lineWidth = 1;
     c.fillStyle = "#ffb000"; c.beginPath(); c.moveTo(tx, ty - 7); c.lineTo(tx + 7, ty); c.lineTo(tx, ty + 7); c.lineTo(tx - 7, ty); c.closePath(); c.fill();
     if (exit) { const [ex, ey] = P(exit.x, exit.y); c.strokeStyle = "#ff5266"; c.lineWidth = 2.5; c.beginPath(); c.moveTo(ex - 5, ey - 5); c.lineTo(ex + 5, ey + 5); c.moveTo(ex + 5, ey - 5); c.lineTo(ex - 5, ey + 5); c.stroke(); }
   }

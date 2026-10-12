@@ -52,9 +52,12 @@ Each district of PumaCity is **one map**, far bigger than any one mission
 needs, and every mission is played on all of it: the squad can walk from
 the market to the cathedral to the station if it wants to. What a mission
 chooses is where things are: a target spot (in a named landmark, or
-anywhere), a drop point 24 to 60 tiles away, and the way out the target
-runs for, away from the squad. A seed picks all three, so one map gives a
-great many missions.
+anywhere), a drop point a long walk from it (a third to three quarters of
+the district's width), the way out the target runs for, away from the
+squad, and the **pickup**: a getaway car parked on the sidewalk or a verge
+near a road leaving the district, far from the target and, where it can be,
+from the drop point too, so the way out is a second long walk. A seed picks
+them all, so one map gives a great many missions.
 
 | District | Size | Landmarks |
 |---|---|---|
@@ -85,13 +88,26 @@ What makes them play:
   parks have a loop road, aisles and gates; every driveway runs through the
   sidewalk to a road.
 - **Encounters.** The district goes on without you. Each mission puts
-  something at a handful of its places of interest (inside buildings, open
-  spaces, big back alleys, two-way streets): a gang drinking in a bar or a
-  club, a deal going down, the police round a body in the road with their
-  cars across both lanes (traffic turns round), a patrol, a crowd. A few of
-  the crew walk the streets among everyone else. The hostile ones scale with
-  the threat, none are near the drop point, and nobody has to die: going
-  round is often the answer.
+  something at its places of interest (inside buildings, open spaces, big
+  back alleys, two-way streets): a gang drinking in a bar or a club, a deal
+  going down, a mugging, lookouts on a corner, a pack of the crew walking
+  the streets together, the crew's car across a street with them round it,
+  the police round a body in the road or stopping a street at a checkpoint
+  (their cars across both lanes; traffic turns round), a patrol, a rally
+  with the police watching, a crowd. Crew also walk the streets alone,
+  among everyone else. How much is going on follows the district's size and
+  the threat (about 14 places on Downtown at threat 1, 30 at threat 5), and
+  so does the hostile share of it; the police turn out in force only at the
+  higher threats. More than half of it lies across the ways from the drop
+  point to the mark and from the mark to the getaway car, so the way out
+  runs through it; none of it is on top of the drop point, the mark or the
+  car. Nobody has to die: going round is often the answer.
+- **Alarms are local.** Crew within 20 tiles of where an alarm goes up turn
+  on the squad; within 32 they know a Watcher on sight from then on; the
+  target, or a persuade job's subject, hears of it only from their own
+  people or within 40 tiles. The rest of the district carries on as it was,
+  so a fight on the far side of town does not spook the mark, but each
+  fight on the way leaves its block awake for the way back.
 - **Cars and people.** Drivers brake for pedestrians, now and then too late:
   a knockdown and some damage. A speeding car (a getaway, or a driver
   panicking away from gunfire) kills whoever it hits. Walking into a car's
@@ -159,23 +175,24 @@ the map.
 - Bonuses: recruit 5 followers, and lose no more than 4 civilians. The
   debrief grades the run from S to D.
 - **Then get out.** With the target dead the job is not over: every Watcher
-  still standing has to reach the pickup at the drop point, or walk off any
-  edge of the map. Some of the crew lose heart and run when their boss goes
-  down (most of a small outfit, few of an army); the rest keep coming. On the
-  way out, pick over the dead: they drop every gun they had, and sometimes a
-  medikit, and a Watcher carries up to eight things home, guns you have not
-  researched included. Lost if nobody makes it out.
+  still standing has to reach the pickup (the getaway car, marked from the
+  start, and the only way out). Some of the crew lose heart and run when
+  their boss goes down (most of a small outfit, few of an army); the rest
+  keep coming. On the way out, pick over the dead: they drop every gun they
+  had, and sometimes a medikit, and a Watcher carries up to eight things
+  home, guns you have not researched included. Lost if nobody makes it out.
 
 ### The jobs
 
 The campaign says what kind of job it is (`L.mission.kind`), and the
 briefing, the opening radio and the title card follow it. Every job ends the
-same way: get out, to the pickup at the drop point or off any edge of the map.
+same way: get out, to the getaway car at the pickup. Walking off the map
+anywhere else does not count.
 
 | Job | At the mark | Done when | Lost when |
 |---|---|---|---|
 | **Assassination** | the target, with bodyguards | the target dies | the target gets away |
-| **Persuade** (quiet) | someone to talk round, minders watching from further out | they are walked out | they die, or run off once the alarm is up |
+| **Persuade** (quiet) | someone to talk round, minders watching from further out | they are walked out | they die, or run off once an alarm near them is up |
 | **Intel** (quiet) | a terminal: stand at it 6 seconds | the data's carrier is out | the carrier dies |
 | **Job** | a safe: stand at it 3 seconds | the goods are out | nobody gets them out (a fallen carrier drops them) |
 | **Crackdown** (and a hit on Cal's crew) | the operation's stash, among its crew | the stash is burned and most of the crew are down or run off | the squad is wiped out |
@@ -183,8 +200,8 @@ same way: get out, to the pickup at the drop point or off any edge of the map.
 | **Story** | step 1 a hit, step 2 a persuade, step 3 a siege | as those | as those |
 
 An empty-handed Watcher close to the crew is only suspicious at first ("Hey.
-Who are you?"); linger about two seconds and they work it out. A gun, or the
-alarm, gives you away at once. The following the squad can hold is set by
+Who are you?"); linger about two seconds and they work it out. A gun, or an
+alarm near them, gives you away at once. The following the squad can hold is set by
 its best Purrsuader (6, 10 or 16); a persuade job's subject never counts.
 
 ### Controls

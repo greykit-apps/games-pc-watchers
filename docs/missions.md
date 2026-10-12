@@ -68,6 +68,11 @@ the target spooked) and should cost something in the result.
 | **Siege** | the enemy dug in, in a building, behind cover; the BanHammer's job | every defender down | the squad is wiped out |
 | **Story** | the zone's chain: find a lieutenant (step 1), turn their network (step 2, quiet), lock it down (step 3, a siege-like assault) | per step | per step |
 
+"The exit" is the same for every kind: the getaway car at the pickup, one
+spot near the district's edge picked with the mission, far from the mark.
+Nowhere else counts. The threat also sets how busy the district is on the
+way there and back (`W.ENCOUNTER_DENSITY` in `js/districts/encounters.js`).
+
 A kill target (assassination, Cal's lieutenants, a story step's mark) can
 never be persuaded, at any Purrsuader mark: Casey wants them dead. The one a
 persuade mission walks out is not a kill target, and should be its own kind

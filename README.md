@@ -91,7 +91,8 @@ What makes them play:
   something at its places of interest (inside buildings, open spaces, big
   back alleys, two-way streets): a gang drinking in a bar or a club, a deal
   going down, a mugging, lookouts on a corner, a pack of the crew walking
-  the streets together, the crew's car across a street with them round it,
+  the streets together, a mob of the crew's lowest (a dozen or more, few of
+  them armed, moving as one), the crew's car across a street with them round it,
   the police round a body in the road or stopping a street at a checkpoint
   (their cars across both lanes; traffic turns round), a patrol, a rally
   with the police watching, a crowd. Crew also walk the streets alone,
@@ -195,9 +196,21 @@ anywhere else does not count.
 | **Persuade** (quiet) | someone to talk round, minders watching from further out | they are walked out | they die, or run off once an alarm near them is up |
 | **Intel** (quiet) | a terminal: stand at it 6 seconds | the data's carrier is out | the carrier dies |
 | **Job** | a safe: stand at it 3 seconds | the goods are out | nobody gets them out (a fallen carrier drops them) |
+| **Sweep** | the crew's hangout and four pieces of trouble round it | at least one is broken up and the squad is out (each one more pays) | nobody gets out |
 | **Crackdown** (and a hit on Cal's crew) | the operation's stash, among its crew | the stash is burned and most of the crew are down or run off | the squad is wiped out |
 | **Siege** | the crew dug in, in the building nearest the mark, holding their posts | every defender is down | the squad is wiped out |
 | **Story** | step 1 a hit, step 2 a persuade, step 3 a siege | as those | as those |
+
+**Side jobs.** Every job also marks two or three pieces of trouble on the
+ways in and out (BONUS on the map, amber on the scanner): break one up
+before leaving (everyone in it down, run off or talked round) and it pays
+money and a little control on top, even if the job itself went wrong, as
+long as somebody gets out.
+
+**The enemy's level** is the threat less one, matched to the Watchers' own:
+at threat 1 a third of them carry an MK1 pistol; by threat 5 they carry MK3
+rifles, miniguns and lasers and take 70% more killing, and there are five
+times as many. What they carry is what they drop (see `docs/missions.md`).
 
 An empty-handed Watcher close to the crew is only suspicious at first ("Hey.
 Who are you?"); linger about two seconds and they work it out. A gun, or an
@@ -247,6 +260,7 @@ js/ui/command.js      Watchers command: the board, missions, research, squad, ev
 js/ui/maproom.js      the Map Room: districts, sections, missions, fly-overs
 js/main.js            screens, input, loop
 tools/sim.js          headless bot runs of the mission
+tools/bench.js        the tactics bench: a mission by level, threat and tactic
 tools/campaign.js     a bot plays the campaign headless; checks its invariants
 tools/metasim.js      the meta-game's numbers, run and tuned headless
 tools/maps.js         every district: points walkable and connected
@@ -285,6 +299,8 @@ node tools/sim.js 2 --attract  # the title screen's backdrop sim
 node tools/campaign.js 100     # a bot plays 100 missions (outcomes rolled); --fight plays them out
 node tools/maps.js             # every district and section is sound
 node tools/sim.js 6 --quiet --district=downtown   # generated missions
+node tools/bench.js --kind=sweep --threat=2 --level=1 --tactic=stealth   # one cell of the tactics bench
+node tools/bench.js --grid --kinds=assassinate --jobs=4   # every level, threat and tactic, in parallel
 ```
 
 The sim fails on a crash, a NaN position, a unit standing inside a wall, or a

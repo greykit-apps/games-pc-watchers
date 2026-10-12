@@ -168,7 +168,7 @@ W.afterDrive = (world, car) => {
       car.route = null;
     }
   }
-  // the edge of the map: no further (off it is the way out, in an exfil)
+  // the edge of the map: no further
   const s2 = car.axis === "x" ? car.x : car.y, [lo, hi] = W.laneEnds(world.map, car.lane);
   if (s2 < lo || s2 > hi) { const c = W.clamp(s2, lo, hi); if (car.axis === "x") car.x = c; else car.y = c; car.speed = 0; car.route = null; }
   car.riders = car.riders.filter(r => r.alive && !r.out && r.car === car);

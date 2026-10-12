@@ -483,6 +483,8 @@ W.nearestFoe = (world, a, range) => {
     const d = W.dist(a.x, a.y, b.x, b.y);
     if (d < bd && d <= range && world.map.los(a.x, a.y, b.x, b.y)) { bd = d; best = b; }
   }
+  // nobody on foot: a car they saw the squad get into
+  if (!best && a.faction !== "player" && W.knownCar) best = W.knownCar(world, a, range);
   return best;
 };
 
@@ -507,6 +509,8 @@ W.engage = (world, u, foe, chase = true) => {
 };
 
 W.thinkAgent = (world, u) => {
+  // on the way to a car, to get in
+  if (u.board && W.boardThink(world, u)) return;
   const def = W.curDef(u);
   // medikit: use it now, then put the gun back
   if (def && def.heal) {
@@ -676,7 +680,7 @@ W.thinkSec = (world, u) => {
   // a Watcher with a gun out, in plain view: a warning, then trouble
   let armed = null;
   for (const o of world.units) {
-    if (o.alive && o.faction === "player" && W.armed(o) && W.canSee(world, u, o, 8)) { armed = o; break; }
+    if (o.alive && o.faction === "player" && !o.inCar && W.armed(o) && W.canSee(world, u, o, 8)) { armed = o; break; }
   }
   if (armed) {
     u.dir = Math.atan2(armed.y - u.y, armed.x - u.x);

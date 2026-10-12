@@ -509,7 +509,7 @@ W.Renderer = class {
         j++;
         if (b.kind === "unit") {
           const u = b.u;
-          if (u.out || !vis(u.x, u.y)) continue;
+          if (u.out || u.car || !vis(u.x, u.y)) continue;
           const [px, py] = W.proj(u.x, u.y, u.z || 0);
           if ((u.z || 0) > 3 && u.alive && (world.selected.has(u) || u.isAgent || u.kind === "target")) {
             c.strokeStyle = world.selected.has(u) ? "#54f2ff" : u.kind === "target" ? W.MARK_STYLE.target.color : "rgba(84,242,255,.35)"; c.lineWidth = 1;
@@ -608,7 +608,7 @@ W.Renderer = class {
    * buildings ease in and out rather than pop. */
   occluders(world) {
     const m = world.map, now = new Map();
-    const who = world.units.filter(u => u.alive && !u.inCar && (u.isAgent || u.kind === "target" || (u.follower && world.selected.size)));
+    const who = world.units.filter(u => u.alive && (!u.inCar || u.car) && (u.isAgent || u.kind === "target" || (u.follower && world.selected.size)));
     const fadeOf = (key, hit) => {
       const prev = this.fadeState?.get(key) ?? 1;
       const next = hit ? Math.max(0.28, prev - 0.08) : Math.min(1, prev + 0.08);
@@ -677,17 +677,20 @@ W.Renderer = class {
     for (const u of world.units) {
       if (!u.alive || u.out) continue;
       const [sx, sy] = this.toScreen(world, u.x, u.y, u.z || 0);
-      const X = sx * k, Y = sy * k;
+      const X = sx * k, Y = sy * k, Xu = X;
       if (X < -100 || X > this.cssW + 100 || Y < -60 || Y > this.cssH + 80) continue;
       if (u.isAgent) {
+        // in a car: their numbers side by side over it, and a warning when the car is known
+        const R = u.car && u.car.riders.slice().sort((p, q) => p.slot - q.slot), X = R ? Xu + (R.indexOf(u) - (R.length - 1) / 2) * 12 : Xu, top = R ? 20 : 27;
         const sel = world.selected.has(u);
         o.fillStyle = sel ? "#54f2ff" : "rgba(84,242,255,.55)";
-        o.fillText(String(u.slot + 1), X, Y - 27 * k);
+        o.fillText(String(u.slot + 1), X, Y - top * k);
         // a hairline health bar under the number when hurt
         if (u.hp < u.maxHp) {
-          o.fillStyle = "rgba(5,7,15,.8)"; o.fillRect(X - 10, Y - 26 * k, 20, 3);
-          o.fillStyle = u.hp / u.maxHp > 0.4 ? "#4ade6a" : "#ff5266"; o.fillRect(X - 10, Y - 26 * k, 20 * u.hp / u.maxHp, 3);
+          o.fillStyle = "rgba(5,7,15,.8)"; o.fillRect(X - 10, Y - (top - 1) * k, 20, 3);
+          o.fillStyle = u.hp / u.maxHp > 0.4 ? "#4ade6a" : "#ff5266"; o.fillRect(X - 10, Y - (top - 1) * k, 20 * u.hp / u.maxHp, 3);
         }
+        if (R && R[0] === u && u.car.spotted) { o.fillStyle = Math.sin(world.time * 6) > 0 ? "#ff5266" : "#8a2a36"; o.fillText("SEEN", Xu, Y - 30 * k); }
       }
       const top = W.unitTop(u) * k;
       // the scanner's mark on a gun under plain clothes
@@ -793,7 +796,7 @@ W.Renderer = class {
     const open = this.openNow || new Set();
     const hidden = u => { if (walls || u.faction === "player" || u.kind === "target") return false; const cx = Math.floor(u.x), cy = Math.floor(u.y); if (!m.inb(cx, cy)) return false; const r = m.roofOf[m.i(cx, cy)]; return r >= 0 && !open.has(r) && !m.structures[r].canopy; };
     for (const u of world.units) {
-      if (!u.alive || u.inCar || hidden(u)) continue;
+      if (!u.alive || (u.inCar && !u.car) || hidden(u)) continue;
       let col, sz = 2;
       if (u.isAgent) { col = world.selected.has(u) ? "#ffffff" : "#54f2ff"; sz = 3; }
       else if (u.kind === "target") { target = u; col = blink ? W.MARK_STYLE.target.color : "#8a1f2c"; sz = 4; }

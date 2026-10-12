@@ -100,6 +100,7 @@ const Game = W.game = {
         <tr><td><kbd>V</kbd></td><td>the scanner view, over the city: the better the scanner, the more ground it covers and the more it shows</td></tr>
         <tr><td><kbd>X</kbd></td><td>the BanHammer: click a spot a Watcher can see, and a few seconds later the orbital platform clears it. Everything in the circle dies. <kbd>Esc</kbd> stands it down</td></tr>
         <tr><td>Weapon panel</td><td>click a weapon to draw it</td></tr>
+        <tr><td>Left click a car</td><td>take it: the driver stops for a Watcher close by, gets out and runs. Inside, the squad is out of sight, unless the crew or the police saw them get in; then the car is a target. If it goes up, the blast kills a Watcher with the stock body; a Chest mod gets them out alive. Left click to drive: by the roads, keeping to the rules of the road. Left click the car (or <kbd>G</kbd>) to get out</td></tr>
         </table><h3>The view</h3><table>
         <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>, arrows</td><td>scroll; or push the pointer to an edge, or drag with the middle button</td></tr>
         <tr><td>Double-tap <kbd>1</kbd>–<kbd>4</kbd></td><td>look at that Watcher; or double-click their card</td></tr>
@@ -504,7 +505,9 @@ const Game = W.game = {
       }
     } else {
       const c = this.carAt(ui.x, ui.y);
-      if (c) { h.mode = "fire"; h.label = c.stash ? "The stash" : c.escapeCar ? `${this.world.names.target}'s car` : "Car"; h.labelColor = c.stash ? "#7dffb0" : c.escapeCar ? "#ffb000" : "#94a0c4"; }
+      const mine = c && sel.some(a => a.car === c), take = c && !mine && sel.some(a => !a.car) && W.canBoard(c);
+      if (mine || take) { h.mode = "select"; h.label = mine ? "Get out" : c.player ? "Get in" : "Take the car"; h.labelColor = c.spotted ? "#ff5266" : "#54f2ff"; }
+      else if (c) { h.mode = "fire"; h.label = c.stash ? "The stash" : c.escapeCar ? `${this.world.names.target}'s car` : "Car"; h.labelColor = c.stash ? "#7dffb0" : c.escapeCar ? "#ffb000" : "#94a0c4"; }
       else {
         const it = this.itemAt(ui.x, ui.y);
         if (it) { h.label = W.WEAPONS[it.type].name + (it.ammo != null ? ` (${it.ammo})` : ""); h.labelColor = "#ffb000"; }
@@ -565,10 +568,43 @@ const Game = W.game = {
     w.ping(x, y);
     W.audio.play("order");
   },
+  /* A car, left-clicked: the selected Watchers in it get out; or the ones on
+   * foot go and get in (a car in traffic, or a seat in one of ours). */
+  orderCar(c) {
+    const w = this.world, sel = this.selectedAgents();
+    if (!sel.length) return false;
+    const inside = sel.filter(a => a.car === c);
+    if (inside.length) { W.leaveCar(w, c, inside); W.audio.play("order"); return true; }
+    const foot = sel.filter(a => !a.car);
+    if (!foot.length || !W.canBoard(c)) return false;
+    for (const a of foot) { a.board = c; a.boardMax = null; a.manual = null; a.target = null; a.shootAt = null; W.stop(a); }
+    w.ping(c.x, c.y); W.audio.play("order");
+    return true;
+  },
+  /* A click on the ground: whoever is in a car drives it there, by the roads.
+   * True if that was everyone selected; the rest walk (orderMove). */
+  driveCars(px, py) {
+    const w = this.world, sel = this.selectedAgents(), riders = sel.filter(a => a.car);
+    for (const a of sel) a.board = null;
+    if (!riders.length) return false;
+    const [x, y] = this.renderer.toWorld(w, px, py);
+    for (const c of new Set(riders.map(a => a.car))) if (!W.driveTo(w, c, x, y)) { w.msg("No road goes there.", "#ffb000"); W.audio.play("deny"); }
+    if (riders.length < sel.length) return false;
+    w.ping(x, y); W.audio.play("order");
+    return true;
+  },
+  /* G: the selected Watchers in a car get out. */
+  getOut() {
+    const w = this.world, sel = this.selectedAgents().filter(a => a.car);
+    for (const c of new Set(sel.map(a => a.car))) W.leaveCar(w, c, sel.filter(a => a.car === c));
+    if (sel.length) W.audio.play("order");
+  },
   orderAttack(t) {
     const w = this.world, sel = this.selectedAgents();
     let any = false;
     for (const a of sel) {
+      if (a.car) continue;
+      a.board = null;
       const cur = W.curWeapon(a);
       if (cur && W.WEAPONS[cur.type].persuade && !t.isCar) { a.manual = t; any = true; continue; }
       if (!W.armed(a)) {
@@ -775,6 +811,9 @@ const Game = W.game = {
       }
       const u = this.unitAt(d.x0, d.y0);
       if (u && u.isAgent) { this.selectAgent(u, d.shift); return; }
+      const c = this.carAt(d.x0, d.y0);
+      if (c && this.orderCar(c)) return;
+      if (this.driveCars(d.x0, d.y0)) return;
       const [x, y] = this.renderer.toWorld(w, d.x0, d.y0);
       this.orderMove(x, y, d.quiet);
     });
@@ -855,6 +894,7 @@ const Game = W.game = {
         case "z": this.toggleHold(); break;
         case "v": this.toggleScan(); break;
         case "h": this.holster(); break;
+        case "g": this.getOut(); break;
         case " ": case "p": ev.preventDefault(); this.paused = !this.paused; this.showPause(); break;
         case "escape": ev.preventDefault(); if (this.ui.aim) this.standDownStrike(); else if (this.bigScan) this.toggleScan(); else this.openMenu(); break;
         case "?": case "/": this.openMenu(); break;

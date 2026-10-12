@@ -436,15 +436,15 @@ Control step, since two steps put the whole endgame at threat 5; and danger
 money (fighting pay ×0.6 to ×3 by threat), without which only the risk-free
 jobs paid for the Watchers a fight costs.
 
+## Decided
+
+1. **Waiting pays.** Idle days bank money and research, and that's a fair
+   way to play: Cal erodes what isn't watched, and there's no clock.
+2. **Picking fights the squad can win is good play.** The careful bot loses
+   fewer Watchers at its own tier than a straight fight would; that's not a
+   target to push up.
+
 ## Open questions
 
-1. **Waiting still pays.** Five idle days after every mission end the
-   campaign with $3M instead of $700,000, and win in as many missions. Cal
-   is meant to keep a pacified city from being left to run itself; today he
-   doesn't. Levers: his tactics cost money as well as control, his pushes
-   bite harder the longer the city is left, or the city's money stops
-   growing past a level.
-2. **Deaths at the squad's own tier are low** (0.08 a mission against a
-   target of 0.15 to 0.3): the careful bot picks its fights. Overall, 0.25.
-3. **The simulation plays a bot, not a person.** The fights are measured;
+1. **The simulation plays a bot, not a person.** The fights are measured;
    the choices between them are a reasonable bot's. Playtesting decides.

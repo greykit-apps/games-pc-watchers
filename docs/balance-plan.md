@@ -229,10 +229,10 @@ Where it departs from the steps below, and why:
   the bot now does, and careful cash stays at $300,000 to $450,000 until the
   end.
 
-Still open: **waiting pays** (five idle days a mission end with $3M, and win
-in as many missions: Cal doesn't yet make a city left to itself cost
-anything; see step 2); deaths at the squad's own tier are under target
-because the careful bot picks its fights; nothing played by hand yet.
+Decided after measuring: **waiting pays** (five idle days a mission end
+with $3M, and win in as many missions), and that's fine; **deaths at the
+squad's own tier under target** are the careful bot picking its fights,
+which is good play, not a miss. Still open: nothing played by hand yet.
 
 ## The plan, in order
 
@@ -379,3 +379,6 @@ Checked by `campaign.js --report`, 12 seeds each:
 2. **Veterancy:** yes, light.
 3. **Upkeep on Watchers:** no.
 4. **Board size:** 4 to 7 before Take Control.
+5. **Waiting pays**, and that's valid: no idle penalty.
+6. **Picking winnable fights** is valid: the at-tier death target is a
+   guide, not a goal.

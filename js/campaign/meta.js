@@ -4,9 +4,10 @@
  * every day between research, money and control. Cal pushes one zone at a
  * time. Research costs money to start and research points to finish; points
  * can't be banked. Missions are offered in zones, take days, and pay in
- * research, money or control. After 30 upgrade points the player can send the
- * city to war: decay rises by 30%, Cal commits, and each zone's story chain
- * ends in a lockdown, the last against Cal himself. Lock down every zone to win.
+ * research, money or control. After 30 upgrade points the player can give the
+ * order to Take Control (s.war in the state): decay rises by 30%, Cal commits,
+ * and each zone's story chain ends in a lockdown, the last against Cal himself.
+ * Lock down every zone to win.
  *
  * Plain data and functions over one JSON state, saved under
  * pcwatchers_campaign_v2. Nothing in here touches the DOM. The numbers are the
@@ -136,29 +137,47 @@ M.KINDS = {
   story:       { name: "Story", threat: 3, days: [5, 8], what: "the next step toward locking the zone down" },
 };
 M.ORDINARY = ["persuade", "intel", "job", "crackdown", "assassinate", "sweep"];
-// what a zone's level leans toward, over M.ORDINARY: calm streets want talking, rough ones fighting
+/* What turns up where, over M.ORDINARY: calm streets want talking, rough
+ * ones fighting. The Towers are Benton's own seat and the training ground:
+ * quiet jobs only. The Starport and the Ranch lean to jobs and crackdowns
+ * (the smuggling, the grow fields). A lost zone has its siege. */
 M.MIX = {
-  0: [0, 0.1, 0.2, 0.3, 0.2, 0.2],
-  1: [0.1, 0.2, 0.2, 0.2, 0.15, 0.15],
-  2: [0.2, 0.3, 0.25, 0.15, 0.05, 0.05],
-  3: [0.35, 0.35, 0.2, 0.1, 0, 0],
+  0: [0, 0.1, 0.25, 0.3, 0.2, 0.15],
+  1: [0.05, 0.2, 0.25, 0.25, 0.15, 0.1],
+  2: [0.25, 0.3, 0.25, 0.15, 0, 0.05],
+  3: [0.4, 0.4, 0.2, 0, 0, 0],
+  towers: [0.5, 0.5, 0, 0, 0, 0],
 };
-M.OFFERS = { "-1": 0, 0: 3, 1: 2, 2: 2, 3: 1 };
-/* Threat, 1 to 5: the kind's base, harder where control is low (easier at
- * level 3), and rising with the squad Cal sees in the field (he arms his
- * people to match yours): a step at squad power 18, another at 27; one more
- * at war. A story step: 2, 3 and 4, plus the same step for the squad; Cal's
- * last stand, the final lockdown, is 5. An offer's threat is worked out
- * afresh for the squad that's deployed (M.liveThreats), not frozen when it
- * turned up. */
-M.threatStep = s => Math.floor(Math.max(0, M.basePower(s) - 9) / 9);
+M.LEAN = { starport: { job: 1.6, crackdown: 1.4 }, ranch: { job: 1.4, crackdown: 1.6 } };
+/* The board. Offers arrive over time instead of being topped up: a zone holds
+ * one ordinary offer (two at level 0), and one short of that gets one on a
+ * daily roll by its level. At most five ordinary offers city-wide (four once
+ * Benton orders the city taken, when the story steps need the room), no kind
+ * twice while there's another to give, and they stand 6 to 12 days. On top:
+ * Cal's crew while he pushes, a siege for each lost zone, and up to three
+ * story steps where a zone is ready for its next one. */
+M.OFFERS = { 0: 2, 1: 1, 2: 1, 3: 1 };
+M.ARRIVE = [0.5, 0.35, 0.25, 0.15];
+M.BOARD = { peace: 5, war: 4, stories: 3, days: [6, 12] };
+/* Threat, 1 to 5, belongs to the mission: the kind's base, harder where
+ * control is low (easier at level 3), and Cal's escalation, which follows the
+ * campaign rather than the squad sent: he arms his people a step at 14
+ * upgrade points and another at 26, and one more once the city is being taken.
+ * Quiet jobs in calm zones (level 2 or 3) take neither: that's the training
+ * ground, threat 1 or 2 all campaign long. A story step: 2, 3 and 4 plus the
+ * escalation; Cal's last stand, the final lockdown, is 5. Worked out when the
+ * offer turns up, and fixed while it stands. */
+M.N.ESCALATE = [14, 26];
+M.escalation = s => M.N.ESCALATE.filter(n => s.research.points >= n).length;
+// a quiet job where the streets are calm: no escalation, no Take Control step
+M.calm = (kind, z) => !!M.KINDS[kind].quiet && !z.lost && M.level(z.C) >= 2;
 // Cal's last stand: the lockdown of the last zone he has
 M.lastStand = (s, z, step) => step === M.STORY.length - 1 && s.zones.filter(q => !q.locked).length === 1 && !z.locked;
 M.threatOf = (s, kind, z, step = 0) => {
-  if (kind === "story") return M.lastStand(s, z, step) ? 5 : Math.min(5, 2 + step + M.threatStep(s));
+  if (kind === "story") return M.lastStand(s, z, step) ? 5 : Math.min(5, 2 + step + M.escalation(s));
   const L = z.lost ? -1 : M.level(z.C);
   const lvl = L <= 0 ? 1 : L === 3 ? -1 : 0;
-  const t = M.KINDS[kind].threat + (kind === "siege" ? 0 : lvl) + M.threatStep(s) + (s.war ? 1 : 0);
+  const t = M.KINDS[kind].threat + (kind === "siege" ? 0 : lvl) + (M.calm(kind, z) ? 0 : M.escalation(s) + (s.war ? 1 : 0));
   return Math.max(1, Math.min(5, t));
 };
 /* The enemy at each threat, for the mission engine (L.mod): how many of
@@ -174,9 +193,13 @@ M.THREAT = {
   5: { crew: 1.3, guards: 1.2, sec: 0.6, level: 4 },
 };
 /* What the squad can take on: each Watcher's best gun and mods, summed over
- * the four who go out, and a hired crew if one's paid for. Four new Watchers
- * with pistols are tier 1. A weapon mark counts a quarter more gun, as it
- * does in the field. The tiers are set from real fights in the engine. */
+ * the four who go out, and a hired crew if one's paid for. A weapon mark
+ * counts a quarter more gun, as it does in the field. The tiers are the
+ * Watchers' levels plus one, against the enemy's (W.FOE: threat less one):
+ * four new Watchers with pistols are tier 1 (power 6.6); a full suite of MK1
+ * mods and guns, tier 2 (12.8); MK2, tier 3 (19.8); MK3, tier 4 (27.3); the
+ * top of the tree, tier 5 (29 and over). Each threshold is a little under
+ * the full suite (tools/bench.js has the kits). */
 M.GUN_POWER = { pistol: 0.5, shotgun: 0.8, uzi: 1, longrange: 1.2, minigun: 1.6, laser: 1.8, gauss: 2 };
 /* Veterancy: missions survived to reach each rank (W.RANK in the engine says
  * what a rank is worth in the field: a little aim, a little quicker). */
@@ -192,9 +215,9 @@ M.bigGun = o => !!o && (o.kind === "siege" || (o.kind === "story" && o.step === 
 M.carriesBanhammer = s => M.squad(s).some(a => a.items.some(i => i.type === "banhammer" && (i.count || 1) > 0));
 M.basePower = s => M.squad(s).reduce((t, a) => t + M.agentPower(a), 0);
 M.squadPower = (s, o) => M.basePower(s) + (s.hired ? M.N.HIRED : 0) + (M.bigGun(o) && M.carriesBanhammer(s) ? M.N.BANHAMMER : 0);
-M.TIERS = [0, 9, 13, 19, 25];         // squad power for tiers 1..5
+M.TIERS = [0, 11.5, 18, 25, 29];      // squad power for tiers 1..5
 M.squadTier = (s, o) => { const p = M.squadPower(s, o); let t = 1; for (let k = 1; k < M.TIERS.length; k++) if (p >= M.TIERS[k]) t = k + 1; return t; };
-// a zone's story chain on war footing: three steps, each needing the zone at a level
+// a zone's story chain once the city is being taken: three steps, each needing the zone at a level
 M.STORY = [{ needs: 0, name: "Find the lieutenant" }, { needs: 2, name: "Turn the network" }, { needs: 2.5, name: "Lock it down" }];
 
 /* ---------------- the state ---------------- */
@@ -223,7 +246,7 @@ M.fresh = (seed = Date.now() % 100000) => {
   for (const z of s.zones) z.policy = M.defaultPolicy(s, z);
   M.planCal(s);
   s.cal.revealed = true;
-  M.refreshOffers(s);
+  M.refreshOffers(s, true);
   M.note(s, "Casey Benton has given the Watchers the city to hold. Set what each zone spends on control, start some research, and pick a mission.");
   M.note(s, `Joyeuse has a name: Cal moves on ${M.zoneDef(s.cal.next).name} in ${s.cal.nextIn} days. Bank control there.`, "bad");
   return s;
@@ -399,7 +422,7 @@ M.finish = (s, p) => {
     R.done.push(id);
     R.points += it.points;
     M.note(s, `Research done: ${it.name}.${it.kind === "weapon" ? " In the Armoury." : it.kind === "mod" ? " At the Clinic." : ""}`, "good");
-    if (!s.war && !s.warReady && R.points >= M.N.WAR_AT) { s.warReady = true; M.note(s, "Casey Benton is ready to go to war with Cal whenever you are. Give the order from the Lab.", "good"); }
+    if (!s.war && !s.warReady && R.points >= M.N.WAR_AT) { s.warReady = true; M.note(s, "Casey Benton is ready to take control of the city whenever you are. Give the order from the Lab.", "good"); }
   }
 };
 // the Konami code: every project running finished, and half a million from Casey's petty cash
@@ -411,11 +434,11 @@ M.cheat = s => {
   M.note(s, `Up, up, down, down. Casey Benton's petty cash: $500,000${done ? `, and ${done} project${done > 1 ? "s" : ""} finished` : ""}. Nobody saw anything.`, "good");
   return done;
 };
-M.canDeclareWar = s => s.war ? "already at war" : s.research.points < M.N.WAR_AT ? `${M.N.WAR_AT - s.research.points} more upgrade points first` : "";
-M.declareWar = s => { if (M.canDeclareWar(s)) return false; M.toWar(s); M.refreshOffers(s); return true; };
+M.canDeclareWar = s => s.war ? "already taking control" : s.research.points < M.N.WAR_AT ? `${M.N.WAR_AT - s.research.points} more upgrade points first` : "";
+M.declareWar = s => { if (M.canDeclareWar(s)) return false; M.toWar(s); M.refreshOffers(s, true); return true; };
 M.toWar = s => {
   s.war = true;
-  M.note(s, "Cal stops probing and commits. The city is on war footing: control decays faster everywhere. Each zone has a story to finish; lock them all down.", "bad");
+  M.note(s, "Casey Benton gives the order: take control. Cal stops probing and commits, and control decays faster everywhere. Each zone has a story to finish; lock them all down.", "bad");
 };
 // research points into the running projects, split evenly; nothing running, they're wasted
 M.feedResearch = (s, rp) => {
@@ -476,44 +499,75 @@ M.advanceDay = (s, onMission = false) => {
 };
 
 /* ---------------- missions on offer ---------------- */
-M.refreshOffers = s => {
+/* The kind an ordinary offer in this zone is: by the zone's level and
+ * district, and not one already up. Only a short board (under 3) takes a kind
+ * twice; otherwise nothing turns up here today (null). */
+M.pickKind = (s, z, taken) => {
+  const L = M.level(z.C), lean = M.LEAN[z.id] || {};
+  const base = (z.id === "towers" ? M.MIX.towers : M.MIX[L]).map((w, i) => w * (lean[M.ORDINARY[i]] || 1));
+  const fresh = base.map((w, i) => taken.includes(M.ORDINARY[i]) ? 0 : w);
+  if (!fresh.some(w => w > 0) && taken.length >= 3) return null;
+  const W8 = fresh.some(w => w > 0) ? fresh : base;
+  let r = rnd(s) * W8.reduce((t, w) => t + w, 0), i = 0;
+  while (i < W8.length - 1 && (r -= W8[i]) > 0) i++;
+  while (!W8[i]) i--;
+  return M.ORDINARY[i];
+};
+M.addOffer = (s, z, kind, extra = {}) => {
+  const D = M.zoneDef(z.id), K = M.KINDS[kind];
+  const o = Object.assign({ id: `o${s.day}-${++seq}-${z.id}`, zone: z.id, kind, days: ri(s, ...K.days), level: M.level(z.C), seed: Math.floor(rnd(s) * 1e9),
+    landmark: D.areas ? pickS(s, D.areas) : null, expires: s.day + ri(s, ...M.BOARD.days), threat: M.threatOf(s, kind, z, extra.step || 0) }, extra);
+  s.offers.push(o);
+  return o;
+};
+// a story step can be offered where the zone already meets the step's level
+M.storyReady = z => !z.lost && !z.locked && z.story < M.STORY.length && z.C >= M.STORY[z.story].needs;
+/* A day's change to the board (see M.BOARD). full: every roll succeeds, for a
+ * new campaign's first board and the day the city is taken. */
+M.refreshOffers = (s, full = false) => {
   s.offers = s.offers.filter(o => o.expires >= s.day && !(o.kind === "cal" && s.cal.zone !== o.zone) && !M.zone(s, o.zone).locked);
+  const has = (z, kind) => s.offers.some(o => o.zone === z.id && o.kind === kind);
+  // the urgent ones: a siege for each lost zone, Cal's crew where he pushes
   for (const z of s.zones) {
     if (z.locked) continue;
-    const D = M.zoneDef(z.id), L = M.level(z.C), mine = s.offers.filter(o => o.zone === z.id);
-    const add = (kind, extra = {}) => {
-      const K = M.KINDS[kind];
-      s.offers.push(Object.assign({ id: `o${s.day}-${++seq}-${z.id}`, zone: z.id, kind, days: ri(s, ...K.days), level: L, seed: Math.floor(rnd(s) * 1e9),
-        landmark: D.areas ? pickS(s, D.areas) : null, expires: s.day + ri(s, 5, 9), threat: M.threatOf(s, kind, z, extra.step || 0) }, extra));
-    };
-    if (z.lost) { if (!mine.some(o => o.kind === "siege")) add("siege", { expires: s.day + 99 }); continue; }
-    if (s.cal.zone === z.id && !mine.some(o => o.kind === "cal")) add("cal", { expires: s.day + s.cal.left });
-    if (s.war && !mine.some(o => o.kind === "story") && z.story < M.STORY.length) add("story", { step: z.story, expires: s.day + 99 });
-    const want = M.OFFERS[L], ordinary = mine.filter(o => M.ORDINARY.includes(o.kind)).length;
-    for (let k = ordinary; k < want; k++) {
-      const mix = M.MIX[L];
-      let r = rnd(s), i = 0;
-      while (i < mix.length - 1 && (r -= mix[i]) > 0) i++;
-      add(M.ORDINARY[i]);
-    }
+    if (z.lost) { if (!has(z, "siege")) M.addOffer(s, z, "siege", { expires: s.day + 99 }); }
+    else if (s.cal.zone === z.id && !has(z, "cal")) M.addOffer(s, z, "cal", { expires: s.day + s.cal.left });
   }
-  // there is always something the squad can take on: if nothing on offer is within its tier, a
-  // quiet job turns up in the calmest zone that isn't lost or locked; and when Cal holds all
-  // that's left, intel or a job in one of his zones, to rebuild a squad on before the sieges
-  M.liveThreats(s);
-  const tier = M.squadTier(s);
-  if (!s.offers.some(o => o.threat <= tier)) {
-    const z = s.zones.filter(q => !q.lost && !q.locked).sort((a, b) => b.C - a.C)[0] || s.zones.find(q => q.lost && !q.locked);
-    if (z) {
-      const D = M.zoneDef(z.id), kind = z.lost ? (rnd(s) < 0.5 ? "job" : "intel") : M.hasTalker(s) && rnd(s) < 0.5 ? "persuade" : "intel";
-      s.offers.push({ id: `o${s.day}-${++seq}-${z.id}`, zone: z.id, kind, days: ri(s, ...M.KINDS[kind].days), level: M.level(z.C), seed: Math.floor(rnd(s) * 1e9),
-        landmark: D.areas ? pickS(s, D.areas) : null, expires: s.day + ri(s, 5, 9), threat: Math.min(tier, M.threatOf(s, kind, z)), fallback: true });
-    }
+  // story steps where a zone is ready for its next one, the closest to done first, a few at once
+  if (s.war) {
+    const ready = s.zones.filter(z => M.storyReady(z) && !has(z, "story")).sort((a, b) => b.story - a.story || b.C - a.C);
+    const room = M.BOARD.stories - s.offers.filter(o => o.kind === "story").length;
+    for (const z of ready.slice(0, Math.max(0, room))) M.addOffer(s, z, "story", { step: z.story, expires: s.day + 99 });
+  }
+  // ordinary offers arrive: a zone short of its share rolls for one, in a different order every day
+  const ordinary = () => s.offers.filter(o => M.ORDINARY.includes(o.kind) && !o.fallback);
+  const cap = s.war ? M.BOARD.war : M.BOARD.peace;
+  const order = s.zones.filter(z => !z.lost && !z.locked).map(z => [z, rnd(s)]).sort((a, b) => a[1] - b[1]).map(x => x[0]);
+  for (const z of order) {
+    const now = ordinary();
+    if (now.length >= cap) break;
+    const L = M.level(z.C);
+    if (now.filter(o => o.zone === z.id).length >= M.OFFERS[L] || (!full && rnd(s) >= M.ARRIVE[L])) continue;
+    const kind = M.pickKind(s, z, now.map(o => o.kind));
+    if (kind) M.addOffer(s, z, kind);
+  }
+  /* The guarantees. A training job: a quiet one at threat 2 or less is always
+   * up, in the calmest zone (the Towers, while they hold); when Cal holds all
+   * that's left, in one of his. And a money job when the cash won't run to a
+   * recruit and a basic kit. Both on top of the cap. */
+  const calmest = s.zones.filter(q => !q.lost && !q.locked).sort((a, b) => b.C - a.C);
+  const zt = calmest[0] || s.zones.find(q => q.lost && !q.locked);
+  if (zt && !s.offers.some(o => M.KINDS[o.kind].quiet && o.threat <= 2)) {
+    const kind = !zt.lost && M.hasTalker(s) && rnd(s) < 0.5 ? "persuade" : "intel";
+    const o = M.addOffer(s, zt, kind, { fallback: true });
+    o.threat = Math.min(2, o.threat);
+  }
+  const zj = calmest.find(q => q.id !== "towers") || zt;
+  if (zj && s.cash < M.PRICE.recruit + 10000 && !s.offers.some(o => o.kind === "job" && o.threat <= 2)) {
+    const o = M.addOffer(s, zj, "job", { fallback: true });
+    o.threat = Math.min(2, o.threat);
   }
 };
-// every offer's threat for the squad deployed now: offers aren't frozen at the squad that was out when they turned up
-M.liveThreat = (s, o) => { const z = M.zone(s, o.zone), t = M.threatOf(s, o.kind, z, o.step || 0); return o.fallback ? Math.min(M.squadTier(s), t) : t; };
-M.liveThreats = s => { for (const o of s.offers) o.threat = M.liveThreat(s, o); };
 // a job that's won by talking someone round (persuade, and the story's second step) can't be done without a Purrsuader
 M.needsTalker = o => o.kind === "persuade" || (o.kind === "story" && o.step === 1);
 M.hasTalker = s => M.squad(s).some(a => a.items.some(i => i.type === "purrsuader" || i.type === "purr2"));
@@ -538,13 +592,17 @@ M.contractPay = (s, o) => {
   const sweep = o.kind === "sweep";
   return { money: Math.round(M.moneyReward(s) * (sweep ? 0.55 : 0.3) / 1000) * 1000, control: sweep ? 0.15 : 0.05 };
 };
+// what a quiet job pays where the streets are calm: a fee, so training a new squad pays its way
+M.fee = s => Math.max(5000, Math.min(10000, Math.round(M.moneyReward(s) * 0.12 / 1000) * 1000));
 M.reward = (s, o) => {
-  const L = Math.max(0, M.level(M.zone(s, o.zone).C));
+  const z = M.zone(s, o.zone), L = Math.max(0, M.level(z.C)), fee = M.calm(o.kind, z) ? M.fee(s) : 0;
   switch (o.kind) {
-    case "persuade": return { control: [0.6, 0.5, 0.45, 0.35][L], reveal: true };
-    case "intel": return { rp: M.intelPoints(s, o), reveal: true };
+    // talking a zone round adds little where it's already settled
+    case "persuade": return { control: [0.6, 0.5, 0.4, 0.15][L], reveal: true, money: fee };
+    case "intel": return { rp: M.intelPoints(s, o), reveal: true, money: fee };
     case "job": return { money: M.moneyReward(s) };
-    case "assassinate": return { money: Math.round(M.moneyReward(s) * 0.7 / 1000) * 1000, control: [0.5, 0.45, 0.35, 0.25][L] };
+    // the name on Benton's list was running Cal's business here: it goes with them
+    case "assassinate": return { money: M.moneyReward(s), control: [0.7, 0.6, 0.5, 0.4][L], untactic: !!z.tactic };
     case "crackdown": return { control: [0.9, 0.8, 0.65, 0.5][L], money: Math.round(M.moneyReward(s) * 0.2 / 1000) * 1000 };
     case "sweep": return { perContract: M.contractPay(s, o) };
     case "cal": return { endPush: true, control: 0.4 };
@@ -569,6 +627,7 @@ M.describeReward = (s, o) => {
   if (R.money) out.push(W.money(R.money));
   if (R.perContract) out.push(`${W.money(R.perContract.money)} and +${R.perContract.control} control for each of their operations broken`);
   if (R.control) out.push(`+${R.control} control`);
+  if (R.untactic) out.push(`ends ${M.zone(s, o.zone).tactic}`);
   if (R.endPush) out.push("ends Cal's push");
   if (R.retake) out.push("the zone back, at level 0");
   if (R.story) out.push(o.step === M.STORY.length - 1 ? "LOCKDOWN" : `story step ${o.step + 1} of ${M.STORY.length}`);
@@ -723,7 +782,7 @@ M.missionRoster = s => M.squad(s).map(a => ({
 M.missionFor = (s, o) => {
   const D = M.zoneDef(o.zone), z = M.zone(s, o.zone);
   const L = W.missionLevel({ district: D.district, landmark: o.landmark, seed: o.seed });
-  const threat = M.liveThreat(s, o);
+  const threat = o.threat || 1;
   // cal: the crew on the ground are Cal's own (his push, or a zone he holds)
   L.mission = { kind: o.kind, threat, quiet: !!M.KINDS[o.kind].quiet, zoneLevel: z.lost ? -1 : M.level(z.C), step: o.step, cal: o.kind === "cal" || o.kind === "siege" || z.lost || (o.kind === "story" && M.lastStand(s, z, o.step)) };
   L.mod = Object.assign({}, M.THREAT[threat]);
@@ -742,7 +801,7 @@ M.canEvent = (s, e, z) => {
   if (s.cash < e.price) return M.short(s, e.price);
   if (e.zone && !z) return "choose a zone above";
   if (e.lost && !(z && z.lost)) return "only for a zone lost to Cal";
-  if (e.id === "amnesty" && s.war) return "not on war footing: a siege takes it back";
+  if (e.id === "amnesty" && s.war) return "not once the city is being taken: a siege takes it back";
   if (e.zone && !e.lost && z && (z.lost || z.locked)) return "not in a zone that's lost or locked down";
   if (e.id === "bribes" && s.cal.bribed) return "already paid for this push";
   if (e.id === "hired" && s.hired) return "already hired for the next mission";
@@ -787,6 +846,7 @@ M.settle = (s, o, res) => {
     }
     if (R.reveal) { s.cal.revealed = true; lines.push(["Intel: Cal's next push", s.cal.next ? `${M.zoneDef(s.cal.next).name}, in ${s.cal.nextIn} days` : "unclear"]); }
     if (R.money) { s.cash += R.money; lines.push(["Paid", W.money(R.money)]); }
+    if (R.untactic && z.tactic) { lines.push([`${D.name}: ${z.tactic}`, "gone with them"]); M.note(s, `${D.name}: ${z.tactic} is finished.`, "good"); z.tactic = null; M.cancel(s, `counter:${z.id}`); }
     if (R.endPush && s.cal.zone === z.id) { s.cal.left = 1; s.cal.broken = true; lines.push(["Cal's push", "broken"]); }
     if (R.retake) { z.lost = false; z.C = 0.6; z.policy = M.defaultPolicy(s, z); lines.push([D.name, "taken back"]); M.note(s, `${D.name} is taken back.`, "good"); }
     if (R.story) {

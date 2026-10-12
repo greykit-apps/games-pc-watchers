@@ -308,6 +308,24 @@ const summary = res => {
   return { n, won: res.filter(r => r.won).length, lost: s("lost") / n, t: s("t") / n, crew: s("crew") / n, loot: s("loot") / n, civ: s("civ") / n, done: s("done") / n, contracts: s("contracts") / n };
 };
 
+/* --table=in.jsonl[,more.jsonl]: a grid's results as the fight table tools/campaign.js rolls from
+ * (tools/fights.json): per "kind Llevel tthreat", per tactic, [fights, won, Watchers lost,
+ * side jobs done, side jobs offered, loot]; fights that ran out of time are left out. */
+if (val("table")) {
+  const fs = require("fs"), cells = {};
+  for (const f of val("table").split(",")) for (const line of fs.readFileSync(f, "utf8").split("\n")) {
+    if (!line.trim()) continue;
+    const r = JSON.parse(line); if (r.error) continue;
+    const k = `${r.job.kind} L${r.job.level} t${r.job.threat}`, fights = r.res.filter(x => !/time/i.test(x.reason));
+    const c = (cells[k] = cells[k] || {})[r.job.tactic] = cells[k][r.job.tactic] || [0, 0, 0, 0, 0, 0];
+    for (const x of fights) { c[0]++; c[1] += x.won ? 1 : 0; c[2] += x.lost; c[3] += x.done || 0; c[4] += x.contracts || 0; c[5] += x.loot || 0; }
+  }
+  const out = { measured: val("date", new Date().toISOString().slice(0, 10)), commit: val("commit", ""), cells: {} };
+  for (const k of Object.keys(cells).sort()) out.cells[k] = cells[k];
+  console.log(JSON.stringify(out, null, 0).replace(/\],"/g, '],\n  "').replace(/\{"(\w+ L)/g, '{\n "$1').replace(/\},"/g, '},\n "'));
+  return;
+}
+
 if (args.includes("--grid")) {
   const { spawn } = require("child_process");
   const kinds = val("kinds", "assassinate").split(","), tactics = val("tactics", "assault,stealth,snipe,mob,banhammer").split(",");

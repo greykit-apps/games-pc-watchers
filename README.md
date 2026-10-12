@@ -6,9 +6,9 @@ You run the Watchers, the Boss's covert enforcers, holding her city zone by
 zone against Cal and the gangs he sets on it.
 
 Status: the engine; the meta-game (eight zones, daily production, Cal, research,
-war and lockdowns: see `docs/meta.md`), its missions played for now as the one
-mission type the engine has; five districts, each one large map with generated
-missions.
+Take Control and lockdowns: see `docs/meta.md`), with persuade, intel, job,
+crackdown, sweep, assassination, Cal's crew, siege and story missions; five
+districts, each one large map with generated missions.
 
 ## Play
 
@@ -32,15 +32,20 @@ The rules, and the numbers behind them, are in [docs/meta.md](docs/meta.md);
   can't be banked and split between the projects running. Weapons, mods, the
   scanner and the Purrsuader come in three marks; the BanHammer, overseers,
   zone works and requisitions besides.
-- **Missions** are offered in zones (more where control is low), take 3 to 8
-  days during which the pips stand as set, and pay research (half of what is
-  left on every project running), money (enough for a real purchase) or
-  control. The mission itself is, for now, the engine's one type: find and
-  kill the target.
+- **Missions** arrive in zones over time, a short board of four to seven:
+  one or two ordinary offers a zone, five at most city-wide, no kind twice,
+  each up for 6 to 12 days; Cal's crew, sieges and story steps on top; and
+  always a quiet training job at threat 2 or less. What turns up fits the
+  zone (talk where it's calm, fighting where it isn't). A mission's threat is
+  its own, fixed when it turns up: the kind, the zone, and Cal's escalation
+  as the campaign goes on. Missions take 3 to 8 days during which the pips
+  stand as set, and pay research (half of what is left on the first project
+  running), money (enough for a real purchase) or control.
 - **The squad**: up to 8 Watchers, 4 deploy. Weapons are bought per Watcher,
   mods fitted at the Clinic; the dead are gone with everything spent on them.
-- **War** comes after 30 upgrade points: decay rises by half, and each zone
-  gets a story chain whose last step locks it down. Lock every zone down to win.
+- **Take Control**, Casey Benton's order once there are 30 upgrade points:
+  decay rises by 30%, Cal commits, and each zone gets a story chain whose last
+  step locks it down. Lock every zone down to win.
 - **Skirmish** on the title plays any district with the standard kit and saves
   nothing.
 
@@ -267,7 +272,8 @@ js/ui/maproom.js      the Map Room: districts, sections, missions, fly-overs
 js/main.js            screens, input, loop
 tools/sim.js          headless bot runs of the mission
 tools/bench.js        the tactics bench: a mission by level, threat and tactic
-tools/campaign.js     a bot plays the campaign headless; checks its invariants
+tools/campaign.js     a bot plays the campaign headless; checks its invariants; --report
+tools/fights.json     the fight table it rolls from, measured with tools/bench.js
 tools/metasim.js      the meta-game's numbers, run and tuned headless
 tools/maps.js         every district: points walkable and connected
 tools/serve.py        a dev server that never lets the browser cache
@@ -303,10 +309,12 @@ node tools/sim.js 10           # bot goes in loud
 node tools/sim.js 10 --campaign  # with a new campaign's kit (no Uzis)
 node tools/sim.js 2 --attract  # the title screen's backdrop sim
 node tools/campaign.js 100     # a bot plays 100 missions (outcomes rolled); --fight plays them out
+node tools/campaign.js --report  # a dozen campaigns against the balance targets (docs/balance-plan.md)
 node tools/maps.js             # every district and section is sound
 node tools/sim.js 6 --quiet --district=downtown   # generated missions
 node tools/bench.js --kind=sweep --threat=2 --level=1 --tactic=stealth   # one cell of the tactics bench
 node tools/bench.js --grid --kinds=assassinate --jobs=4   # every level, threat and tactic, in parallel
+node tools/bench.js --table=grid.jsonl > tools/fights.json   # a grid as the campaign bot's fight table
 ```
 
 The sim fails on a crash, a NaN position, a unit standing inside a wall, or a

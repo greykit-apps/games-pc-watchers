@@ -46,7 +46,7 @@ const Game = W.game = {
       name: "Watchers",
       primary: W.M.load() ? "resume" : "new",
       items: [
-        (c => c && { act: "resume", label: "Resume campaign", key: "R", meta: `Day ${c.day} · ${W.money(c.cash)}${c.war ? " · at war" : ""}` })(W.M.load()),
+        (c => c && { act: "resume", label: "Resume campaign", key: "R", meta: `Day ${c.day} · ${W.money(c.cash)}${c.war ? " · taking control" : ""}` })(W.M.load()),
         { act: "new", label: "New campaign", key: "N", meta: "four Watchers, eight zones, one Cal" },
         { act: "skirmish", label: "Skirmish", key: "K", meta: "any district, nothing saved" },
         "gap",
@@ -120,7 +120,7 @@ const Game = W.game = {
       ["Campaign", `<p>Casey Benton has given the Watchers her city to hold: <b>eight zones</b>. Each makes whole <b>pips</b> a day. On the <b>City</b> map, pick a zone and set what it <b>spends on control</b>. The HOLD mark is what keeps it where it is: <b>invest</b> above it and control climbs; <b>milk</b> it below and the city takes more while control slips. The <b>city split</b> in the top bar shares what the zones don't spend on control between <b>research</b> and <b>money</b>.</p>
         <p><b>Control</b> decays every day and must be kept up. Each level of it adds a pip, and a calm zone's pips are worth more; level 3 is hard to reach and, once there, holds itself for a while. At zero the zone is <b>lost</b> until a siege takes it back.</p>
         <p><b>Cal</b> pushes one zone at a time, and his push is harder the better you are doing. Intel missions show where he goes next. Fight his crew where he is pushing to end it.</p>
-        <p><b>Research</b> costs money to start and research points to finish. Points can't be banked, and split between the projects running. After 30 upgrade points the city goes to <b>war</b>: each zone then has a story to finish, and the last step locks it down. Lock down every zone to win.</p>
+        <p><b>Research</b> costs money to start and research points to finish. Points can't be banked, and split between the projects running. After 30 upgrade points Casey Benton can <b>take control</b> of the city on your order: each zone then has a story to finish, and the last step locks it down. Lock down every zone to win.</p>
         <p><b>Missions</b> take days, and the pips stand as you set them while the squad is away. They pay research, money or control. Each has a <b>threat</b>, T1 to T5; the squad has a <b>tier</b> from its guns and mods. Above the squad's tier, expect to lose Watchers. <b>Quiet</b> missions can be done without a shot fired.</p>
         <p>Finished research goes on sale: weapons in the <b>Armoury</b>, mods in the <b>Clinic</b>. Ammunition is topped up free before every mission; medikits are not.</p>
         <p>Watchers who die on a mission are gone, with whatever they carried. Hire replacements from the <b>Roster</b>. Weapons a Watcher picks up in the field come home with them, researched or not: keep them or sell them in the Armoury.</p>

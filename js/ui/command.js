@@ -432,7 +432,7 @@ W.Command = class {
       <p class="hint">${s.roster.length} of ${M.ROSTER_MAX} Watchers. ${M.SQUAD} go out; the rest wait in reserve.</p>
       <ul>${s.roster.map(x => `<li class="${x.id === this.agentId ? "sel" : ""} ${x.deployed ? "on" : ""}">
           <button class="who" data-a="agent" data-id="${x.id}" data-fk="agent-${x.id}" aria-pressed="${x.id === this.agentId}"><canvas width="44" height="44" data-port="${x.id}"></canvas>
-            <span><b>${W.esc(x.name)}</b><small>${x.missions} mission${x.missions === 1 ? "" : "s"} · ${x.kills} down</small><small>worth ${W.money(M.worth(x))}</small></span>
+            <span><b>${W.esc(x.name)}</b><small>${W.RANK.names[M.rank(x)]} · ${x.missions} mission${x.missions === 1 ? "" : "s"} · ${x.kills} down</small><small>worth ${W.money(M.worth(x))}</small></span>
             <span class="st ${x.deployed ? "in" : ""}">${x.deployed ? "Squad" : "Reserve"}</span></button>
           <button class="mini" data-a="deploytoggle" data-id="${x.id}" data-fk="dt-${x.id}">${x.deployed ? "Send to reserve" : "Put in the squad"}</button></li>`).join("")}</ul>
       <button data-a="hire" data-fk="hire" ${why ? "disabled" : ""}>Recruit · ${W.money(M.PRICE.recruit)}</button>${why ? `<small class="why">${W.esc(why)}</small>` : ""}
@@ -447,7 +447,7 @@ W.Command = class {
     };
     const left = ["brain", "eyes", "arms"], right = ["heart", "chest", "legs"];
     const body = `<section class="panel body">
-      <header>${this.hx(a.name, "sub-t", 3)}<small>${a.deployed ? "In the squad" : "In reserve"} · ${a.missions} mission${a.missions === 1 ? "" : "s"}</small>
+      <header>${this.hx(a.name, "sub-t", 3)}<small>${a.deployed ? "In the squad" : "In reserve"} · ${W.RANK.names[M.rank(a)]} · ${a.missions} mission${a.missions === 1 ? "" : "s"}${M.rank(a) < M.RANKS.length ? `, ${M.RANKS[M.rank(a)] - a.missions} more to ${W.RANK.names[M.rank(a) + 1]}` : ""}</small>
         <button class="link" data-a="screen" data-screen="armoury" data-fk="to-armoury">Kit in the Armoury</button></header>
       <div class="figure"><div class="slots">${left.map(id => slot(W.MODS.find(m => m.id === id))).join("")}</div>
         <canvas data-figure="${a.id}"></canvas>

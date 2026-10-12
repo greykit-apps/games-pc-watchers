@@ -45,6 +45,7 @@ h1,h2,h3{font-weight:600;margin:0}
 .card-r{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .card-name{font-size:11px;color:var(--text);letter-spacing:.1em;line-height:1.2}
 .card-name kbd{margin-right:4px;padding:0 3px;min-width:0}
+.card-name .rank{color:var(--amber);font-size:9px;letter-spacing:0}
 .hp{height:4px;background:#1a0d12;border-radius:1px;overflow:hidden}
 .hp i{display:block;height:100%;background:var(--good);transition:width .15s}
 .hp i.low{background:var(--danger)}

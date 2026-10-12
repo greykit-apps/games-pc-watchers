@@ -525,7 +525,7 @@ W.thinkAgent = (world, u) => {
   const range = W.rangeOf(u) + W.eff(u, "dot") * 1.5 + 0.6 * W.mod(u, "eyes");
   const foe = W.nearestFoe(world, u, range);
   if (foe) {
-    if (u.target !== foe) { u.target = foe; u.aimT = Math.max(0.1, (0.95 - 0.65 * vine - 0.2 * W.eff(u, "dot")) * (1 - 0.18 * W.mod(u, "brain"))); }
+    if (u.target !== foe) { u.target = foe; u.aimT = Math.max(0.1, (0.95 - 0.65 * vine - 0.2 * W.eff(u, "dot")) * (1 - 0.18 * W.mod(u, "brain")) * (1 - W.RANK.react * (u.rank || 0))); }
   } else u.target = null;
 };
 
@@ -956,12 +956,17 @@ W.spawnHired = (world, n) => {
     W.giveWeapon(u, i % 2 ? "shotgun" : "uzi", i % 2 ? 24 : 80); W.giveWeapon(u, "pistol"); W.drawBest(u);
   }
 };
+/* Veterancy: a Watcher who has come home from enough missions is quicker and
+ * steadier. Ranks 0 to 3 (the campaign counts them: M.RANKS); each a little
+ * more aim and a little less time to take it. */
+W.RANK = { acc: 0.05, react: 0.07, names: ["Recruit", "Regular", "Veteran", "Elite"] };
 W.agentLook = a => ({ coat: "#1b2130", trim: "#54f2ff", legs: "#10131c", fur: a.fur, patch: a.patch || null, visor: "#54f2ff", long: true });
 W.spawnSquad = (world, roster, spots) => {
   world.dropAt = spots[0];   // where the squad came in: where the pickup waits when the job is done
   roster.slice(0, spots.length).forEach((a, i) => {
     const mods = Object.assign({}, a.mods || {});
-    const u = world.add(W.makeUnit("agent", spots[i][0], spots[i][1], { name: a.name, slot: i, rosterId: a.id, look: W.agentLook(a), dir: -Math.PI / 2, mods, kills: 0, scannerMk: a.scannerMk || 0 }));
+    const u = world.add(W.makeUnit("agent", spots[i][0], spots[i][1], { name: a.name, slot: i, rosterId: a.id, look: W.agentLook(a), dir: -Math.PI / 2, mods, kills: 0, scannerMk: a.scannerMk || 0, rank: a.rank || 0 }));
+    u.acc *= 1 + W.RANK.acc * u.rank;
     // a chest mod: more to hit, and harder to hurt
     u.maxHp = u.hp = 24 + 6 * (mods.chest || 0);
     u.armor = 0.75 * (1 - 0.1 * (mods.chest || 0));

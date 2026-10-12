@@ -16,6 +16,7 @@
  *   node tools/bench.js --kind=assassinate --threat=3 --level=2 --tactic=stealth [--n=4] [--district=downtown] [--seed=3000]
  *   node tools/bench.js --grid [--kinds=assassinate,crackdown] [--tactics=...] [--levels=0-4] [--gaps=-1,0,1] [--n=4] [--jobs=4]
  *   --greedy: go after the side jobs before heading home (a sweep always does)
+ *   --out=file.jsonl: each cell's results as it finishes; --dt=0.0167 to step at the game's rate
  *
  * --grid runs every cell (threat = level + 1 + gap) in parallel and prints a
  * table: won, Watchers lost a mission, time, crew down, loot carried home. */
@@ -55,9 +56,10 @@ function roster(level, tactic) {
 }
 
 /* one mission, played by one tactic */
-function fight(W, L, level, tactic, maxT = 1200, greedy = false) {
+/* dt: the bench steps the world at 30 a second, not the game's 60: half the cost, and the same fights */
+function fight(W, L, level, tactic, maxT = 900, greedy = false, dt = 1 / 30) {
   const world = new W.World(L, { roster: roster(level, tactic) });
-  const m = world.map, dt = 1 / 60;
+  const m = world.map;
   const start = new Map(world.agents.map(a => [a, new Set(a.weapons.map(w => `${w.type}:${w.mk || 1}`))]));
   let t = 0, orderT = 0;
   const live = () => world.agents.filter(a => a.alive && !a.out);
@@ -261,7 +263,7 @@ function cell(kind, threat, level, tactic, n, seed0, district, greedy) {
     L.mission = { kind, threat, quiet: !!(W.M.KINDS[kind] || {}).quiet };
     L.mod = Object.assign({}, W.M.THREAT[threat]);
     L.scannerMk = KITS[level].scanner;
-    out.push(fight(W, L, level, tactic, 1200, greedy));
+    out.push(fight(W, L, level, tactic, 900, greedy, +val("dt", 1 / 30)));
   }
   return out;
 }
@@ -302,7 +304,7 @@ if (args.includes("--grid")) {
     p.stderr.on("data", d => process.stderr.write(d));
     p.on("close", () => {
       running--;
-      try { const r = JSON.parse(buf.trim().split("\n").pop()); results.push(r); process.stderr.write(r.error ? `ERROR ${JSON.stringify(job)}: ${r.error}\n` : `done ${job.kind} L${job.level} t${job.threat} ${job.tactic}\n`); }
+      try { const r = JSON.parse(buf.trim().split("\n").pop()); results.push(r); if (val("out")) require("fs").appendFileSync(val("out"), JSON.stringify(r) + "\n"); process.stderr.write(r.error ? `ERROR ${JSON.stringify(job)}: ${r.error}\n` : `done ${job.kind} L${job.level} t${job.threat} ${job.tactic}\n`); }
       catch (e) { process.stderr.write(`bad output from ${JSON.stringify(job)}\n`); }
       next();
     });

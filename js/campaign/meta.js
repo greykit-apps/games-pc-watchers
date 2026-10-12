@@ -177,10 +177,14 @@ M.THREAT = {
  * with pistols are tier 1. A weapon mark counts a quarter more gun, as it
  * does in the field. The tiers are set from real fights in the engine. */
 M.GUN_POWER = { pistol: 0.5, shotgun: 0.8, uzi: 1, longrange: 1.2, minigun: 1.6, laser: 1.8, gauss: 2 };
+/* Veterancy: missions survived to reach each rank (W.RANK in the engine says
+ * what a rank is worth in the field: a little aim, a little quicker). */
+M.RANKS = [3, 8, 15];
+M.rank = a => M.RANKS.filter(n => (a.missions || 0) >= n).length;
 M.agentPower = a => {
   // a mark over MK1 is +25% damage and +15% range in the field (W.MARK): about a quarter more gun
   const gun = Math.max(0, ...a.items.filter(i => M.GUN_POWER[i.type]).map(i => M.GUN_POWER[i.type] * (1 + 0.25 * ((i.mk || 1) - 1))));
-  return 1 + gun + 0.2 * Object.values(a.mods).reduce((t, v) => t + v, 0);
+  return 1 + gun + 0.2 * Object.values(a.mods).reduce((t, v) => t + v, 0) + 0.25 * M.rank(a);
 };
 // the missions the BanHammer is for: taking a zone back, and locking one down
 M.bigGun = o => !!o && (o.kind === "siege" || (o.kind === "story" && o.step === M.STORY.length - 1));
@@ -707,7 +711,7 @@ M.worth = a => M.PRICE.recruit + Object.values(a.mods).reduce((t, v) => t + [1, 
 
 /* What the mission engine is given: the deployed squad, with each weapon's mark. */
 M.missionRoster = s => M.squad(s).map(a => ({
-  id: a.id, name: a.name, fur: a.fur, patch: a.patch, mods: Object.assign({}, a.mods),
+  id: a.id, name: a.name, fur: a.fur, patch: a.patch, mods: Object.assign({}, a.mods), rank: M.rank(a),
   weapons: a.items.filter(i => W.WEAPONS[i.type === "purrsuader" && (i.mk || 1) >= 2 ? "purr2" : i.type]).map(i => ({
     type: i.type === "purrsuader" && (i.mk || 1) >= 2 ? "purr2" : i.type, mk: i.mk || 1, ammo: i.type === "medikit" || i.type === "banhammer" ? i.count || 1 : undefined })),
 }));
@@ -824,7 +828,9 @@ M.settle = (s, o, res) => {
       M.note(s, `${a.name} was killed in ${D.name}.`, "bad");
       continue;
     }
+    const was = M.rank(a);
     a.missions++; a.kills += r.kills || 0;
+    if (M.rank(a) > was) { lines.push([`${a.name} promoted`, W.RANK.names[M.rank(a)]]); M.note(s, `${a.name} is a ${W.RANK.names[M.rank(a)]} now.`, "good"); }
     // the engine hands weapons back without their marks: a weapon a Watcher went out with keeps its mark
     const had = {}; for (const i of a.items) had[i.type] = i.mk || 1;
     const items = [];

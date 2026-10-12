@@ -207,6 +207,10 @@ before leaving (everyone in it down, run off or talked round) and it pays
 money and a little control on top, even if the job itself went wrong, as
 long as somebody gets out.
 
+**Veterancy.** A Watcher who comes home from 3 missions is a Regular, from
+8 a Veteran, from 15 Elite: each rank a little more aim and a little quicker
+to take it (stars on the card), and a little more squad power.
+
 **The enemy's level** is the threat less one, matched to the Watchers' own:
 at threat 1 a third of them carry an MK1 pistol; by threat 5 they carry MK3
 rifles, miniguns and lasers and take 70% more killing, and there are five

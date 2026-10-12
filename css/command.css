@@ -133,7 +133,13 @@
 .cx .sw.lk{background:repeating-linear-gradient(45deg,var(--lk) 0 2px,#8a6a10 2px 4px)}
 .cx .sw.ls{background:repeating-linear-gradient(45deg,var(--red) 0 2px,#3a0a10 2px 4px)}
 .cx .sw.cal{background:transparent;border:2px solid var(--red)}
-.cx-mid,.cx-ops{min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px}
+.cx-ops,.cx .mid-main{min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px}
+/* the middle column: the dossier (or the overview) over the dispatch. The dispatch keeps a home a long dossier
+   can't push off the screen: the dossier stops 170px short of the bottom and scrolls, the dispatch scrolls in what's left */
+.cx-mid{min-height:0;display:flex;flex-direction:column;gap:10px}
+.cx .mid-main{flex:0 0 auto;max-height:calc(100% - 170px)}
+.cx-mid>.dispatch{flex:0 1 auto;min-height:0;display:flex;flex-direction:column}
+.cx .dispatch .d-body{min-height:0;overflow-y:auto;padding-right:4px}
 
 /* the dossier */
 .cx .dossier .dz-head{display:flex;align-items:flex-start;gap:10px}
@@ -189,7 +195,7 @@
 .cx .watch li .down,.cx .watch li .bad{color:var(--red-t)}
 
 /* the dispatch */
-.cx .dispatch header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.cx .dispatch header{flex:none;display:flex;align-items:center;gap:10px;margin-bottom:6px}
 .cx .dispatch header small{color:var(--t3)}
 .cx .dispatch ul{list-style:none;margin:0;padding:0;font-size:13px}
 .cx .dispatch li{padding:4px 0;border-top:1px solid var(--divider);color:var(--t2)}
@@ -436,7 +442,11 @@
   .cx-city .cx-ops{grid-column:2}
   .cx-city{grid-template-rows:auto minmax(0,1fr)}
   .cx-city .cx-mapbox{grid-row:1/3}
-  .cx-city .cx-mid{max-height:none}
+  /* too short to pin it: the column scrolls as one, the dispatch under the dossier at its own height */
+  .cx-city .cx-mid{overflow-y:auto;padding-right:4px}
+  .cx-city .mid-main{max-height:none;overflow:visible;padding-right:0}
+  .cx-city .cx-mid>.dispatch{flex:none}
+  .cx-city .dispatch .d-body{overflow:visible}
   .cx-clinic{grid-template-columns:minmax(220px,.8fr) minmax(0,1.8fr)}
   .cx-armoury{grid-template-columns:minmax(0,1fr) minmax(300px,.8fr);height:auto}
   .cx .loadouts ul{grid-template-columns:repeat(2,minmax(0,1fr))}

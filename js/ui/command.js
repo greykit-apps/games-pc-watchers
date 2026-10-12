@@ -23,12 +23,13 @@ W.Command = class {
     this.game = game;
     this.screen = W.store.get("cmdscreen_v1", "city");
     if (!W.Command.SCREENS.includes(this.screen)) this.screen = "city";
-    this.zoneId = null;
+    // the dossier and list the player had open survive a briefing, for the same campaign
+    const kept = W.Command.kept && W.Command.kept.s === game.campaign ? W.Command.kept : {};
+    this.zoneId = kept.zoneId || null;
     this.agentId = null;
     this.officeZone = null;
-    this.allOffers = false;
+    this.allOffers = !!kept.allOffers;
     this.showLog = false;
-    this.dispatchData = null;
     this.banners = [];
     this.armed = null;          // a button waiting for its second click
   }
@@ -80,6 +81,7 @@ W.Command = class {
     this.draw();
   }
   close() {
+    W.Command.kept = { s: this.s, zoneId: this.zoneId, allOffers: this.allOffers };
     if (this.map) this.map.stop();
     window.removeEventListener("resize", this.onResize);
     clearTimeout(this.bannerT); clearTimeout(this.toastT);
@@ -220,7 +222,7 @@ W.Command = class {
           <li><i class="sw l0"></i>L0</li><li><i class="sw l1"></i>L1</li><li><i class="sw l2"></i>L2</li><li><i class="sw l3"></i>L3</li>
           <li><i class="sw lk"></i>Locked</li><li><i class="sw ls"></i>Lost</li><li><i class="sw cal"></i>Cal</li></ul>
       </section>
-      <section class="cx-mid" data-scroll="mid">${this.zoneId ? this.dossierHTML(W.M.zone(s, this.zoneId)) : this.overviewHTML()}${this.dispatchHTML()}</section>
+      <section class="cx-mid"><div class="mid-main" data-scroll="mid">${this.zoneId ? this.dossierHTML(W.M.zone(s, this.zoneId)) : this.overviewHTML()}</div>${this.dispatchHTML()}</section>
       <section class="cx-ops" data-scroll="ops" aria-label="Missions">${this.opsHTML()}</section>`;
   }
   zoneSay(z) {
@@ -317,17 +319,33 @@ W.Command = class {
       </article>`;
   }
 
-  /* ---- the dispatch: what the last wait did; earlier days on request ---- */
+  /* ---- the dispatch: what the last wait did, what happened since; earlier days on request ---- */
   dispatchHTML() {
-    const s = this.s, d = this.dispatchData;
-    const lines = d ? d.lines : this.logDay(s.log[0] ? s.log[0].day : s.day).map(l => ({ cls: l.kind, text: l.text }));
-    const title = d ? (d.days > 1 ? `DAYS ${d.from}-${d.to - 1}` : `DAY ${d.from}`) : `DAY ${s.log[0] ? s.log[0].day : s.day}`;
-    const days = [...new Set(s.log.map(l => l.day))].slice(d ? 0 : 1, 8);
-    return `<section class="panel dispatch" aria-live="polite" aria-label="Dispatch">
-      <header>${this.hx("DISPATCH", "sub-t", 2)}<small>${title.toLowerCase().replace("day", "Day").replace("days", "Days")}</small></header>
-      <ul>${lines.map(l => `<li class="${l.cls || ""}">${W.esc(l.text)}</li>`).join("") || `<li class="quiet">A quiet day. Nothing changed.</li>`}</ul>
+    const s = this.s, d = s.dispatch && s.dispatch.to <= s.day ? s.dispatch : null;
+    const span = (a, b) => a === b ? `Day ${a}` : `Days ${a}–${b}`;
+    const li = (l, cls = l.cls || l.kind || "") => `<li class="${cls}">${W.esc(l.text)}</li>`;
+    const logDays = [...new Set(s.log.map(l => l.day))];
+    // since the wait: a mission, its days away, the Office; newest first, as the log runs
+    const since = d ? logDays.filter(day => day >= d.to) : [];
+    let body, from, to;
+    if (d) {
+      const waitList = `<ul>${d.lines.map(l => li(l)).join("") || `<li class="quiet">A quiet day. Nothing changed.</li>`}</ul>`;
+      body = since.length
+        ? since.map(day => `<h4>Day ${day}</h4><ul>${this.logDay(day).map(l => li(l)).join("")}</ul>`).join("") + `<h4>${span(d.from, d.to - 1)}</h4>${waitList}`
+        : waitList;
+      from = d.from; to = since.length ? since[0] : d.to - 1;
+    } else {
+      // no wait yet, or a save from before the dispatch was kept: the latest day in the log
+      from = to = logDays.length ? logDays[0] : s.day;
+      body = `<ul>${this.logDay(from).map(l => li(l)).join("") || `<li class="quiet">A quiet day. Nothing changed.</li>`}</ul>`;
+    }
+    const shown = new Set(d ? since : [from]);
+    const days = logDays.filter(day => !shown.has(day)).slice(0, 8);
+    return `<section class="panel dispatch" aria-label="Dispatch">
+      <header>${this.hx("DISPATCH", "sub-t", 2)}<small>${span(from, to)}</small></header>
+      <div class="d-body" data-scroll="dispatch">${body}
       ${days.length ? `<button class="link" data-a="log" data-fk="log" aria-expanded="${this.showLog}">${this.showLog ? "Hide" : "Show"} earlier days</button>` : ""}
-      ${this.showLog ? days.map(day => `<h4>Day ${day}</h4><ul class="old">${this.logDay(day).map(l => `<li class="${l.kind}">${W.esc(l.text)}</li>`).join("")}</ul>`).join("") : ""}
+      ${this.showLog ? days.map(day => `<h4>Day ${day}</h4><ul class="old">${this.logDay(day).map(l => li(l)).join("")}</ul>`).join("") : ""}</div>
     </section>`;
   }
   // a day's log, with the same line said twice said once
@@ -879,7 +897,8 @@ W.Command = class {
       if (/falls to level 0|is pacified|slips from level 3/.test(l.text) || said.has(l.text)) continue;
       said.add(l.text); lines.push({ cls: l.kind, text: l.text });
     }
-    this.dispatchData = { from: before.day, to: s.day, days, lines };
+    // kept in the campaign, so a briefing or a reload doesn't lose what the last wait did
+    s.dispatch = { from: before.day, to: s.day, days, lines };
     // the banners: what nobody should miss
     for (const z of s.zones) if (z.lost && !before.zones[z.id].lost) this.banners.push({ tone: "red", big: "ZONE LOST", sub: `${M.zoneDef(z.id).name} has fallen to Cal. A siege takes it back.`, sound: "lose" });
     if (s.cal.zone && s.cal.zone !== before.cal) this.banners.push({ tone: "red", big: "CAL MOVES", sub: `He's pushing ${M.zoneDef(s.cal.zone).name}. A mission against his crew ends it.`, sound: "alarm" });

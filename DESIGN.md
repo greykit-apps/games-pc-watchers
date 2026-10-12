@@ -149,7 +149,7 @@ components:
     height: "50px"
   screen-tab-selected:
     backgroundColor: "#45536e"
-    textColor: "{colors.live-orange}"
+    textColor: "{colors.watcher-cyan}"
   level-chip:
     textColor: "#1a1204"
     typography: "{typography.label}"
@@ -187,14 +187,14 @@ Scope. This system governs the command screens (City, Lab, Clinic and Armoury, C
 A cold steel-and-slate ground carrying four hot signal colors, each with exactly one meaning.
 
 ### Primary
-- **Live Orange** (live-orange): the colour of action. The primary button ("Wait a day", "Brief"), the range-slider thumb, the selected screen tab's title and icon, LCD digits, panel heading titles, text links, count badges on the screen bar, the recommended mission's bevel. Its bevel pair is live-orange-hi / live-orange-lo; text sitting on it is ink-on-orange.
+- **Live Orange** (live-orange): the colour of action. The primary button ("Wait a day", "Brief"), the range-slider thumbs, LCD digits, the WATCHERS nameplate, text links, count badges and map count tags, the NEXT MOVE panel's bevel. Panel headings are not orange: they are text-bright. Its bevel pair is live-orange-hi / live-orange-lo; text sitting on it is ink-on-orange.
 
 ### Secondary
 - **Benton Gold** (benton-gold): Casey Benton's control. The control ramp runs dim ochre to bright gold across levels 0 to 3 (control-l0 to control-l3), with control-locked as the brighter gold for locked zones (crosshatched on the map and legend). Also used for the Take Control meter (upgrade points before the order, one cell a locked zone after it), the dial's "hold" marker and value, Casey's quote attribution, event targets in the Office, and PVN, her news channel, on the ticker.
 
 ### Tertiary
 - **Cal Red** (cal-red): Cal and lost ground. Hazard stripes over lost zones, Cal's pulsing front on the map, urgent strips, deadly threat, red banners, mission badges that can't wait. Text sitting on red is ink-on-orange, never white (white on cal-red is 3:1). Text in red on dark panels uses the lighter cal-red-text for legibility. armed-red is the fill of a button armed for a destructive confirm.
-- **Watcher Cyan** (watcher-cyan): selection and the squad. Focus rings, the selected roster card, "in squad" chips, running research bars, the Clinic figure's mods, text selection, "quiet" mission flags.
+- **Watcher Cyan** (watcher-cyan): selection and the squad. Focus rings, the selected screen tab's label and icon (and HELP while open), the selected roster card, "in squad" chips, running research bars, the Clinic figure's mods, text selection, "quiet" mission flags.
 - **Money Green** (money-green) and **Research Blue** (research-blue): the two outputs of the city split, used on LCDs, the split slider's labels and forecast arrows. Green also marks good outcomes and safe threat.
 - **Dark Corner Violet** (dark-corner, dark-corner-text): the "dark corner" research tree, dark events in the Office and dark flags. A minor, reused accent not named in the original direction; it marks morally dark options only.
 
@@ -209,7 +209,7 @@ A cold steel-and-slate ground carrying four hot signal colors, each with exactly
 - **Text** ramp: text-bright for names, values and button labels; text-body for running prose; text-quiet for metadata, hints and captions.
 
 ### Named Rules
-**The One Meaning Rule.** Each signal colour keeps its meaning. Orange is live: what you can press now, and the console's own voice in headings and LCDs; as a status it means caution (hard threat, warnings). Gold is Benton control and what it buys. Red is Cal, loss and deadly. Cyan is selection, the squad and what is running. Never use red for an ordinary action, or cyan for a button.
+**The One Meaning Rule.** Each signal colour keeps its meaning. Orange is live: what you can press now, and the LCD digits; as a status it means caution (hard threat, warnings, IDLE). Headings speak in text-bright, so orange keeps its pull. Gold is Benton control and what it buys. Red is Cal, loss and deadly. Cyan is selection, the squad and what is running. Never use red for an ordinary action, or cyan for a button.
 
 **The Two Golds Rule.** The map tints zones with a darker ramp blended continuously from control (sidecar `goldStops`), so the satellite ground shows through; chips and gauges use the brighter control-l0 to control-l3 so labels on them stay legible. Both ramps end at the same benton-gold.
 
@@ -221,7 +221,7 @@ A cold steel-and-slate ground carrying four hot signal colors, each with exactly
 **Character:** Hard pixel capitals in orange or white for the console's voice, against a quiet, highly legible system sans that does the reading work. The pixel face is proportional (each glyph as wide as its ink) and has a 1px drop shadow on headings.
 
 ### Hierarchy
-- **Display** (pixel, scale 3, 21px cap height): the WATCHERS brand mark and the selected Watcher's name in the Clinic. Banners use scale 4 (28px).
+- **Display** (pixel, scale 3, 21px cap height): the WATCHERS brand mark and the selected Watcher's name in the Clinic. Banner headlines too.
 - **Headline** (pixel, scale 2, 14px): panel headings (MISSIONS, DISPATCH, ROSTER, ARMOURY), the zone name in the dossier, screen-bar tab labels, map labels and tags.
 - **LCD** (pixel, scale 2, 14px, ghosted 8s behind digits): day, cash, the day's take, AT WAR.
 - **Title** (600, 15px, 1.45): mission names in offers.
@@ -241,7 +241,7 @@ A fixed full-viewport console: top bar, screen bar, then one screen that fills t
 
 - **Top bar:** brand, LCD cluster, the city split slider, and "Wait a day" plus the Until menu pushed to the right.
 - **Screen bar:** five equal tabs (City, Lab, Clinic, Office, Armoury; keys 1 to 5), each with a 9x9 pixel icon, a pixel label, an optional badge and its key; then HELP (key ?), a narrower plate outside the tablist.
-- **City:** three columns: the map (near square, full height, at most 50vw) over a two-row key (territory, then the map's own marks); the middle column, the dossier or the overview over the dispatch; and the missions column. The dossier stops 170px short of the column's foot and scrolls, so the dispatch is always on screen; below 1180px the middle column scrolls as one.
+- **City:** three columns: the map (near square, full height, at most 50vw) over a two-row key (territory, then the map's own marks); the middle column, the dossier or the overview (led by NEXT MOVE, the mission B briefs and why) over the dispatch; and the missions column. The dossier stops 170px short of the column's foot and scrolls, so the dispatch is always on screen; below 1180px the middle column scrolls as one.
 - **Help:** "How it works" floats over the right of whichever screen is open (the screen's grid cell, at most 460px or 42vw wide), with the floating-menu shadow. Esc or HELP closes it.
 - **Lab:** two columns, war footing and running research on top, the trees below in auto-fit columns of at least 420px.
 - **Clinic:** the roster, then the selected Watcher's figure with mod slots either side.
@@ -258,7 +258,7 @@ Depth is bevelled, not shadowed. Every surface is a 2px border with a light top-
 
 ### Shadow Vocabulary
 - **Floating menu** (`box-shadow: 0 10px 24px rgba(0,0,0,.5)`): the Until menu and the help panel.
-- **Banner** (`box-shadow: 0 18px 40px rgba(0,0,0,.6)`): the red and gold announcement banners. What one wait brings comes as one banner (the first headline in the pixel face, each further event a line under it), up for 7 seconds, held while the pointer is on it, dismissed by a click or Esc.
+- **Banner** (`box-shadow: 0 18px 40px rgba(0,0,0,.6)`): the red and gold announcement banners: a slim full-width band docked under the screen bar, which drops in like a shutter 0.9s after a wait so the map's sweep plays first. What one wait brings comes as one banner (the first headline in pixel scale 3, each further event a line beside it), up for 7 seconds, held while the pointer is on it, dismissed by a click or Esc (Esc also cancels one not yet landed). TAKE CONTROL is gold: it's Benton's moment.
 
 ### Named Rules
 **The Light From Top-Left Rule.** Raised is light top-left, dark bottom-right; sunk is the reverse; pressed flips a raised control to sunk. Never mix the directions on one screen.
@@ -302,7 +302,7 @@ Steel plates you press in.
 - **Focus:** 2px watcher-cyan outline, offset 2px.
 
 ### Navigation
-- **Screen bar:** five equal raised tabs, 50px tall, and a HELP plate after them. Default: steel-face with a text-bright pixel label and a quiet icon. Selected: sunk, lighter steel, with the label and icon in live-orange. Each tab shows its number key (and HELP its ?); the key cap is aria-hidden and named as `aria-keyshortcuts` instead.
+- **Screen bar:** five equal raised tabs, 50px tall, and a HELP plate after them. Default: steel-face with a text-bright pixel label and a quiet icon. Selected: sunk, lighter steel, with the label and icon in watcher-cyan (5.7:1; orange read 3.65:1 on the sunk plate). Each tab shows its number key (and HELP its ?); the key cap is aria-hidden and named as `aria-keyshortcuts` instead.
 
 ### LCD Readout (signature)
 A sunk black well, 48px tall, with an 11px uppercase caption in text-quiet over pixel digits in live-orange (money in green, research in blue). Unlit 8s are drawn behind every digit in a dark tint of the digit colour, as on a segment display.

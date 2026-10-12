@@ -1074,6 +1074,8 @@ W.Command = class {
     }
     if (k === "escape") {
       if (this.bannerOn) { this.hideBanner(); return true; }
+      // a banner still waiting on the map's sweep is dismissed before it lands
+      if (this.banners.length) { this.banners = []; clearTimeout(this.bannerDelay); return true; }
       if (this.helpOpen) { this.toggleHelp(); return true; }
       if (this.untilOpen) { this.untilOpen = false; this.focusTo = "until"; this.draw(); return true; }
       if (this.armed) { this.armed = null; this.draw(); return true; }

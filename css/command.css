@@ -476,6 +476,7 @@
   .cx .lcd,.cx .warm{padding:4px 8px}
   .cx .warm{min-width:0}
   .cx .cells i{width:3px}
+  .cx .cells.z i{width:12px}
   .cx-split{min-width:120px;flex:1 1 120px}
   .cx .split-row{gap:6px;font-size:12px}
   .cx .split-row input{min-width:60px}

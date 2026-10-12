@@ -269,7 +269,8 @@ function cell(kind, threat, level, tactic, n, seed0, district, greedy) {
     L.mission = { kind, threat, quiet: !!(W.M.KINDS[kind] || {}).quiet };
     L.mod = Object.assign({}, W.M.THREAT[threat]);
     L.scannerMk = KITS[level].scanner;
-    out.push(fight(W, L, level, tactic, 900, greedy, +val("dt", 1 / 30)));
+    const t0 = Date.now();
+    out.push(Object.assign(fight(W, L, level, tactic, 900, greedy, +val("dt", 1 / 30)), { wall: (Date.now() - t0) / 1000, seed: seed0 + i, district: L.districtId }));
   }
   return out;
 }

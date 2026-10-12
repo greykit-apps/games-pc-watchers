@@ -30,7 +30,8 @@ M.N = {
   PULL: 0.25,                           // how fast propaganda or mind control draws a zone back up to its floor
   HIRED: 4,                             // a hired crew, in squad power
   BANHAMMER: 6,                         // a BanHammer strike carried, in squad power, for a siege or a lockdown
-  PERSUADED: 0.02, CIV_KILLED: 0.03,     // control, per citizen talked round and per civilian killed on a mission, won or lost
+  PERSUADED: 0.025, TURNED: 0.05, CIV_KILLED: 0.03,   // control, per citizen talked round, per crew or police turned, and per civilian killed on a mission, won or lost
+  PERSUADE_CAP: 0.4,                    // the most a mission's talking round adds: the streets can be talked to only so far
   FLOOR_MONEY: [1, 0.85, 0.7],          // what propaganda (1) and mind control (2) leave of a zone's money: people stop spending
 };
 M.decay = (C, war) => {
@@ -870,11 +871,16 @@ M.settle = (s, o, res) => {
     const g = Math.round(s.contractControl * 100) / 100; s.contractControl = 0;
     if (!z.lost && !z.locked) { z.C = Math.min(M.N.CAP, z.C + g); lines.push([`Control in ${D.name}, from the side jobs`, `+${g}`]); }
   }
-  // the streets remember, won or lost: citizens talked round and still with the squad, and civilians the fight killed
-  const talked = res.persuaded || 0, dead = res.civKilled || 0;
-  if ((talked || dead) && !z.lost && !z.locked) {
+  // the streets remember, won or lost: people talked round and still with the squad (up to a point),
+  // and civilians the fight killed
+  const talked = res.persuaded || 0, turned = res.turned || 0, dead = res.civKilled || 0;
+  if ((talked || turned || dead) && !z.lost && !z.locked) {
     const f = n => (n < 0 ? "−" : "+") + Math.abs(n).toFixed(2);
-    if (talked) { const g = talked * M.N.PERSUADED; z.C = Math.min(M.N.CAP, z.C + g); lines.push([`Citizens talked round: ${talked}`, `control ${f(g)}`]); }
+    if (talked || turned) {
+      const g = Math.min(M.N.PERSUADE_CAP, talked * M.N.PERSUADED + turned * M.N.TURNED);
+      z.C = Math.min(M.N.CAP, z.C + g);
+      lines.push([`Talked round: ${talked} citizen${talked === 1 ? "" : "s"}${turned ? `, ${turned} of the crew and the police` : ""}`, `control ${f(g)}${g >= M.N.PERSUADE_CAP ? " (as far as talk goes)" : ""}`]);
+    }
     if (dead) { const g = dead * M.N.CIV_KILLED; z.C = Math.max(0.01, z.C - g); lines.push([`Civilians killed: ${dead}`, `control ${f(-g)}`]); }
   }
   const lostNow = s.zones.filter(q => q.lost).length;

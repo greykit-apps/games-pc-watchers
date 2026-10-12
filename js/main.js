@@ -867,7 +867,7 @@ const Game = W.game = {
     let slip = null;
     if (camp) {
       slip = W.M.settle(this.campaign, this.run.contract, {
-        won, persuaded: s.persuaded || 0, civKilled: s.civ || 0,
+        won, persuaded: s.persuaded || 0, turned: s.turned || 0, civKilled: s.civ || 0,
         contracts: (w.contracts || []).map(c => ({ id: c.id, weight: c.weight, done: c.done })),
         agents: w.agents.map(a => ({ id: a.rosterId, alive: a.alive, kills: a.kills || 0, items: a.weapons.map(x => ({ type: x.type, ammo: x.ammo, mk: x.mk })) })),
       });
@@ -887,6 +887,8 @@ const Game = W.game = {
         <tr><td>${W.esc(w.names.sec)} down</td><td>${s.sec}</td></tr>
         <tr><td>Civilians lost</td><td>${s.civ}</td></tr>
         <tr><td>Citizens talked round</td><td>${s.persuaded || 0}</td></tr>
+        ${s.turned ? `<tr><td>Crew and police turned</td><td>${s.turned}</td></tr>` : ""}
+        ${(w.contracts || []).length ? `<tr><td>${w.sweep ? "Operations broken" : "Side jobs done"}</td><td>${w.contracts.filter(c => c.done).length} of ${w.contracts.length}</td></tr>` : ""}
         ${s.civAcc ? `<tr><td>Traffic accidents (not on you)</td><td>${s.civAcc}</td></tr>` : ""}
         <tr><td>Recruited</td><td>${s.recruited}</td></tr>
         <tr><td>Rounds fired</td><td>${s.shots}</td></tr>

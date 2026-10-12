@@ -703,6 +703,8 @@ W.World = class {
     this.status = status; this.endReason = reason; this.endT = 0;
     // for the area's control (the campaign's business): citizens talked round and still with us, and the civilians the fight killed
     this.stats.persuaded = this.units.filter(u => u.alive && u.persuadedCiv && u.follower).length;
+    // and the crew and the police talked round: people who will speak for Casey Benton on their own streets
+    this.stats.turned = this.units.filter(u => u.alive && u.follower && !u.isAgent && !u.merc && !u.subject && (u.faction === "player") && (u.kind === "crew" || u.kind === "sec")).length;
     for (const o of this.objectives) if (o.state === "active") o.state = o.type === "civcap" && status === "won" ? "done" : o.optional ? "failed" : (status === "won" ? "done" : "failed");
     this.msg(reason, status === "won" ? "#4ade6a" : "#ff5266");
     W.audio.play(status === "won" ? "win" : "lose");

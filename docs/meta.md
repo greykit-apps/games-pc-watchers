@@ -322,9 +322,10 @@ kind depends on the level:
   of control, or the opposite if they go badly.
 
 Won or lost, the streets remember how it was done: each citizen talked round
-and still with the squad at the end adds **0.02 control** to the zone, and
-each civilian the fight killed takes **0.03** off (traffic accidents don't
-count). Both show on the debrief.
+and still with the squad at the end adds **0.025 control** to the zone, each
+of the crew or the police turned **0.05**, up to **0.4** a mission (talk only
+goes so far); each civilian the fight killed takes **0.03** off (traffic
+accidents don't count). Both show on the debrief.
 
 Each mission type is a template with ranges: its board area, its target, how
 many guards and crew, their weapons, where you start and where they run, how

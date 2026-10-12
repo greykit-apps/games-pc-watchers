@@ -1037,7 +1037,7 @@ W.Command = class {
       const n = W.M.cheat(this.s);
       W.audio.play("win");
       this.commit();
-      this.toast(`Konami: $500,000${n ? `, ${n} project${n > 1 ? "s" : ""} finished` : ""}.`);
+      this.toast(`Konami: $1,000,000${n ? `, ${n} project${n > 1 ? "s" : ""} finished` : ""}.`);
       return true;
     }
     if (k === "escape") {

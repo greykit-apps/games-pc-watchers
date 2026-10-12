@@ -471,13 +471,13 @@ M.finish = (s, p) => {
     if (!s.war && !s.warReady && R.points >= M.N.WAR_AT) { s.warReady = true; M.note(s, "Casey Benton is ready to take control of the city whenever you are. Give the order from the Lab.", "good"); }
   }
 };
-// the Konami code: every project running finished, and half a million from Casey's petty cash
+// the Konami code: every project running finished, and a million from Casey's petty cash
 M.cheat = s => {
   const done = s.research.running.length;
   for (const p of s.research.running) p.left = 0;
   M.feedResearch(s, 0);
-  s.cash += 500000;
-  M.note(s, `Up, up, down, down. Casey Benton's petty cash: $500,000${done ? `, and ${done} project${done > 1 ? "s" : ""} finished` : ""}. Nobody saw anything.`, "good");
+  s.cash += 1000000;
+  M.note(s, `Up, up, down, down. Casey Benton's petty cash: $1,000,000${done ? `, and ${done} project${done > 1 ? "s" : ""} finished` : ""}. Nobody saw anything.`, "good");
   return done;
 };
 M.canDeclareWar = s => s.war ? "already taking control" : s.research.points < M.N.WAR_AT ? `${M.N.WAR_AT - s.research.points} more upgrade points first` : "";

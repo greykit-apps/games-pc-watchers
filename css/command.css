@@ -93,12 +93,15 @@
 .cx select{font:600 13px var(--sans);color:var(--t1);background:var(--well);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo);padding:5px 8px;border-radius:0}
 
 /* ---- the screen bar ---- */
-.cx-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:6px 16px;background:#161c28;border-bottom:2px solid var(--lo)}
+.cx-bar{display:flex;gap:4px;padding:6px 16px;background:#161c28;border-bottom:2px solid var(--lo)}
+.cx-tabs{flex:1;min-width:0;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
 .cx-bar button{display:flex;align-items:center;gap:10px;padding:6px 12px;min-height:50px;text-align:left;color:var(--t2);background:var(--face)}
 .cx-bar button canvas{width:18px;height:18px;flex:none;color:var(--t3);image-rendering:pixelated}
 .cx-bar .bl{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
 .cx-bar .px{color:var(--t1);--px-shadow:#0c1018}
-.cx-bar button[aria-selected=true]{background:#45536e;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.cx-bar button[aria-selected=true],.cx-bar .help-b[aria-expanded=true]{background:#45536e;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.cx-bar .help-b{flex:none;gap:8px}
+.cx-bar .help-b[aria-expanded=true] .px{color:var(--orange)}
 .cx-bar button[aria-selected=true] .px,.cx-bar button[aria-selected=true] canvas{color:var(--orange)}
 .cx-bar button[aria-selected=true] kbd{color:var(--t1);opacity:1}
 .cx-bar .n{font:700 12px var(--sans);font-style:normal;background:var(--orange);color:var(--ink-orange);padding:2px 6px}
@@ -106,8 +109,22 @@
 .cx-bar .n.soft{background:var(--chip);color:var(--t2)}
 .cx-bar kbd{margin:0;opacity:.6}
 
+/* ---- help: floats over the right of whichever screen is open ---- */
+.cx-help{grid-row:3;grid-column:1;justify-self:end;z-index:6;width:min(460px,42vw);min-height:0;margin:12px 16px 14px;display:flex;flex-direction:column;box-shadow:0 10px 24px rgba(0,0,0,.5)}
+.cx-help header{flex:none;display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.cx-help header .hx{flex:1}
+.cx-help .h-body{min-height:0;overflow-y:auto;padding-right:4px;font-size:13px;color:var(--t2)}
+.cx-help .sub:first-child{margin-top:4px}
+.cx-help p{margin:0}
+.cx-help b{color:var(--t1)}
+.cx-help ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.cx-help .h-key li{display:grid;grid-template-columns:78px 1fr;align-items:center;gap:8px}
+.cx-help .h-key li>:first-child{justify-self:start}
+.cx-help .h-keys{gap:4px}
+.cx-help kbd{margin:0 1px}
+
 /* ---- the screen ---- */
-.cx-screen{min-height:0;padding:12px 16px 14px;overflow:hidden}
+.cx-screen{grid-row:3;grid-column:1;min-height:0;padding:12px 16px 14px;overflow:hidden}   /* placed, so help can share its cell */
 .cx .sub-t{color:var(--orange);--px-shadow:#140800}
 .cx .sub{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--t1);margin:12px 0 6px}
 .cx .sub span{color:var(--t3);letter-spacing:0;text-transform:none;font-weight:400;margin-left:6px}
@@ -116,14 +133,20 @@
 /* ---- the City ---- */
 .cx-city{display:grid;grid-template-columns:auto minmax(300px,1fr) minmax(320px,1.1fr);gap:12px;height:100%}
 .cx-mapbox{display:flex;flex-direction:column;gap:6px;min-height:0;height:100%}
-.cx-slot{position:relative;height:calc(100% - 30px);aspect-ratio:1;max-width:50vw;background:#0a0d14;border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.cx-slot{position:relative;height:calc(100% - 52px);aspect-ratio:1;max-width:50vw;background:#0a0d14;border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
 .cx-map{position:absolute;inset:0;width:100%;height:100%;display:block}
 /* zone labels are hit areas over the canvas, which draws their hover and selection; they must out-rank the steel
    button's hover plate and its 1px press, or the label is covered on hover and jumps from under the cursor on press */
 .cx button.zb,.cx button.zb:hover:not(:disabled),.cx button.zb:active:not(:disabled){position:absolute;width:22%;height:9%;transform:translate(-50%,-50%);background:transparent;border:0;min-height:0;padding:0;cursor:pointer}
 .cx button.zb:focus-visible{outline:3px solid var(--cyan);outline-offset:-3px}
-.cx-legend{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--t3)}
-.cx-legend li{display:flex;align-items:center;gap:4px}
+/* the key: the territory on one row, the map's own marks on the next */
+.cx-legend{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--t3)}
+.cx-legend ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+.cx-legend li{display:flex;align-items:center;gap:5px}
+/* the map's tags, as the map draws them */
+.cx .tg{display:inline-block;padding:2px 3px;line-height:0}
+.cx .tg.o{background:var(--orange);color:var(--ink-orange)} .cx .tg.r{background:var(--red);color:var(--ink-orange)} .cx .tg.g{background:var(--green);color:#0d1f06}
+.cx .px.up{color:var(--green)} .cx .px.dn{color:var(--red-t)}
 .cx .sw{width:12px;height:12px;display:inline-block;border:1px solid rgba(0,0,0,.5)}
 .cx .sw.l0,.cx .sw.l1,.cx .sw.l2,.cx .sw.l3{background-color:#5f5a4a;border:2px solid}
 .cx .sw.l0{background-image:linear-gradient(rgba(92,68,38,.18),rgba(92,68,38,.18));border-color:#7a5a30}

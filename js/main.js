@@ -124,8 +124,8 @@ const Game = W.game = {
         <p><b>Research</b> costs money to start and research points to finish. Points can't be banked, and split between the projects running. After 30 upgrade points Casey Benton can <b>take control</b> of the city on your order: each zone then has a story to finish, and the last step locks it down. Lock down every zone to win.</p>
         <p><b>Missions</b> take days, and the pips stand as you set them while the squad is away. They pay research, money or control. Each has a <b>threat</b>, T1 to T5; the squad has a <b>tier</b> from its guns and mods. Above the squad's tier, expect to lose Watchers. <b>Quiet</b> missions can be done without a shot fired.</p>
         <p>Finished research goes on sale: weapons in the <b>Armoury</b>, mods in the <b>Clinic</b>. Ammunition is topped up free before every mission; medikits are not.</p>
-        <p>Watchers who die on a mission are gone, with whatever they carried. Hire replacements from the <b>Roster</b>. Weapons a Watcher picks up in the field come home with them, researched or not: keep them or sell them in the Armoury.</p>
-        <p>On the command screens: <kbd>1</kbd>–<kbd>4</kbd> the City, the Lab, the Clinic and Casey's Office; <kbd>W</kbd> wait a day (or <b>Until…</b> for longer); arrow keys walk the map from zone to zone; <kbd>Esc</kbd> steps back, and twice from the City leaves for the title.</p>`],
+        <p>Watchers who die on a mission are gone, with whatever they carried. Hire replacements from the roster in the <b>Clinic</b>. Weapons a Watcher picks up in the field come home with them, researched or not: keep them or sell them in the Armoury.</p>
+        <p>On the command screens: <kbd>1</kbd>–<kbd>5</kbd> the City, the Lab, the Clinic, Casey's Office and the Armoury; <kbd>W</kbd> wait a day (or <b>Until…</b> for longer); arrow keys walk the map from zone to zone; <kbd>?</kbd> how it works, over any screen; <kbd>Esc</kbd> steps back, and twice from the City leaves for the title.</p>`],
       ["About", this.aboutHTML()],
     ];
   },

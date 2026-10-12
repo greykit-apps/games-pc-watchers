@@ -100,7 +100,7 @@ W.Command = class {
     this.focusTo = null;
     const scroll = [...this.el.querySelectorAll("[data-scroll]")].map(e => [e.dataset.scroll, e.scrollTop]);
     this.el.innerHTML = `${this.topHTML()}${this.barHTML()}
-      <div class="cx-screen cx-${this.screen}" id="cx-screen" role="tabpanel" aria-labelledby="tab-${this.screen}">${this[this.screen + "HTML"]()}</div>`;
+      <div class="cx-screen cx-${this.screen}" id="cx-screen" role="tabpanel" aria-labelledby="tab-${this.screen}">${this[this.screen + "HTML"]()}</div>${this.helpOpen ? this.helpHTML() : ""}`;
     for (const [k, t] of scroll) { const e = this.el.querySelector(`[data-scroll="${k}"]`); if (e) e.scrollTop = t; }
     // the map keeps its canvas between draws, so its easing and Cal's pulse carry on
     const slot = this.el.querySelector("[data-mapslot]");
@@ -203,9 +203,10 @@ W.Command = class {
       ["office", "OFFICE", "4", "What the Boss can buy", ""],
       ["armoury", "ARMOURY", "5", "The squad's kit, the racks, the dealer", Object.keys(s.armoury).length ? `<i class="n soft">${Object.values(s.armoury).reduce((t, n) => t + n, 0)}</i>` : ""],
     ];
-    return `<nav class="cx-bar" role="tablist" aria-label="Screens">${tabs.map(([id, label, key, sub, badge]) =>
+    return `<div class="cx-bar"><nav class="cx-tabs" role="tablist" aria-label="Screens">${tabs.map(([id, label, key, sub, badge]) =>
       `<button role="tab" id="tab-${id}" title="${sub}" tabindex="${this.screen === id ? 0 : -1}" data-a="screen" data-screen="${id}" data-fk="screen-${id}" aria-selected="${this.screen === id}" aria-controls="cx-screen">
-        <canvas data-bar="${id}" aria-hidden="true"></canvas><span class="bl">${this.px(label, "bar-t", 2)}<span class="sr">: ${sub}</span></span>${badge}<kbd>${key}</kbd></button>`).join("")}</nav>`;
+        <canvas data-bar="${id}" aria-hidden="true"></canvas><span class="bl">${this.px(label, "bar-t", 2)}<span class="sr">: ${sub}</span></span>${badge}<kbd>${key}</kbd></button>`).join("")}</nav>
+      <button class="help-b" data-a="help" data-fk="help" aria-expanded="${!!this.helpOpen}" aria-controls="cx-help" title="How it works">${this.px("HELP", "bar-t", 2)}<kbd>?</kbd></button></div>`;
   }
 
   /* ---------------- the City ---------------- */
@@ -218,12 +219,50 @@ W.Command = class {
     }).join("");
     return `<section class="cx-mapbox" aria-label="Map of PumaCity">
         <div class="cx-slot" data-mapslot>${zb}</div>
-        <ul class="cx-legend" aria-label="Key">
-          <li><i class="sw l0"></i>L0</li><li><i class="sw l1"></i>L1</li><li><i class="sw l2"></i>L2</li><li><i class="sw l3"></i>L3</li>
-          <li><i class="sw lk"></i>Locked</li><li><i class="sw ls"></i>Lost</li><li><i class="sw cal"></i>Cal</li></ul>
+        <div class="cx-legend" role="group" aria-label="Key">
+          <ul><li><i class="sw l0"></i>L0</li><li><i class="sw l1"></i>L1</li><li><i class="sw l2"></i>L2</li><li><i class="sw l3"></i>L3</li>
+            <li><i class="sw lk"></i>Locked</li><li><i class="sw ls"></i>Lost</li><li><i class="sw cal"></i>Cal</li></ul>
+          <ul>${this.keyMarks()}</ul></div>
       </section>
       <section class="cx-mid"><div class="mid-main" data-scroll="mid">${this.zoneId ? this.dossierHTML(W.M.zone(s, this.zoneId)) : this.overviewHTML()}</div>${this.dispatchHTML()}</section>
       <section class="cx-ops" data-scroll="ops" aria-label="Missions">${this.opsHTML()}</section>`;
+  }
+  keyMarks() {
+    const tag = (cls, t) => `<span class="tg ${cls}">${this.px(t, "", 2)}</span>`;
+    return `<li>${tag("o", "2")}missions</li><li>${tag("r", "1")}one can't wait</li>
+      <li>${this.px("▲3D", "up", 2)}next level in 3 days</li><li>${tag("g", "▲L1")}moved on the last wait</li>`;
+  }
+
+  /* ---- help: the rules in brief, over whichever screen is open ---- */
+  helpHTML() {
+    const tag = (cls, t) => `<span class="tg ${cls}">${this.px(t, "", 2)}</span>`;
+    return `<aside class="panel cx-help" id="cx-help" aria-label="How it works">
+      <header>${this.hx("HOW IT WORKS", "sub-t", 2)}<button class="x" data-a="help" data-fk="help-x">Close</button></header>
+      <div class="h-body" data-scroll="help">
+        <h3 class="sub">A day</h3>
+        <p>Every zone makes pips each day. Its dial, in the zone's dossier, sets how many it spends on <b>control</b>. The rest go to the city, split between <b>research</b> and <b>money</b> by the slider in the top bar. <b>Wait a day</b> (<kbd>W</kbd>) runs it. <b>Until…</b> waits longer, and stops early if a zone falls or Cal moves.</p>
+        <h3 class="sub">Control</h3>
+        <p>Control decays every day. <b>HOLD</b> on the dial is the spend that stops the fall. <b>Invest</b> above it and the zone climbs; <b>milk</b> below it and the city takes more while the zone slips. Levels run 0 to 3, and each level adds a pip. At zero the zone is <b>lost</b>, and makes nothing until a siege takes it back.</p>
+        <h3 class="sub">Cal</h3>
+        <p>Cal pushes one zone at a time, harder the better you are doing. A mission against his crew there ends the push. Intel missions and informants show where he goes next.</p>
+        <h3 class="sub">Missions</h3>
+        <p>A mission has a <b>threat</b>, T1 to T5. The squad has a <b>tier</b>, from its guns, mods and ranks. At or under it, a mission is <b>within reach</b>. One over is <b>a stretch</b>. Further is <b>beyond the squad</b>: expect to lose Watchers, and the dead stay dead. <b>Quiet</b> missions can be done without a shot fired. Missions take days, and the dials stand as set while the squad is away.</p>
+        <h3 class="sub">Research</h3>
+        <p>A project costs money to start and research points (RP) to finish. Points can't be banked: with nothing running, they're thrown away. Weapons go on sale in the Armoury, mods in the Clinic. Each finished mark is an upgrade point (an MK3 or the BanHammer counts 2). At ${W.M.N.WAR_AT}, Casey Benton can <b>take control</b> of the city. Lock every zone down to win.</p>
+        <h3 class="sub">Reading the map</h3>
+        <ul class="h-key">
+          <li><i class="sw l2"></i><span>Gold, brighter as control rises, from level 0 to 3</span></li>
+          <li><i class="sw lk"></i><span>Locked down: it doesn't decay</span></li>
+          <li><i class="sw ls"></i><span>Lost to Cal</span></li>
+          <li><i class="sw cal"></i><span>Cal: dashed where he goes next, pulsing where he's pushing</span></li>
+          <li>${tag("o", "2")}<span>Missions in the zone; ${tag("r", "1")} when one can't wait</span></li>
+          <li><span>${this.px("▲3D", "up", 2)} ${this.px("▼5D", "dn", 2)}</span><span>The next level, up or down, and the days to it</span></li>
+          <li>${tag("g", "▲L1")}<span>What the last wait moved, until you do something else</span></li>
+        </ul>
+        <h3 class="sub">Keys</h3>
+        <ul class="h-keys"><li><kbd>1</kbd>–<kbd>5</kbd> the screens</li><li><kbd>W</kbd> wait a day</li><li>Arrow keys walk the map from zone to zone</li>
+          <li><kbd>Esc</kbd> steps back; twice from the City leaves for the title</li><li><kbd>?</kbd> this help</li></ul>
+      </div></aside>`;
   }
   zoneSay(z) {
     const M = W.M, D = M.zoneDef(z.id), s = this.s;
@@ -744,6 +783,7 @@ W.Command = class {
     this.armed = null;
     switch (d.a) {
       case "screen": return this.go(d.screen);
+      case "help": return this.toggleHelp();
       case "wait": return this.wait(1);
       case "until": {
         this.untilOpen = !this.untilOpen; W.audio.play("click"); this.draw();
@@ -973,6 +1013,7 @@ W.Command = class {
     }
     if (k === "escape") {
       if (this.bannerOn) { this.hideBanner(); return true; }
+      if (this.helpOpen) { this.toggleHelp(); return true; }
       if (this.untilOpen) { this.untilOpen = false; this.focusTo = "until"; this.draw(); return true; }
       if (this.armed) { this.armed = null; this.draw(); return true; }
       if (this.zoneId) { this.zoneId = null; this.draw(); return true; }
@@ -983,7 +1024,14 @@ W.Command = class {
     if (tag === "INPUT" || tag === "SELECT") return false;
     if (k >= "1" && k <= String(W.Command.SCREENS.length)) { this.go(W.Command.SCREENS[+k - 1]); return true; }
     if (k === "w") { this.wait(1); return true; }
+    if (k === "?") { this.toggleHelp(); return true; }
     return false;
+  }
+  toggleHelp() {
+    this.helpOpen = !this.helpOpen;
+    this.focusTo = this.helpOpen ? "help-x" : "help";
+    W.audio.play("click");
+    this.draw();
   }
 };
 // the screens, in the bar's order, and the number keys'

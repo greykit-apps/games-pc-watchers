@@ -64,6 +64,7 @@ function fight(W, L, level, tactic, maxT = 900, greedy = false, dt = 1 / 30) {
   // who kills the Watchers, and with what: "crew/uzi2", "sec/pistol1", "strike", "car", ...
   const killers = [], kill0 = world.kill;
   world.kill = function (u, src) {
+    if (u.subject && u.alive) killers.push(`SUBJECT by ${!src ? "?" : src.isAgent ? "watcher" : src.faction === "player" ? "follower" : (src.mob ? "mob" : src.kind) + (src.op ? "(op)" : "") + (src.isCar || src.accident !== undefined ? "car" : "")}${u.follower ? " (with us)" : ""}`);
     if (u.isAgent && u.alive) {
       const w = src && src.weapons && src.cur >= 0 ? src.weapons[src.cur] : null;
       killers.push(!src ? "?" : src.isCar || src.accident !== undefined ? "car" : src.faction === "player" ? (src.isAgent ? "friendly" : "follower") : `${src.mob ? "mob" : src.guard ? "guard" : src.kind}${src.op ? "(op)" : ""}/${w ? w.type + (w.mk || 1) : "hands"}`);
@@ -120,7 +121,8 @@ function fight(W, L, level, tactic, maxT = 900, greedy = false, dt = 1 / 30) {
     }
     // side jobs: greedy (and a sweep, always) goes after them before heading home, while the squad's in shape
     const todo = (world.contracts || []).filter(c => !c.done);
-    const fit = ags.length >= 2 && ags.reduce((t, a) => t + a.hp / a.maxHp, 0) / ags.length > 0.45;
+    // a player calls it a day when the squad is hurt: fewer than three standing, or worn down
+    const fit = ags.length >= Math.min(3, world.agents.length) && ags.reduce((t, a) => t + a.hp / a.maxHp, 0) / ags.length > 0.6;
     if ((greedy || world.sweep) && todo.length && fit && (world.phase === "exfil" || world.sweep)) {
       const c0 = ags[0], c = todo.map(c => [c, world.contractAt(c)]).sort((p, q) => W.dist(c0.x, c0.y, p[1].x, p[1].y) - W.dist(c0.x, c0.y, q[1].x, q[1].y))[0];
       const P = c[1], foe = c[0].crew.filter(u => u.alive && !u.broken && u.faction === "crew").sort((p, q) => W.dist(c0.x, c0.y, p.x, p.y) - W.dist(c0.x, c0.y, q.x, q.y))[0];
@@ -132,6 +134,7 @@ function fight(W, L, level, tactic, maxT = 900, greedy = false, dt = 1 / 30) {
       continue;
     }
     // ---- the way home ----
+    if (world.phase === "exfil" && process.env.BENCH_DEBUG && Math.floor(t) % 20 === 0) console.error(`t=${Math.round(t)} EXFIL pickup=${(world.exfilPoints || []).map(p => [Math.round(p.x), Math.round(p.y)]).join(" ")} agents=${ags.map(a => [Math.round(a.x), Math.round(a.y), a.path ? a.path.length : 0, a.dest ? a.dest.map(Math.round) : "-", a.target ? "T" : ""].join(",")).join(" ")}`);
     if (world.phase === "exfil") {
       for (const a of ags) {
         if (tactic === "assault" || trouble(a)) loud(a); else holster(a);

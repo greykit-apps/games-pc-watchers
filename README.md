@@ -214,8 +214,8 @@ to take it (stars on the card), and a little more squad power.
 
 **The enemy's level** is the threat less one, matched to the Watchers' own:
 at threat 1 a third of them carry an MK1 pistol; by threat 5 they carry MK3
-rifles, miniguns and lasers and take 70% more killing, and there are five
-times as many. What they carry is what they drop (see `docs/missions.md`).
+rifles, miniguns and lasers and take half as much again to kill, and there
+are nearly four times as many. What they carry is what they drop (see `docs/missions.md`).
 
 An empty-handed Watcher close to the crew is only suspicious at first ("Hey.
 Who are you?"); linger about two seconds and they work it out. A gun, or an

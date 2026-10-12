@@ -406,7 +406,8 @@ W.World = class {
     const src = { faction: car.escape ? "crew" : "none", accident: !fight, x: car.x, y: car.y };
     u.hitBy = car.id;
     // a Watcher's chassis takes it: badly hurt and knocked flat, not killed outright
-    if (car.speed > W.SPEEDING && u.isAgent) { this.damage(u, W.CAR_HIT, src); this.knock(car, u, 1, 2.6, true); this.damageCar(car, 1, null); }
+    // (and a persuade job's subject, walking out with them, is not lost to a stray driver: knocked flat, hurt, alive)
+    if (car.speed > W.SPEEDING && (u.isAgent || u.subject)) { this.damage(u, u.subject ? Math.min(W.CAR_HIT, u.hp - 1) : W.CAR_HIT, src); this.knock(car, u, 1, 2.6, true); this.damageCar(car, 1, null); }
     else if (car.speed > W.SPEEDING) { this.damage(u, 1e6, src); this.damageCar(car, 1, null); }
     else { this.damage(u, 1.5, src); this.knock(car, u, 0.8, 2.2, true); }
   }

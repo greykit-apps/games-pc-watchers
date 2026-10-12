@@ -170,8 +170,8 @@ M.THREAT = {
   1: { crew: 0.35, guards: 0, sec: 1, level: 0 },
   2: { crew: 0.6, guards: 0.5, sec: 1, level: 1 },
   3: { crew: 1, guards: 1, sec: 1, level: 2 },
-  4: { crew: 1.35, guards: 1.25, sec: 0.8, level: 3 },
-  5: { crew: 1.5, guards: 1.3, sec: 0.6, level: 4 },
+  4: { crew: 1.25, guards: 1.15, sec: 0.8, level: 3 },
+  5: { crew: 1.3, guards: 1.2, sec: 0.6, level: 4 },
 };
 /* What the squad can take on: each Watcher's best gun and mods, summed over
  * the four who go out, and a hired crew if one's paid for. Four new Watchers

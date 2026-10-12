@@ -49,8 +49,8 @@ what they drop, so a harder fight pays better in loot. `W.FOE` holds it:
 | 1 | 0 | 0.35, none | a third | MK1 pistols | as their kind |
 | 2 | 1 | 0.6, 0.5 | most | MK1 pistols, shotguns, uzis | +10% |
 | 3 | 2 | 1, 1 | all | MK2 pistols, shotguns, uzis; MK1 rifles | +25% |
-| 4 | 3 | 1.35, 1.25 | all | MK3 shotguns, uzis; MK2 rifles, miniguns; MK1 lasers | +45% |
-| 5 | 4 | 1.7, 1.5 | all | MK3 uzis, rifles, miniguns, lasers; MK2 gauss guns | +70% |
+| 4 | 3 | 1.25, 1.15 | all | MK3 shotguns, uzis; MK2 rifles, miniguns; MK1 lasers | +45% |
+| 5 | 4 | 1.3, 1.2 | all | MK3 uzis, rifles, miniguns; MK2 lasers; MK1 gauss guns | +50% |
 
 Bodyguards are a level up and carry a sidearm. Aim and reflexes rise a
 little with the level too. The mob (an encounter) is always level 0: the

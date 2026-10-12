@@ -526,7 +526,7 @@ W.populateMission = (world, L, d, opts) => {
   if (kind === "persuade") {
     // the subject: someone to talk round and walk out, not to kill
     const s = world.add(W.makeUnit("civ", tp[0], tp[1], { subject: true, name: L.names.target, post: [tp[0], tp[1], R() * 6.28],
-      look: { coat: "#d8c08a", trim: "#7dffb0", legs: "#3a3226", fur: W.pick(W.FURS), hat: "#8a6a3a", long: true }, need: Math.max(0, threat - 1), hp: 8, maxHp: 8 }));
+      look: { coat: "#d8c08a", trim: "#7dffb0", legs: "#3a3226", fur: W.pick(W.FURS), hat: "#8a6a3a", long: true }, need: Math.max(0, threat - 1), hp: 14, maxHp: 14 }));
     world.subjectUnit = s;
   } else if (kind === "intel") {
     world.terminal = { x: tp[0], y: tp[1], need: 6, t: 0, name: tg.name };
@@ -552,7 +552,7 @@ W.populateMission = (world, L, d, opts) => {
     world.targetUnit = target;
   }
   // bodyguards stand close round a target; on a quiet job they watch the approaches from further out
-  const ring = kind === "persuade" || kind === "intel" || kind === "job" ? 5 : kind === "crackdown" || kind === "sweep" ? 2.4 : 1.6;
+  const ring = kind === "persuade" ? 7 : kind === "intel" || kind === "job" ? 5 : kind === "crackdown" || kind === "sweep" ? 2.4 : 1.6;
   // a siege: every guard and crew member a defender, posted inside, holding
   const reach = W.reachable(m), reached = c => c && reach[m.i(Math.floor(c[0]), Math.floor(c[1]))];
   const defend = (u, i, n) => {

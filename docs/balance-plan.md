@@ -152,22 +152,35 @@ Nothing else changes until this runs: steps 2 to 6 are tuned against it.
 
 ### Step 2: difficulty belongs to the mission
 
-`threat = kind base + zone + war + Cal's escalation`, worked out when the
-offer appears and fixed while it's up.
+`threat = kind base + zone + Take Control + Cal's escalation`, worked out when
+the offer appears and fixed while it's up.
 
-- **Cal's escalation follows the campaign, not the deployed squad:** +1 at
-  12 upgrade points, +1 more at 24 (about missions 25 and 47 now). It applies
-  to the fighting kinds only: assassination, crackdown, Cal's crew, siege,
-  story.
+**What Cal is (decided).** Cal is not an opponent to be beaten, he is the
+chaos in the system: a persistent agent who keeps the city from settling, so
+the player can't pacify everything and watch the days go by. There is no real
+answer to him until the endgame, when the player starts locking the city down.
+What "declaring war" is today becomes **Take Control**: Casey Benton's order to
+lock the city down, zone by zone, and corner Cal for good.
+
+So his escalation follows the city, not the deployed squad:
+
+- **Cal's escalation rises with how settled the city is and how far the
+  campaign has come:** +1 at 12 upgrade points, +1 more at 24 (about missions
+  25 and 47 now). It applies to the fighting kinds only: assassination,
+  crackdown, Cal's crew, siege, story.
+- **His pressure grows the quieter the city gets.** His push already scales
+  with the zones held at level 2 or better; step 1 checks that a pacified,
+  idle city still slips (the probe with idle days says it does, slowly), and
+  makes it sharper if not. Idle time should never be free money.
 - **Quiet jobs** (persuade, intel) in zones at level 2 or 3 take neither
-  escalation nor the war step. That is the training ground, and it stays
-  threat 1 or 2 all campaign.
+  escalation nor the Take Control step. That is the training ground, and it
+  stays threat 1 or 2 all campaign.
 - **The zone term and the kind bases stay as they are.**
 
 What it fixes: no trough, no rubber band, and recruits can be sent on easy
 work without the veterans' threat. The risk is that a well-kitted squad finds
-everything easy late on. Escalation plus the war step puts Cal's crew and
-assassinations at threat 5 by the war, and step 1's numbers check it.
+everything easy late on. Escalation plus the Take Control step puts Cal's crew
+and assassinations at threat 5 in the endgame, and step 1's numbers check it.
 
 ### Step 3: a shorter board, with a shape
 
@@ -219,16 +232,18 @@ District flavour, as a nudge: the Starport and the Ranch lean to jobs
 
 ### Step 6: Watchers stay expensive, money keeps a use
 
-The options, to be decided (see below) and tuned against step 1:
+Decided: light veterancy, and no upkeep on Watchers.
 
-- **(a) Upkeep:** each Watcher costs a day's pay, for example $500 plus $250 a
-  mod mark. Idle days cost money, a full roster of eight is a choice, and the
-  glut drains.
-- **(b) Veterancy:** Watchers improve with missions survived, a little (three
-  ranks, a few points of accuracy and reaction each). A dead veteran costs
-  more than money, and training a recruit means something.
-- **(c) Dearer late purchases:** only if (a) and the bot's mod spending
-  don't close the gap.
+- **Veterancy:** Watchers improve a little with missions survived: three
+  ranks (for example at 3, 8 and 15 missions), each a few points of accuracy
+  and reaction, shown on the Watcher's card. A dead veteran costs more than
+  money, and training a recruit on quiet jobs means something. Ranks add to
+  squad power a little, so tiers stay honest.
+- **The money glut, without upkeep:** first fix the bot's spending (MK2 and
+  MK3 mods are about $2.8M for a squad of four) and re-measure. If careful
+  play still ends with more than $1M, Cal's chaos is the next lever: his
+  tactics cost a zone money as well as control, and his pushes on a pacified
+  city bite harder. Dearer late purchases come last.
 
 ### Step 7: mission length and research
 
@@ -255,10 +270,11 @@ Checked by `campaign.js --report`, 12 seeds each:
 | War at mission / won at mission, careful | 55 to 65 / 90 to 110 |
 | Campaigns won, raw | 8 of 12 or more, by about mission 140 |
 
-## Decisions that are yours
+## Decisions
 
-1. **Where Cal's escalation comes from:** campaign progress (recommended), or
-   the squad deployed, as now.
-2. **Veterancy:** yes, small (recommended), or Watchers stay as they are.
-3. **Upkeep:** yes (recommended), or another money sink, or none.
-4. **Board size:** 4 to 7 before the war, or another number.
+1. **Cal** is a persistent source of chaos, not an opponent: no real answer
+   to him until the endgame. His escalation follows the city and the
+   campaign, not the deployed squad. "Declaring war" becomes **Take Control**.
+2. **Veterancy:** yes, light.
+3. **Upkeep on Watchers:** no.
+4. **Board size:** 4 to 7 before Take Control.

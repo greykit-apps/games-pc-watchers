@@ -239,7 +239,15 @@
 .cx .urgent{background:#2e1a20;border-top:2px solid var(--red);padding:2px 10px 4px}
 .cx .urgent .offer{background:none;border:0;border-top:1px solid #5a2a32;padding:9px 0;margin:0}
 .cx .urgent .offer:first-of-type{border-top:0}
-.cx .dossier .offer{background:none;border:0;border-top:1px solid var(--divider);padding:9px 0}
+.cx .dossier .offer,.cx .next .offer{background:none;border:0;border-top:1px solid var(--divider);padding:9px 0}
+/* the next move: the mission B briefs, at the head of the overview */
+.cx .next{border-color:var(--orange-hi) var(--orange-lo) var(--orange-lo) var(--orange-hi)}
+.cx .next .nx-why{margin:6px 0 8px;color:var(--t1)}
+.cx .next.none p{margin:6px 0 0}
+/* what can't wait but is beyond the squad: one row, opened on request */
+.cx .urgent .far{border-top:1px solid #5a2a32;padding:8px 0 4px;font-size:13px;color:var(--t2)}
+.cx .urgent .far p{margin:0}
+.cx .urgent .far b{color:#ffd0d3}
 .cx .urgent .sub{color:#ffd0d3}
 .cx .og{display:flex;flex-direction:column;gap:6px}
 .cx .og-h{display:flex;align-items:center;gap:8px;margin:10px 0 0}

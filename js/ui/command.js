@@ -218,7 +218,7 @@ W.Command = class {
   /* ---------------- the City ---------------- */
   cityHTML() {
     const s = this.s, bt = this.briefTarget();
-    this.briefKey = bt ? bt.id + (this.zoneId ? "dz-" : "") : null;
+    this.briefKey = bt ? bt.id + (this.zoneId ? "dz-" : "nx-") : null;
     const zb = s.zones.map(z => {
       const [x, y] = W.CityMap.place(z.id);
       return `<button class="zb" data-a="zone" data-z="${z.id}" data-fk="zone-${z.id}" aria-pressed="${this.zoneId === z.id}" aria-label="${W.esc(this.zoneSay(z))}"
@@ -364,6 +364,18 @@ W.Command = class {
   dialSay(P, p, head) { return `tax ${p - P.c} of ${p}: ${P.c} pip${P.c === 1 ? "" : "s"} kept for control, ${head}`; }
   dialOut(z, P, y) { return `To the city: <span class="c-m">${W.money(P.m * W.M.moneyYield(z) * W.M.N.PIP_MONEY)}</span> and <span class="c-r">${(P.r * y).toFixed(1)} RP</span> a day`; }
 
+  // the next move: the mission B briefs, and why it's the one; or what the squad needs when nothing's in reach
+  nextHTML() {
+    const s = this.s, M = W.M, o = this.recOffer();
+    if (!o) {
+      const t = s.offers.length ? Math.min(...s.offers.map(x => x.threat || 1)) : 0;
+      return `<article class="panel next none">${this.hx("NEXT MOVE", "sub-t", 2)}
+        <p>${s.offers.length ? `Nothing on the board is within the squad's reach${t > M.squadTier(s) ? `: the easiest is T${t}, the squad is tier ${M.squadTier(s)}` : ""}. Raise the tier with mods at the Clinic, guns from the Armoury, and missions survived; or wait a day for other work.` : "Nothing on offer. Wait a day."}</p></article>`;
+    }
+    const D = M.zoneDef(o.zone), z = M.zone(s, o.zone);
+    const why = o.kind === "cal" ? `It ends Cal's push in ${D.name}.` : o.kind === "siege" ? `It takes ${D.name} back.` : o.kind === "story" ? `The next step of ${D.name}'s story.` : o.expires <= s.day ? "Its last day on the board." : `Within reach, in the weakest zone with work the squad can do${z.lost ? "" : ` (level ${M.level(z.C)})`}.`;
+    return `<article class="panel next">${this.hx("NEXT MOVE", "sub-t", 2)}<p class="nx-why">${W.esc(why)}</p>${this.offerHTML(o, false, "nx-")}</article>`;
+  }
   overviewHTML() {
     const s = this.s, M = W.M, c = s.cal;
     const calOffer = s.offers.some(o => o.kind === "cal");
@@ -377,7 +389,7 @@ W.Command = class {
     // what he has made of the Watchers (M.noteHabits)
     const A = c.reads && M.CAL_ANSWER[c.reads];
     const reads = A ? `<p class="reads"><b class="warn">He has heard about ${W.esc(A.heard)}.</b> His answer: ${W.esc(A.answer)}. Work another way and he loses the thread.</p>` : "";
-    return `<article class="panel cal ${c.zone ? "on" : ""}">${this.hx("CAL", "cal-t", 2)}${cal}${reads}</article>
+    return `${this.nextHTML()}<article class="panel cal ${c.zone ? "on" : ""}">${this.hx("CAL", "cal-t", 2)}${cal}${reads}</article>
       <article class="panel watch"><h3 class="sub">Zones slipping <span>${watch.length || "none"}</span></h3>
         ${watch.length ? `<ul>${watch.map(({ z, f }) => `<li><button data-a="zone" data-z="${z.id}" data-fk="w-${z.id}"><b>${W.esc(M.zoneDef(z.id).name)}</b><span class="${z.lost ? "bad" : "down"}">${z.lost ? "Lost: siege to retake" : this.fcText(f)}</span></button></li>`).join("")}</ul>`
           : `<p class="quiet">Every zone is holding or climbing. Pick one on the map to set its tax.</p>`}
@@ -424,10 +436,13 @@ W.Command = class {
     const s = this.s, M = W.M, tier = M.squadTier(s), squad = M.squad(s);
     const urgentOf = o => o.kind === "cal" || o.kind === "siege" || o.kind === "story" || o.expires <= s.day;
     const pool = this.zoneId && !this.allOffers ? s.offers.filter(o => o.zone === this.zoneId) : s.offers;
-    const urgent = s.offers.filter(urgentOf).sort((a, b) => (a.threat || 1) - (b.threat || 1));
-    const rest = pool.filter(o => !urgentOf(o));
     const rec = this.recOffer();
     this.rec = rec && rec.id;
+    const shown = o => this.zoneId || o.id !== this.rec;     // with no dossier open, the next move sits in the middle column
+    const urgent = s.offers.filter(urgentOf).sort((a, b) => (a.threat || 1) - (b.threat || 1));
+    const beyond = o => (o.threat || 1) > M.squadTier(s, o) + 1;
+    const urgentNear = urgent.filter(o => !beyond(o) && shown(o)), urgentFar = urgent.filter(beyond);
+    const rest = pool.filter(o => !urgentOf(o) && shown(o));
     const byZone = {};
     for (const o of rest) (byZone[o.zone] = byZone[o.zone] || []).push(o);
     const order = Object.keys(byZone).sort((a, b) => M.zone(s, a).C - M.zone(s, b).C);
@@ -435,7 +450,10 @@ W.Command = class {
         <p class="squadline"><span title="Missions above the squad's tier cost Watchers. Quiet ones can be done without a shot fired.">Squad tier <b>${tier}</b><span class="sr">: missions above it cost Watchers; quiet ones can be done without a shot fired</span></span> <span class="dots t-ok" aria-hidden="true">${this.dots(tier, tier)}</span> · ${squad.map(a => W.esc(a.name)).join(", ")}
           <button class="link" data-a="screen" data-screen="clinic" data-fk="to-clinic">Clinic</button></p>
         ${M.escalation(s) ? `<p class="hint">Cal is arming his people as the city turns: fighting jobs +${M.escalation(s)} threat. Quiet jobs in calm zones stay easy.</p>` : ""}</header>
-      ${urgent.length ? `<section class="urgent"><h3 class="sub">Can't wait <span>${urgent.length}</span></h3>${urgent.map(o => this.offerHTML(o, true)).join("")}</section>` : ""}
+      ${urgentNear.length || urgentFar.length ? `<section class="urgent"><h3 class="sub">Can't wait <span>${urgentNear.length + urgentFar.length}</span></h3>${urgentNear.map(o => this.offerHTML(o, true)).join("")}
+        ${urgentFar.length ? `<div class="far"><p><b>${urgentFar.length} beyond the squad:</b> ${urgentFar.map(o => `${W.esc(M.KINDS[o.kind].name)} in ${W.esc(M.zoneDef(o.zone).name)} (T${o.threat || 1})`).join(", ")}. Within reach at squad tier ${Math.min(...urgentFar.map(o => o.threat || 1))}.</p>
+          <button class="link" data-a="showfar" data-fk="showfar" aria-expanded="${!!this.showFar}">${this.showFar ? "Hide them" : "Show them"}</button></div>
+          ${this.showFar ? urgentFar.map(o => this.offerHTML(o, true)).join("") : ""}` : ""}</section>` : ""}
       ${this.zoneId && !this.allOffers ? `<button class="link" data-a="alloffers" data-fk="alloffers">Show missions in every zone (${s.offers.length - urgent.length})</button>` : this.zoneId ? `<button class="link" data-a="alloffers" data-fk="alloffers">Only ${W.esc(M.zoneDef(this.zoneId).name)}</button>` : ""}
       ${order.map(id => { const z = M.zone(s, id), L = M.level(z.C);
         return `<section class="og"><h3 class="og-h"><button data-a="zone" data-z="${id}" data-fk="og-${id}">${W.esc(M.zoneDef(id).name)}</button><span class="lvl ${z.lost ? "ls" : "l" + Math.max(0, L)}">${z.lost ? "LOST" : "L" + L}</span></h3>
@@ -819,6 +837,7 @@ W.Command = class {
       case "waituntil": this.untilOpen = false; return this.wait(d.u);
       case "zone": return this.pickZone(d.z, !b.classList.contains("zb"));
       case "alloffers": this.allOffers = !this.allOffers; return this.draw();
+      case "showfar": this.showFar = !this.showFar; return this.draw();
       case "log": this.showLog = !this.showLog; return this.draw();
       case "office": this.officeZone = d.z; return this.go("office");
       case "declare": if (!M.declareWar(s)) return W.audio.play("deny"); this.banners.push({ tone: "red", big: "TAKE CONTROL", sub: "Casey Benton gives the order. Cal commits. Lock the city down, zone by zone.", sound: "alarm" }); break;

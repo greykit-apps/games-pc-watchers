@@ -123,8 +123,11 @@ W.segDist = (x, y, a, b) => {
  *   spread     against the BanHammer: nobody bunches up. Bodyguards stand
  *              two and a half times as far out, the crew further off, and
  *              every other siege defender holds the streets round the building.
- *   watch      against walking in unseen: more lookouts across the ways in and
- *              out, and everyone round the mark sees 1.5 tiles further.
+ *   watch      against sneaking through: more lookouts across the ways in and
+ *              out (two, and one more every two threat), a ring of them round
+ *              the mark 14 to 22 tiles out and facing outward (as many
+ *              again), a long way sighted; everyone round the mark sees 1.5
+ *              tiles further.
  *   dig        against going in shooting: a third more bodyguards, a quarter
  *              tougher.
  *   enforcers  against talking people round: more of the crew walking the
@@ -132,7 +135,7 @@ W.segDist = (x, y, a, b) => {
  *              wants one more in the crowd before they listen. */
 W.CAL_COUNTERS = {
   spread: { spread: 2.5 },
-  watch: { sight: 1.5, extra: { id: "lookouts", n: 2 } },
+  watch: { sight: 1.5, extra: { id: "lookouts", n: 2 }, ring: { n: 2, r: [14, 22], sight: 2.5 } },
   dig: { guards: 1.35, tough: 1.25 },
   enforcers: { extra: { id: "pack", n: 1 }, following: -2, need: 1 },
 };

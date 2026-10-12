@@ -254,7 +254,7 @@ function fight(W, L, level, tactic, maxT = 900, greedy = false, dt = 1 / 30) {
     }
   }
   const cs = world.contracts || [];
-  return { won: world.status === "won", reason: world.endReason, t, lost: world.stats.lost, killers, crew: world.stats.crew, sec: world.stats.sec, civ: world.stats.civ, followers: W.squadFollowers(world), loot, items,
+  return { won: world.status === "won", reason: world.endReason, t, quiet: !!world.stats.quiet, lost: world.stats.lost, killers, crew: world.stats.crew, sec: world.stats.sec, civ: world.stats.civ, followers: W.squadFollowers(world), loot, items,
     contracts: cs.length, done: cs.filter(c => c.done).length, weight: cs.filter(c => c.done).reduce((t, c) => t + c.weight, 0) };
 }
 

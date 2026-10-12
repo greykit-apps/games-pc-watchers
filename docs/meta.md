@@ -109,22 +109,28 @@ official, an informer network), and control pips there buy a quarter less
 until it is countered by research (see Research).
 
 **He learns how the Watchers work.** The street talks: every mission tells
-him how it was done (a BanHammer strike; in and out without the alarm going
-up near the mark; in shooting; a crowd talked round). He keeps a fading
-tally (each mission counts 1, every older one 0.7 as much as the one after
-it), and once one habit is clearly ahead (1.6, about two missions of the
-last three, and 0.4 clear of the next) he answers it, on every mission,
-until the squad works another way (below 1.2, or another habit overtakes):
+him how it was done: a BanHammer strike; in and out through the back
+streets without a fight away from the mark; taking on whoever was in the
+way; a crowd talked round. He keeps a fading tally (each mission counts 1,
+every older one 0.7 as much as the one after it), and once one habit is
+clearly ahead (four missions running or so, and well clear of the next: a
+squad that alternates two ways is never read) he answers it, on every
+mission, until the squad works another way for about three:
 
 | He has heard about | His answer |
 |---|---|
 | the orbital strikes | nobody bunches up: bodyguards stand two and a half times as far out, the crew further off, and every other siege defender holds the streets round the building |
-| Watchers walking in unseen | more lookouts across the ways in and out, and everyone round the mark sees 1.5 tiles further |
-| Watchers coming in shooting | a third more bodyguards round the mark, a quarter tougher |
+| Watchers slipping through the back streets | more lookouts across the ways in and out and a ring of them round the mark, sharp-eyed; everyone round the mark sees 1.5 tiles further |
+| Watchers shooting their way through | a third more bodyguards round the mark, a quarter tougher |
 | his people being talked round | packs of enforcers on the streets; a citizen wants one more in the crowd before they listen, and the following is two smaller |
 
 It shows on Cal's panel, in the briefing and on the news. Whatever works
-keeps working, a little less well; the answer is to vary it.
+keeps working, a little less well; the answer is to vary it. On the bench
+(24 fights each side): strikes on sieges against his spread, 100% won and
+0.14 Watchers lost a mission become 91% and 0.48; assaults against his
+bodyguards, 0.87 lost become 1.13; stealth against his lookouts keeps the
+streets quiet 58 to 67% of the time instead of 75%, for a little more lost;
+his enforcers cut a talked-round following from 3.8 to 2.2.
 
 **Intel tells you where he is going next.** Intel missions pay research
 points, and they also reveal Cal's plans: which zone he will push next, and

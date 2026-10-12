@@ -164,6 +164,9 @@ W.World = class {
     this.alarmAt = [seen ? seen.x : by.x, seen ? seen.y : by.y];
     // the mark only hears of it from its own people, or from close by: a fight across the district is someone else's
     if (!this.markAt || by.op || by.kind === "target" || W.dist(this.alarmAt[0], this.alarmAt[1], this.markAt[0], this.markAt[1]) < W.ALARM_REACH) this.markAlarm = true;
+    // a fight on the streets, away from the mark, that the squad started or was seen in: how Cal hears
+    // whether the Watchers sneak through the warrens or take on whoever's in the way (stats.quiet)
+    else if (seen && seen.faction === "player") this.stats.streetAlarms = (this.stats.streetAlarms || 0) + 1;
     // an alarm is local: those close by turn on the squad at once, those a little further out
     // know a Watcher on sight from now on, and the rest of the district carries on as it was
     const [ax, ay] = this.alarmAt;
@@ -711,8 +714,9 @@ W.World = class {
     this.stats.persuaded = this.units.filter(u => u.alive && u.persuadedCiv && u.follower).length;
     // and the crew and the police talked round: people who will speak for Casey Benton on their own streets
     this.stats.turned = this.units.filter(u => u.alive && u.follower && !u.isAgent && !u.merc && !u.subject && (u.faction === "player") && (u.kind === "crew" || u.kind === "sec")).length;
-    // how it was done, for Cal to hear about (M.noteHabits): did the alarm ever go up near the mark?
-    this.stats.quiet = !this.markAlarm;
+    // how it was done, for Cal to hear about (M.noteHabits): in and out without a fight on the streets?
+    // (near the mark the crew know a Watcher on sight: that doesn't count)
+    this.stats.quiet = !this.stats.streetAlarms;
     for (const o of this.objectives) if (o.state === "active") o.state = o.type === "civcap" && status === "won" ? "done" : o.optional ? "failed" : (status === "won" ? "done" : "failed");
     this.msg(reason, status === "won" ? "#4ade6a" : "#ff5266");
     W.audio.play(status === "won" ? "win" : "lose");

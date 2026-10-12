@@ -615,6 +615,14 @@ W.populateMission = (world, L, d, opts) => {
   const spots = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([a, b]) => m.nearestWalkable(sp.x + a - 0.5, sp.y + b - 0.5, 5) || [sp.x, sp.y]);
   W.spawnSquad(world, opts.roster || W.defaultRoster(), spots);
   if (CC.sight) for (const u of world.units) if (u.op || u.lookout) u.sight += CC.sight;
+  // a ring of lookouts round the mark, facing out: every way in passes one
+  if (CC.ring) for (let k = 0, n = CC.ring.n + Math.floor(threat / 2); k < n; k++) {
+    const a = (k + R()) / n * Math.PI * 2, r = CC.ring.r[0] + R() * (CC.ring.r[1] - CC.ring.r[0]);
+    const p = m.nearestWalkable(tp[0] + Math.cos(a) * r, tp[1] + Math.sin(a) * r, 4);
+    if (!reachable(p)) continue;
+    const u = plain(W.kitFoe(world.add(W.makeUnit("crew", p[0], p[1], { post: [p[0], p[1], a], dir: a, op: true, lookout: true })), level, R() < F.armed, R));
+    u.sight += CC.ring.sight;
+  }
   world.startAt = [sp.x, sp.y];
   if (world.subjectUnit) world.objective({ type: "persuade", unit: world.subjectUnit, text: `Talk ${L.names.target} round, and walk them out` });
   // a persuade job with nobody carrying a Purrsuader cannot be done: say so at once, rather than let them find out

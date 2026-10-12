@@ -394,21 +394,22 @@ M.calStep = s => {
 
 /* ---------------- Cal reads the squad ----------------
  * Every mission tells the street how the Watchers work: a BanHammer strike,
- * a job done without the alarm going up near the mark, one gone in shooting,
- * a crowd talked round. Cal keeps a fading tally (each mission counts 1, and
+ * in and out through the warrens without a fight on the streets, or taking on
+ * whoever was in the way, a crowd talked round. Cal keeps a fading tally (each mission counts 1, and
  * every older one 0.7 as much as the one after), and once one habit is clearly
- * ahead (1.6, about two missions of the last three, and 0.4 clear of the
- * next) he answers it: the engine's W.CAL_COUNTERS set his people out
- * against it. Change how the squad works and he loses the thread (below 1.2,
- * or another habit overtakes). Whatever works keeps working a little less well. */
-M.N.HABIT = { keep: 0.7, reads: 1.6, margin: 0.4, drop: 1.2 };
+ * ahead (2.2: four missions running, about; and 0.6 clear of the next, which
+ * a squad that alternates two ways never is) he answers it: the engine's
+ * W.CAL_COUNTERS set his people out against it. Change how the squad works
+ * and he loses the thread (below 1.5, three missions or so, or another habit
+ * overtakes). Whatever works keeps working a little less well. */
+M.N.HABIT = { keep: 0.7, reads: 2.2, margin: 0.6, drop: 1.5 };
 M.CAL_ANSWER = {
   strike: { counter: "spread", heard: "the orbital strikes", answer: "his people don't bunch up any more: bodyguards stand well apart, and a siege's defenders hold the streets round it too" },
-  quiet: { counter: "watch", heard: "Watchers walking in unseen", answer: "more lookouts across the ways in and out, and sharper eyes round the mark" },
-  loud: { counter: "dig", heard: "Watchers coming in shooting", answer: "more bodyguards round the mark, and tougher ones" },
+  quiet: { counter: "watch", heard: "Watchers slipping through the back streets", answer: "more lookouts across the ways in and out, a ring of them round the mark, and sharper eyes" },
+  loud: { counter: "dig", heard: "Watchers shooting their way through", answer: "more bodyguards round the mark, and tougher ones" },
   talk: { counter: "enforcers", heard: "his people being talked round", answer: "enforcers on the streets: people want a bigger crowd before they listen, and fewer will follow" },
 };
-// how a mission was done, from what the engine reports (strikes, quiet: no alarm near the mark)
+// how a mission was done, from what the engine reports (strikes; quiet: no fight on the streets away from the mark)
 M.styleOf = res => {
   const strike = (res.strikes || 0) > 0;
   return { strike, talk: (res.persuaded || 0) + (res.turned || 0) >= 4, quiet: !strike && !!res.won && res.quiet === true, loud: !strike && res.quiet === false };

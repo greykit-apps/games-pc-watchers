@@ -217,7 +217,8 @@ W.Command = class {
 
   /* ---------------- the City ---------------- */
   cityHTML() {
-    const s = this.s;
+    const s = this.s, bt = this.briefTarget();
+    this.briefKey = bt ? bt.id + (this.zoneId ? "dz-" : "") : null;
     const zb = s.zones.map(z => {
       const [x, y] = W.CityMap.place(z.id);
       return `<button class="zb" data-a="zone" data-z="${z.id}" data-fk="zone-${z.id}" aria-pressed="${this.zoneId === z.id}" aria-label="${W.esc(this.zoneSay(z))}"
@@ -246,9 +247,9 @@ W.Command = class {
       <header>${this.hx("HOW IT WORKS", "sub-t", 2)}<button class="x" data-a="help" data-fk="help-x">Close</button></header>
       <div class="h-body" data-scroll="help">
         <h3 class="sub">A day</h3>
-        <p>Every zone makes pips each day. Its dial, in the zone's dossier, sets how many it spends on <b>control</b>. The rest go to the city, split between <b>research</b> and <b>money</b> by the slider in the top bar. <b>Wait a day</b> (<kbd>W</kbd>) runs it. <b>Until…</b> waits longer, and stops early if a zone falls or Cal moves.</p>
+        <p>Every zone makes pips each day. Its <b>tax</b> dial, in the zone's dossier, sets how many it hands the city; the rest it spends on <b>control</b>. What the city takes is split between <b>research</b> and <b>money</b> by the slider in the top bar. <b>Wait a day</b> (<kbd>W</kbd>) runs it. <b>Until…</b> waits longer, and stops early if a zone falls or Cal moves.</p>
         <h3 class="sub">Control</h3>
-        <p>Control decays every day. <b>HOLD</b> on the dial is the spend that stops the fall. <b>Invest</b> above it and the zone climbs; <b>milk</b> below it and the city takes more while the zone slips. Levels run 0 to 3, and each level adds a pip. At zero the zone is <b>lost</b>, and makes nothing until a siege takes it back.</p>
+        <p>Control decays every day. A zone's <b>tax</b> is what it hands the city; what it keeps goes on control. <b>HOLD</b> on the dial is the tax that stops the fall. Tax under it to <b>invest</b>, and the zone climbs; over it to <b>milk</b>, and the city takes more while the zone slips. Levels run 0 to 3, and each level adds a pip. At zero the zone is <b>lost</b>, and makes nothing until a siege takes it back.</p>
         <h3 class="sub">Cal</h3>
         <p>Cal pushes one zone at a time, harder the better you are doing. A mission against his crew there ends the push. Intel missions and informants show where he goes next.</p>
         <h3 class="sub">Missions</h3>
@@ -266,7 +267,7 @@ W.Command = class {
           <li>${tag("g", "▲L1")}<span>What the last wait moved, until you do something else</span></li>
         </ul>
         <h3 class="sub">Keys</h3>
-        <ul class="h-keys"><li><kbd>1</kbd>–<kbd>5</kbd> the screens</li><li><kbd>W</kbd> wait a day</li><li>Arrow keys walk the map from zone to zone</li>
+        <ul class="h-keys"><li><kbd>1</kbd>–<kbd>5</kbd> the screens</li><li><kbd>W</kbd> wait a day</li><li><kbd>B</kbd> brief the mission marked B: the dossier's best, or the one to take</li><li>Arrow keys walk the map from zone to zone</li>
           <li><kbd>Esc</kbd> steps back; twice from the City leaves for the title</li><li><kbd>?</kbd> this help</li></ul>
       </div></aside>`;
   }
@@ -283,6 +284,25 @@ W.Command = class {
     if (f.lost) return `Lost in ${f.days} day${f.days > 1 ? "s" : ""}`;
     return `Level ${f.to} in ${f.days} day${f.days > 1 ? "s" : ""}`;
   }
+  // the mission that matters most in a zone: Cal's or a siege, else the easiest the squad can face
+  bestHere(z) {
+    const s = this.s, M = W.M, here = s.offers.filter(o => o.zone === z.id), over = o => (o.threat || 1) > M.squadTier(s, o);
+    return here.find(o => o.kind === "cal" || o.kind === "siege") || here.slice().sort((a, b) => over(a) - over(b) || (a.threat || 1) - (b.threat || 1))[0];
+  }
+  // the one to take: the first urgent one in reach, else the easiest in the weakest zone
+  recOffer() {
+    const s = this.s, M = W.M;
+    const urgentOf = o => o.kind === "cal" || o.kind === "siege" || o.kind === "story" || o.expires <= s.day;
+    const reach = o => (o.threat || 1) <= M.squadTier(s, o) && !M.canRun(s, o);
+    const pool = this.zoneId && !this.allOffers ? s.offers.filter(o => o.zone === this.zoneId) : s.offers;
+    return s.offers.filter(urgentOf).sort((a, b) => (a.threat || 1) - (b.threat || 1)).find(reach)
+      || pool.filter(o => !urgentOf(o) && reach(o)).sort((a, b) => M.zone(s, a.zone).C - M.zone(s, b.zone).C || (a.threat || 1) - (b.threat || 1))[0];
+  }
+  // what B briefs: the open dossier's best, else the recommended one
+  briefTarget() {
+    if (this.screen !== "city") return null;
+    return this.zoneId ? this.bestHere(W.M.zone(this.s, this.zoneId)) : this.recOffer();
+  }
   fcCls(f, z) { return !f || f.steady ? "steady" : f.lost || f.to < W.M.level(z.C) ? "down" : "up"; }
 
   dossierHTML(z) {
@@ -295,8 +315,7 @@ W.Command = class {
         <button class="x" data-a="zone" data-z="${z.id}" data-fk="close-${z.id}" aria-label="Close the dossier">Close</button>
       </header><p class="blurb">${W.esc(D.blurb)}</p>`;
     // the mission that matters most here, ready to brief; the rest are in the list beside, which narrows to this zone
-    const here = s.offers.filter(o => o.zone === z.id), over = o => (o.threat || 1) > M.squadTier(s, o);
-    const top = here.find(o => o.kind === "cal" || o.kind === "siege") || here.slice().sort((a, b) => over(a) - over(b) || (a.threat || 1) - (b.threat || 1))[0];
+    const here = s.offers.filter(o => o.zone === z.id), top = this.bestHere(z);
     const missions = top ? `<h3 class="sub">Best here <span>${here.length > 1 ? `${here.length - 1} more in the list` : "the only one"}</span></h3>${this.offerHTML(top, false, "dz-")}`
       : `<p class="hint">No missions here today.</p>`;
     const ready = s.research.worksReady || 0;
@@ -327,11 +346,11 @@ W.Command = class {
       </div>
       <p class="fc ${this.fcCls(f, z)}" data-live="fc">${this.fcLine(z, f, net)}</p>
       <div class="dial">
-        <div class="dial-head"><label for="dial-${z.id}">Spend on control</label><b data-live="dialc">${this.dialHead(z, P, p, hold, y)}</b></div>
-        <div class="dial-track" style="--hold:${p ? 100 * hold / p : 0}%">${ticks}
-          <input id="dial-${z.id}" type="range" min="0" max="${p}" step="1" value="${P.c}" data-a="dial" data-z="${z.id}" data-fk="dial-${z.id}" aria-valuetext="${P.c} of ${p} pips on control, ${this.dialHead(z, P, p, hold, y)}">
-          <span class="hold ${p && hold / p > 0.8 ? "end" : p && hold / p < 0.2 ? "start" : ""}" title="the pips on control that hold the level where it is">HOLD ${hold}</span></div>
-        <div class="dial-ends"><span>${this.px("◂", "glyph", 2)} Milk</span><span>Invest ${this.px("▸", "glyph", 2)}</span></div>
+        <div class="dial-head"><label for="dial-${z.id}">Tax</label><b data-live="dialc">${this.dialHead(z, P, p, hold, y)}</b></div>
+        <div class="dial-track" style="--hold:${p ? 100 * (p - hold) / p : 0}%">${ticks}
+          <input id="dial-${z.id}" type="range" min="0" max="${p}" step="1" value="${p - P.c}" data-a="dial" data-z="${z.id}" data-fk="dial-${z.id}" aria-valuetext="${this.dialSay(P, p, this.dialHead(z, P, p, hold, y))}">
+          <span class="hold ${p && (p - hold) / p > 0.8 ? "end" : p && (p - hold) / p < 0.2 ? "start" : ""}" title="the tax that holds the level where it is: lower invests in control, higher milks the zone">HOLD</span></div>
+        <div class="dial-ends"><span>${this.px("◂", "glyph", 2)} Invest</span><span>Milk ${this.px("▸", "glyph", 2)}</span></div>
         <p class="dial-out" data-live="out">${this.dialOut(z, P, y)}</p>
       </div>
       ${flags ? `<ul class="flags">${flags}</ul>` : ""}
@@ -340,8 +359,9 @@ W.Command = class {
   fcLine(z, f, net) { return `<b>${this.px(f && !f.steady ? (f.lost || f.to < W.M.level(z.C) ? "▼" : "▲") : "■", "glyph", 2)} ${this.fcText(f)}</b> <span>${net >= 0 ? "+" : ""}${net.toFixed(2)} control a day</span>`; }
   dialHead(z, P, p, hold, y) {
     const d = P.c - hold, cost = P.c * y * W.M.N.PIP_MONEY;
-    return `${W.money(cost)} a day · ${d > 0 ? `investing: ${d} pip${d > 1 ? "s" : ""} over what holds it` : d < 0 ? `milking: ${-d} pip${-d > 1 ? "s" : ""} under what holds it` : "at HOLD: it won't fall"}`;
+    return `${W.money(cost)} a day on control · ${d > 0 ? `investing: ${d} pip${d > 1 ? "s" : ""} more than holds it` : d < 0 ? `milking: ${-d} pip${-d > 1 ? "s" : ""} less than holds it` : "at HOLD: it won't fall"}`;
   }
+  dialSay(P, p, head) { return `tax ${p - P.c} of ${p}: ${P.c} pip${P.c === 1 ? "" : "s"} kept for control, ${head}`; }
   dialOut(z, P, y) { return `To the city: <span class="c-m">${W.money(P.m * W.M.moneyYield(z) * W.M.N.PIP_MONEY)}</span> and <span class="c-r">${(P.r * y).toFixed(1)} RP</span> a day`; }
 
   overviewHTML() {
@@ -360,7 +380,7 @@ W.Command = class {
     return `<article class="panel cal ${c.zone ? "on" : ""}">${this.hx("CAL", "cal-t", 2)}${cal}${reads}</article>
       <article class="panel watch"><h3 class="sub">Zones slipping <span>${watch.length || "none"}</span></h3>
         ${watch.length ? `<ul>${watch.map(({ z, f }) => `<li><button data-a="zone" data-z="${z.id}" data-fk="w-${z.id}"><b>${W.esc(M.zoneDef(z.id).name)}</b><span class="${z.lost ? "bad" : "down"}">${z.lost ? "Lost: siege to retake" : this.fcText(f)}</span></button></li>`).join("")}</ul>`
-          : `<p class="quiet">Every zone is holding or climbing. Pick one on the map to set what it spends on control.</p>`}
+          : `<p class="quiet">Every zone is holding or climbing. Pick one on the map to set its tax.</p>`}
       </article>`;
   }
 
@@ -406,9 +426,7 @@ W.Command = class {
     const pool = this.zoneId && !this.allOffers ? s.offers.filter(o => o.zone === this.zoneId) : s.offers;
     const urgent = s.offers.filter(urgentOf).sort((a, b) => (a.threat || 1) - (b.threat || 1));
     const rest = pool.filter(o => !urgentOf(o));
-    // one offer is the one to take: the first urgent one in reach, else the easiest in the weakest zone
-    const reach = o => (o.threat || 1) <= M.squadTier(s, o) && !M.canRun(s, o);
-    const rec = urgent.find(reach) || rest.filter(reach).sort((a, b) => M.zone(s, a.zone).C - M.zone(s, b.zone).C || (a.threat || 1) - (b.threat || 1))[0];
+    const rec = this.recOffer();
     this.rec = rec && rec.id;
     const byZone = {};
     for (const o of rest) (byZone[o.zone] = byZone[o.zone] || []).push(o);
@@ -444,7 +462,7 @@ W.Command = class {
         ${M.bigGun(o) ? `<p class="o-gun">${M.carriesBanhammer(s) ? "A BanHammer strike goes with the squad: it counts here. X calls it down; a strike not fired comes home." : "A BanHammer strike would count here, if the squad carried one."}</p>` : ""}
         ${why ? `<p class="why">${W.esc(why)}</p>` : ""}
       </div>
-      <button class="${this.rec === o.id || (fkp && risk === "ok") ? "go" : ""}" data-a="deploy" data-o="${o.id}" aria-label="Brief: ${W.esc(title)}, ${W.esc(K.name)}${title !== D.name ? ` in ${W.esc(D.name)}` : ""}" data-fk="${fkp}deploy-${o.id}" ${why ? "disabled" : ""}>Brief</button>
+      ${(k => `<button class="${this.rec === o.id || (fkp && risk === "ok") ? "go" : ""}" data-a="deploy" data-o="${o.id}" aria-label="Brief: ${W.esc(title)}, ${W.esc(K.name)}${title !== D.name ? ` in ${W.esc(D.name)}` : ""}"${k ? ` aria-keyshortcuts="B"` : ""} data-fk="${fkp}deploy-${o.id}" ${why ? "disabled" : ""}>${k ? `<kbd aria-hidden="true">B</kbd>` : ""}Brief</button>`)(!why && this.briefKey === o.id + fkp)}
     </div>`;
   }
 
@@ -826,9 +844,9 @@ W.Command = class {
     const t = ev.target, s = this.s, M = W.M;
     if (t.dataset.a === "dial") {
       const z = M.zone(s, t.dataset.z);
-      M.setDial(s, z, +t.value);
+      M.setDial(s, z, +t.max - +t.value);   // the dial reads as tax; the policy keeps the pips on control
       const P = M.fitPolicy(s, z), p = M.pips(s, z), f = M.forecast(s, z), box = t.closest(".dossier");
-      t.setAttribute("aria-valuetext", `${P.c} of ${p} pips on control, ${this.dialHead(z, P, p, Math.min(p, M.holdPips(s, z)), M.yieldOf(z))}`);
+      t.setAttribute("aria-valuetext", this.dialSay(P, p, this.dialHead(z, P, p, Math.min(p, M.holdPips(s, z)), M.yieldOf(z))));
       box.querySelector('[data-live="dialc"]').textContent = this.dialHead(z, P, p, Math.min(p, M.holdPips(s, z)), M.yieldOf(z));
       box.querySelector('[data-live="out"]').innerHTML = this.dialOut(z, P, M.yieldOf(z));
       const fc = box.querySelector('[data-live="fc"]'); fc.className = `fc ${this.fcCls(f, z)}`; fc.innerHTML = this.fcLine(z, f, M.netControl(s, z));
@@ -1036,6 +1054,11 @@ W.Command = class {
     if (k >= "1" && k <= String(W.Command.SCREENS.length)) { this.go(W.Command.SCREENS[+k - 1]); return true; }
     if (k === "w") { this.wait(1); return true; }
     if (k === "?") { this.toggleHelp(); return true; }
+    if (k === "b" && this.screen === "city") {
+      const o = this.briefTarget(), why = o ? W.M.canRun(this.s, o) : "no mission to brief here";
+      if (why) { W.audio.play("deny"); this.toast(why[0].toUpperCase() + why.slice(1) + "."); } else this.game.toBriefing(o.id);
+      return true;
+    }
     return false;
   }
   toggleHelp() {

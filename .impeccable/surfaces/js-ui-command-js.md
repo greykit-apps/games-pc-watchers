@@ -19,7 +19,7 @@ THESIS: The city is the board. A satellite view of PumaCity, its zones outlined 
 
 OWN-WORLD: Bevelled steel-blue panels (light top-left edge, dark bottom-right), an inset slate ground, orange-amber for live controls, Benton gold for control (dim ochre at L0 to bright gold at L3, crosshatched gold when locked), Cal red with hazard stripes for lost ground, Watcher cyan for selection. Pixel bitmap capitals for headings, the screen bar and LCD readouts; a readable system sans with tabular numerals for data.
 
-STORY: The player sees the city's state as a map, opens a zone's dossier, sets what it spends on control (invest above hold, milk below it), briefs the mission that matters (urgent first), and waits a day to watch the dispatch play out on the map.
+STORY: The player sees the city's state as a map, opens a zone's dossier, sets its tax (under HOLD invests in control, over it milks the zone; the dial runs as Syndicate's tax slider, user 2026-10-12), briefs the mission that matters (urgent first), and waits a day to watch the dispatch play out on the map.
 
 FIRST VIEWPORT: Top bar: PumaCity Watchers in pixel caps, LCDs for day, cash, the day's take, and the war meter; the city balance slider; Wait a day with an Until menu. Screen bar: City, Lab, Clinic, Office (keys 1-4). Body: the satellite map on the left at full height (near-square, ocean west, hills round, the Vault sealed in the western hills, small zones named on leader lines); right of it the selected zone's dossier (gauge, dial, forecast, its missions) or, with none selected, the urgent strip and missions grouped by zone; the day's dispatch under them.
 

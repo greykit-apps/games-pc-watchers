@@ -297,7 +297,7 @@ Steel plates you press in.
 - **Internal Padding:** 12px 14px.
 
 ### Inputs / Fields
-- **Slider:** a sunk well track with an orange bevelled thumb, as Syndicate's slider bars. Used for the city split and each zone's dial, where gold tick and "HOLD" marker show the break-even point (invest above, milk below).
+- **Slider:** a sunk well track with an orange bevelled thumb, as Syndicate's slider bars. Used for the city split and each zone's tax dial, which runs as Syndicate's tax slider (user, 2026-10-12): right hands the city more. A gold tick and "HOLD" marker show the break-even tax: under it invests in control, over it milks the zone.
 - **Select:** sunk well, text-bright 13px semibold, square.
 - **Focus:** 2px watcher-cyan outline, offset 2px.
 

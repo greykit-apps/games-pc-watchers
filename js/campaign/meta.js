@@ -252,7 +252,7 @@ M.fresh = (seed = Date.now() % 100000) => {
   M.note(s, `Joyeuse has a name: Cal moves on ${M.zoneDef(s.cal.next).name} in ${s.cal.nextIn} days. Bank control there.`, "bad");
   const lost = s.zones.filter(z => z.lost).map(z => M.zoneDef(z.id).name);
   if (lost.length) M.note(s, `Joyeuse: ${lost.join(" and ")} went to Cal before we got here. The Watchers can outfight his crews, but they're four Recruits, and a siege is beyond them yet. Hold the rest, arm the squad, then take it back.`);
-  M.note(s, "Casey Benton has given the Watchers the city to hold. Set what each zone spends on control, start some research, and pick a mission.");
+  M.note(s, "Casey Benton has given the Watchers the city to hold. Set each zone's tax, start some research, and pick a mission.");
   return s;
 };
 M.KEY = "campaign_v2";
@@ -543,7 +543,7 @@ M.advanceDay = (s, onMission = false) => {
   if (s.balance != null) M.spread(s);
   M.feedResearch(s, rp);
   // Joyeuse's first two evenings: the dial, then the Lab or the line between a job and a funeral
-  if (!onMission && s.day === 1) M.note(s, "Joyeuse: Each zone's dial is yours, in its dossier. Above HOLD, control climbs. Below it, the city takes more and the zone slips. Start with the ones going down.");
+  if (!onMission && s.day === 1) M.note(s, "Joyeuse: Each zone's tax is yours to set, in its dossier. Under HOLD, control climbs. Over it, the city takes more and the zone slips. Start with the ones going down.");
   if (!onMission && s.day === 2) M.note(s, s.research.running.length
     ? "Joyeuse: A mission within reach costs nobody. Beyond the squad, expect to bury Watchers. Research and missions survived move that line."
     : "Joyeuse: The Lab is idle, and research points can't be banked. Start a project, or every one it makes is thrown away.");

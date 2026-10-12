@@ -61,6 +61,15 @@ function fight(W, L, level, tactic, maxT = 900, greedy = false, dt = 1 / 30) {
   const world = new W.World(L, { roster: roster(level, tactic) });
   const m = world.map;
   const start = new Map(world.agents.map(a => [a, new Set(a.weapons.map(w => `${w.type}:${w.mk || 1}`))]));
+  // who kills the Watchers, and with what: "crew/uzi2", "sec/pistol1", "strike", "car", ...
+  const killers = [], kill0 = world.kill;
+  world.kill = function (u, src) {
+    if (u.isAgent && u.alive) {
+      const w = src && src.weapons && src.cur >= 0 ? src.weapons[src.cur] : null;
+      killers.push(!src ? "?" : src.isCar || src.accident !== undefined ? "car" : src.faction === "player" ? (src.isAgent ? "friendly" : "follower") : `${src.mob ? "mob" : src.guard ? "guard" : src.kind}${src.op ? "(op)" : ""}/${w ? w.type + (w.mk || 1) : "hands"}`);
+    }
+    return kill0.call(this, u, src);
+  };
   let t = 0, orderT = 0;
   const live = () => world.agents.filter(a => a.alive && !a.out);
   const fail = msg => { throw new Error(`${L.id} ${tactic} t=${t.toFixed(1)}: ${msg}`); };
@@ -232,7 +241,7 @@ function fight(W, L, level, tactic, maxT = 900, greedy = false, dt = 1 / 30) {
     }
   }
   const cs = world.contracts || [];
-  return { won: world.status === "won", reason: world.endReason, t, lost: world.stats.lost, crew: world.stats.crew, sec: world.stats.sec, civ: world.stats.civ, followers: W.squadFollowers(world), loot, items,
+  return { won: world.status === "won", reason: world.endReason, t, lost: world.stats.lost, killers, crew: world.stats.crew, sec: world.stats.sec, civ: world.stats.civ, followers: W.squadFollowers(world), loot, items,
     contracts: cs.length, done: cs.filter(c => c.done).length, weight: cs.filter(c => c.done).reduce((t, c) => t + c.weight, 0) };
 }
 
@@ -330,7 +339,7 @@ if (args.includes("--grid")) {
 } else {
   const kind = val("kind", "assassinate"), threat = +val("threat", 3), level = +val("level", 2), tactic = val("tactic", "assault");
   const res = cell(kind, threat, level, tactic, +val("n", 4), +val("seed", 3000), val("district", ""), args.includes("--greedy"));
-  for (const r of res) console.log(`${r.won ? "won " : "LOST"} ${r.reason} -- ${Math.round(r.t)}s, lost ${r.lost}, crew ${r.crew}, sec ${r.sec}, civ ${r.civ}, followers ${r.followers}, loot ${r.items} items $${r.loot}, side jobs ${r.done}/${r.contracts}`);
+  for (const r of res) console.log(`${r.won ? "won " : "LOST"} ${r.reason} -- ${Math.round(r.t)}s, lost ${r.lost}${r.killers.length ? ` (${r.killers.join(", ")})` : ""}, crew ${r.crew}, sec ${r.sec}, civ ${r.civ}, followers ${r.followers}, loot ${r.items} items $${r.loot}, side jobs ${r.done}/${r.contracts}`);
   const S = summary(res);
   console.log(`${S.won}/${S.n} won; ${S.lost.toFixed(2)} Watchers lost a mission`);
 }

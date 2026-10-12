@@ -111,7 +111,8 @@ What makes them play:
   fight on the way leaves its block awake for the way back.
 - **Cars and people.** Drivers brake for pedestrians, now and then too late:
   a knockdown and some damage. A speeding car (a getaway, or a driver
-  panicking away from gunfire) kills whoever it hits. Walking into a car's
+  panicking away from gunfire) kills whoever it hits, but a Watcher's
+  chassis takes it: badly hurt and knocked flat. Walking into a car's
   side knocks you back, dazed. Only the fight's deaths count against the
   squad: gunfire and blasts, the getaway car, panicked drivers. Other traffic
   deaths are accidents, and the debrief lists them apart.

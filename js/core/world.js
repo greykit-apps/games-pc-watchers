@@ -20,6 +20,8 @@ W.waysOut = world => world.phase === "exfil" ? (world.exfilPoints || []) : world
 W.BUCKET = 8;
 /* a train's carriages, nose to nose */
 W.CARRIAGE = 4.1;
+/* what a speeding car does to a Watcher (anyone else, it kills) */
+W.CAR_HIT = 14;
 /* over this, a car that hits someone kills them (town traffic tops out at 4.6) */
 W.SPEEDING = 5;
 /* When a vehicle (its info: lane, nose, tail, delay, top speed) can reach the
@@ -403,7 +405,9 @@ W.World = class {
     const fight = car.escape || car.panicT > 0;
     const src = { faction: car.escape ? "crew" : "none", accident: !fight, x: car.x, y: car.y };
     u.hitBy = car.id;
-    if (car.speed > W.SPEEDING) { this.damage(u, 1e6, src); this.damageCar(car, 1, null); }
+    // a Watcher's chassis takes it: badly hurt and knocked flat, not killed outright
+    if (car.speed > W.SPEEDING && u.isAgent) { this.damage(u, W.CAR_HIT, src); this.knock(car, u, 1, 2.6, true); this.damageCar(car, 1, null); }
+    else if (car.speed > W.SPEEDING) { this.damage(u, 1e6, src); this.damageCar(car, 1, null); }
     else { this.damage(u, 1.5, src); this.knock(car, u, 0.8, 2.2, true); }
   }
   /* Walked into a moving car's side: thrown back and dazed, no worse. */

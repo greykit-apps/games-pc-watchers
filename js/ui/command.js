@@ -51,6 +51,12 @@ W.Command = class {
       this.el.addEventListener("input", ev => this.onInput(ev));
       this.el.addEventListener("change", ev => this.onChange(ev));
       this.el.addEventListener("keydown", ev => this.onZoneKey(ev));
+      this.el.addEventListener("focusout", ev => {
+        if (!this.untilOpen || !ev.relatedTarget || (ev.relatedTarget.closest && ev.relatedTarget.closest(".until"))) return;
+        this.untilOpen = false;
+        const m = this.el.querySelector(".until-menu"); if (m) m.remove();
+        const u = this.el.querySelector('[data-a="until"]'); if (u) u.setAttribute("aria-expanded", "false");
+      });
       this.el.addEventListener("pointerover", ev => this.onHover(ev, true));
       this.el.addEventListener("pointerout", ev => this.onHover(ev, false));
       document.body.appendChild(this.el);
@@ -157,7 +163,7 @@ W.Command = class {
         <div class="lcd"><small>Cash</small>${this.px(W.money(s.cash), "lcd-t", 2)}</div>
         <div class="lcd take" title="What the city makes a day: money, and research points (RP)"><small>A day<span class="sr">, money and research points (RP)</span></small><span class="v">${this.takeLCD(take)}</span></div>
         <div class="warm ${s.war ? "at" : s.warReady ? "ready" : ""}"><small>${s.war ? "Taking control" : s.warReady ? "Take Control: your order" : "Take Control"}</small>
-          ${s.war ? this.px(`${s.zones.filter(z => z.locked).length}/${s.zones.length} LOCKED`, "war-t", 2) : `<span class="cells" role="meter" aria-label="Upgrade points toward Take Control" aria-valuemin="0" aria-valuemax="${war}" aria-valuenow="${Math.min(pts, war)}">${cells}</span><b>${pts}/${war}</b>`}</div>
+          ${s.war ? (n => `<span class="cells z" role="meter" aria-label="Zones locked down" aria-valuemin="0" aria-valuemax="${s.zones.length}" aria-valuenow="${n}">${s.zones.map((z, i) => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</span><b>${n}/${s.zones.length} locked</b>`)(s.zones.filter(z => z.locked).length) : `<span class="cells" role="meter" aria-label="Upgrade points toward Take Control" aria-valuemin="0" aria-valuemax="${war}" aria-valuenow="${Math.min(pts, war)}">${cells}</span><b>${pts}/${war}</b>`}</div>
       </div>
       <div class="cx-split">
         <label for="cx-bal" title="What the zones don't spend on control, split between research and money">City split</label>
@@ -312,7 +318,7 @@ W.Command = class {
     ].join("");
     const ticks = Array.from({ length: p + 1 }, (_, i) => `<i style="left:${p ? (100 * i / p) : 0}%"></i>`).join("");
     return `<article class="panel dossier">${head}
-      <div class="gauge" role="img" aria-label="Control ${z.C.toFixed(2)} of ${M.N.CAP}">
+      <div class="gauge" role="img" aria-label="Control: level ${L}, ${z.C.toFixed(1)} on a scale to ${M.N.CAP}${L < 3 ? `; level ${L + 1} at ${L + 1}` : ""}">
         <div class="g-track"><div class="g-fill" style="width:${pct(z.C)}"></div>
           <s style="left:${pct(3.5)}" title="from 3.5 the zone settles: decay is slow"></s>
           ${[1, 2, 3].map(l => `<u style="left:${pct(l)}"></u>`).join("")}
@@ -577,7 +583,7 @@ W.Command = class {
           <span><b>${W.esc(x.name)}</b><small>${x.deployed ? "Squad" : "Reserve"} · ${M.slots(x)} of 8</small></span></button>
         <div class="slots8">${slots.map(tile).join("")}${"<span class=\"tile empty\" aria-hidden=\"true\"></span>".repeat(Math.max(0, 8 - slots.length))}${bh ? tile(bh) : ""}</div></li>`;
     };
-    const squad = `<section class="panel loadouts">${this.hx("THE SQUAD'S KIT", "sub-t", 2)}<p class="hint">Drag kit onto a Watcher to give it, between Watchers to hand it over, onto the racks to put it back, onto the dealer to sell it.</p>
+    const squad = `<section class="panel loadouts">${this.hx("THE SQUAD'S KIT", "sub-t", 2)}<p class="hint">Drag kit onto a Watcher to give it, between Watchers to hand it over, onto the racks to put it back, onto the dealer to sell it. By keyboard: <kbd>Enter</kbd> gives or puts back, <kbd>Delete</kbd> sells.</p>
       <ul>${s.roster.slice().sort((p, q) => q.deployed - p.deployed).map(card).join("")}</ul></section>`;
     // the racks: what the squad owns
     const racks = M.armoury(s).filter(r => r.count);
@@ -737,14 +743,15 @@ W.Command = class {
       this.armRun(d.from === "slot" ? this.armPlan(d, { drop: "racks" }) : this.armPlan(d, { drop: "agent", id: String(this.agentId) }));
       return true;
     }
-    if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); ev.stopPropagation(); this.armRun(this.armPlan(d, { drop: "sell" })); return true; }
+    if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); ev.stopPropagation(); const p = this.armPlan(d, { drop: "sell" }); this.armRun(p && p.ok ? { ...p, dear: true } : p); return true; }
     return false;
   }
 
   /* ---------------- Casey's Office ---------------- */
   officeHTML() {
     const s = this.s, M = W.M;
-    const zid = this.officeZone || this.zoneId || (s.zones.find(z => !z.locked) || s.zones[0]).id, z = M.zone(s, zid);
+    const weakest = s.zones.filter(z => !z.locked && !z.lost).sort((a, b) => a.C - b.C)[0] || s.zones.find(z => !z.locked) || s.zones[0];
+    const zid = this.officeZone || this.zoneId || weakest.id, z = M.zone(s, zid);
     this.officeZone = zid;
     return `<section class="scene"><canvas data-office aria-hidden="true"></canvas>
         <blockquote><p>${W.esc(this.caseySays())}</p><cite>Casey Benton</cite></blockquote></section>
@@ -870,7 +877,7 @@ W.Command = class {
     const tab = t.closest && t.closest('[role="tab"]');
     if (tab && /^(ArrowLeft|ArrowRight|Home|End)$/.test(ev.key)) {
       const ids = W.Command.SCREENS, i = ids.indexOf(tab.dataset.screen);
-      const next = ev.key === "Home" ? 0 : ev.key === "End" ? 3 : (i + (ev.key === "ArrowRight" ? 1 : -1) + 4) % 4;
+      const n = ids.length, next = ev.key === "Home" ? 0 : ev.key === "End" ? n - 1 : (i + (ev.key === "ArrowRight" ? 1 : -1) + n) % n;
       ev.preventDefault(); return this.go(ids[next]);
     }
     const b = t.closest && t.closest(".zb");
@@ -972,16 +979,20 @@ W.Command = class {
     requestAnimationFrame(step);
   }
   nextBanner() {
-    const b = this.banners.shift(), el = this.layer && this.layer.querySelector(".cx-banner");
-    if (!b || !el) { this.bannerOn = false; return; }
+    const el = this.layer && this.layer.querySelector(".cx-banner");
+    if (!this.banners.length || !el) { this.bannerOn = false; return; }
+    // what one wait brought comes as one banner: the first headline, every line under it
+    const all = this.banners.splice(0), b = all[0], tone = all.some(x => x.tone === "red") ? "red" : b.tone;
     this.bannerOn = true;
-    el.className = `cx-banner ${b.tone}`;
-    el.innerHTML = `<div role="alert">${this.px(b.big, "ban-t", 4)}<p>${W.esc(b.sub)}</p><small>Click to dismiss</small></div>`;
+    el.className = `cx-banner ${tone}`;
+    el.innerHTML = `<div role="alert">${this.px(b.big, "ban-t", 4)}<p>${W.esc(b.sub)}</p>${all.slice(1).map(x => `<p class="more"><b>${W.esc(x.big)}</b> ${W.esc(x.sub)}</p>`).join("")}<small>Click or Esc to dismiss</small></div>`;
     el.hidden = false;
     W.pix.paint(el);
     W.audio.play(b.sound);
-    clearTimeout(this.bannerT);
-    this.bannerT = setTimeout(() => this.hideBanner(), 3200);
+    const arm = () => { clearTimeout(this.bannerT); this.bannerT = setTimeout(() => this.hideBanner(), 7000); };
+    el.onpointerenter = () => clearTimeout(this.bannerT);
+    el.onpointerleave = arm;
+    arm();
   }
   hideBanner() {
     clearTimeout(this.bannerT);

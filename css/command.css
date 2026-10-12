@@ -39,15 +39,16 @@
 .cx button:hover:not(:disabled){background:var(--btn-hover)}
 .cx button:active:not(:disabled){border-color:var(--lo) var(--btn-bevel) var(--btn-bevel) var(--lo);transform:translateY(1px)}
 .cx button:focus-visible,.cx input:focus-visible,.cx select:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-.cx button:disabled{background:var(--btn-off);color:#8994a8;border-color:#3a4458 var(--chip) var(--chip) #3a4458;cursor:default}
+/* the mission screens' global button:disabled dims by opacity; here a disabled plate keeps its reason legible */
+.cx button:disabled{opacity:1;background:var(--btn-off);color:#949fb3;border-color:#3a4458 var(--chip) var(--chip) #3a4458;cursor:default}
 .cx button.go{background:var(--orange);color:var(--ink-orange);border-color:var(--orange-hi) var(--orange-lo) var(--orange-lo) var(--orange-hi)}
 .cx button.go:hover:not(:disabled){background:#ffab50}
-.cx button.go:disabled{background:var(--btn-off);color:#8994a8;border-color:#3a4458 var(--chip) var(--chip) #3a4458}
+.cx button.go:disabled{background:var(--btn-off);color:#949fb3;border-color:#3a4458 var(--chip) var(--chip) #3a4458}
 .cx button.armed{background:var(--armed);color:#fff;border-color:#ff7a84 #3a060a #3a060a #ff7a84}
 .cx button.link{background:none;border:0;color:var(--orange);padding:4px 0;min-height:28px;text-decoration:underline;text-underline-offset:3px;font-weight:600}
 .cx button.link:hover{background:none;color:var(--orange-hi)}
 .cx button.mini{min-height:28px;padding:3px 8px;font-size:12px}
-.cx kbd{font:700 11px/1 var(--sans);color:inherit;opacity:.8;border:1px solid currentColor;padding:2px 4px;margin-right:7px;border-radius:2px}
+.cx kbd{font:700 11px/1 var(--sans);color:inherit;opacity:.8;border:1px solid currentColor;padding:2px 4px;margin-right:7px;border-radius:0}
 .cx .why{display:block;color:var(--orange);font-size:12px;margin-top:3px}
 
 /* ---- the top bar ---- */
@@ -70,6 +71,7 @@
 .cx .cells{display:flex;gap:2px}
 .cx .cells i{width:4px;height:12px;background:#2a1414}
 .cx .cells i.on{background:var(--red)}
+.cx .cells.z{gap:3px} .cx .cells.z i{width:18px}
 .cx .warm .cells+b{margin-top:2px}
 .cx-split{display:flex;flex-direction:column;gap:2px;min-width:250px;flex:1;max-width:380px}
 .cx-split label{font-size:12px;font-weight:600;color:var(--t1)}
@@ -80,7 +82,7 @@
 .cx .until>button{min-height:42px}
 .cx .until-menu{position:absolute;right:0;top:calc(100% + 4px);z-index:5;display:flex;flex-direction:column;gap:4px;width:230px;padding:8px;background:var(--face);border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);box-shadow:0 10px 24px rgba(0,0,0,.5)}
 .cx .until-menu button{text-align:left}
-.cx .until-menu button small{display:block;font-weight:400;color:var(--t3)}
+.cx .until-menu button small{display:block;font-weight:400;color:var(--t2)}
 .cx .until-menu>small{color:var(--t3);padding:2px}
 .cx .until-menu .mh{color:var(--t1);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
 
@@ -107,7 +109,7 @@
 .cx-bar .n{font:700 12px var(--sans);font-style:normal;background:var(--orange);color:var(--ink-orange);padding:2px 6px}
 .cx-bar .n.warn{background:var(--red);color:#fff}
 .cx-bar .n.soft{background:var(--chip);color:var(--t2)}
-.cx-bar kbd{margin:0;opacity:.6}
+.cx-bar kbd{margin:0;opacity:.8}
 
 /* ---- help: floats over the right of whichever screen is open ---- */
 .cx-help{grid-row:3;grid-column:1;justify-self:end;z-index:6;width:min(460px,42vw);min-height:0;margin:12px 16px 14px;display:flex;flex-direction:column;box-shadow:0 10px 24px rgba(0,0,0,.5)}
@@ -121,7 +123,7 @@
 .cx-help .h-key li{display:grid;grid-template-columns:78px 1fr;align-items:center;gap:8px}
 .cx-help .h-key li>:first-child{justify-self:start}
 .cx-help .h-keys{gap:4px}
-.cx-help kbd{margin:0 1px}
+.cx-help kbd,.cx .hint kbd{margin:0 1px}
 
 /* ---- the screen ---- */
 .cx-screen{grid-row:3;grid-column:1;min-height:0;padding:12px 16px 14px;overflow:hidden}   /* placed, so help can share its cell */
@@ -138,7 +140,7 @@
 /* zone labels are hit areas over the canvas, which draws their hover and selection; they must out-rank the steel
    button's hover plate and its 1px press, or the label is covered on hover and jumps from under the cursor on press */
 .cx button.zb,.cx button.zb:hover:not(:disabled),.cx button.zb:active:not(:disabled){position:absolute;width:22%;height:9%;transform:translate(-50%,-50%);background:transparent;border:0;min-height:0;padding:0;cursor:pointer}
-.cx button.zb:focus-visible{outline:3px solid var(--cyan);outline-offset:-3px}
+.cx button.zb:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 /* the key: the territory on one row, the map's own marks on the next */
 .cx-legend{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--t3)}
 .cx-legend ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
@@ -171,8 +173,8 @@
 .cx .dz-head small{color:var(--t3)}
 .cx .dz-head .x{min-height:28px;padding:3px 10px;font-size:12px}
 .cx .lvl{font:700 12px var(--sans);letter-spacing:.06em;padding:3px 7px;color:#1a1204;white-space:nowrap}
-.cx .lvl.l0{background:var(--l0);color:#f7ead2} .cx .lvl.l1{background:var(--l1)} .cx .lvl.l2{background:var(--l2)} .cx .lvl.l3{background:var(--l3)}
-.cx .lvl.lk{background:var(--lk)} .cx .lvl.ls{background:var(--red);color:#fff}
+.cx .lvl.l0{background:var(--l0);color:#fff} .cx .lvl.l1{background:var(--l1)} .cx .lvl.l2{background:var(--l2)} .cx .lvl.l3{background:var(--l3)}
+.cx .lvl.lk{background:var(--lk)} .cx .lvl.ls{background:var(--red);color:var(--ink-orange)}
 .cx .blurb{margin:8px 0 10px;color:var(--t3);font-size:13px}
 .cx .state{font-weight:600}
 .cx .gauge{margin:6px 0 2px}
@@ -215,7 +217,7 @@
 .cx .watch ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
 .cx .watch li button{width:100%;display:flex;justify-content:space-between;gap:8px;text-align:left;font-weight:600}
 .cx .watch li button span{font-weight:600}
-.cx .watch li .down,.cx .watch li .bad{color:var(--red-t)}
+.cx .watch li .down,.cx .watch li .bad{color:#ffbdc0}   /* red-t is too dim on a steel plate */
 
 /* the dispatch */
 .cx .dispatch header{flex:none;display:flex;align-items:center;gap:10px;margin-bottom:6px}
@@ -371,8 +373,8 @@
 .cx .mkb{display:flex;flex-direction:column;align-items:center;min-width:62px;min-height:38px;padding:3px 6px;line-height:1.1}
 .cx .mkb small{font-weight:400;color:var(--t2)}
 .cx .mkb.wide{min-width:132px}
-.cx span.mkb{justify-content:center;font:600 13px/1.1 var(--sans);color:#6c7790;border:2px dashed #3a4458}
-.cx span.mkb small{color:#6c7790}
+.cx span.mkb{justify-content:center;font:600 13px/1.1 var(--sans);color:var(--t3);border:2px dashed #3a4458}
+.cx span.mkb small{color:var(--t3)}
 .cx .arm-card header{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
 .cx .arm-card header small{color:var(--t3)}
 .cx .arm-card canvas.big{display:block;width:198px;height:84px;margin:12px 0 4px;image-rendering:pixelated;background:radial-gradient(ellipse at 50% 50%,#2c3a52,#121822 75%);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
@@ -430,6 +432,8 @@
 .cx-banner.gold>div{background:#4a3a08;border-color:#ffe58a #1c1402 #1c1402 #ffe58a;color:#fff4d0}
 .cx-banner .ban-t{color:#fff;--px-shadow:rgba(0,0,0,.6)}
 .cx-banner p{margin:10px 0 2px;font-size:16px}
+.cx-banner p.more{margin:6px 0 0;font-size:14px}
+.cx-banner p.more b{letter-spacing:.08em;margin-right:4px}
 .cx-banner small{opacity:.75}
 @keyframes cx-ban{from{opacity:0;transform:scaleY(.6)}to{opacity:1;transform:none}}
 .cx-toast{position:fixed;left:50%;bottom:18px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:var(--face);border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);padding:8px 14px;color:var(--t1);transition:opacity .2s,transform .2s cubic-bezier(.16,1,.3,1);z-index:31}

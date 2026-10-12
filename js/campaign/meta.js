@@ -161,13 +161,13 @@ M.ARRIVE = [0.5, 0.35, 0.25, 0.15];
 M.BOARD = { peace: 5, war: 4, stories: 3, days: [6, 12] };
 /* Threat, 1 to 5, belongs to the mission: the kind's base, harder where
  * control is low (easier at level 3), and Cal's escalation, which follows the
- * campaign rather than the squad sent: he arms his people a step at 14
- * upgrade points and another at 26, and one more once the city is being taken.
+ * campaign rather than the squad sent: he arms his people a step at 18
+ * upgrade points and another at 30 (the order to Take Control comes no sooner), and one more once the city is being taken.
  * Quiet jobs in calm zones (level 2 or 3) take neither: that's the training
  * ground, threat 1 or 2 all campaign long. A story step: 2, 3 and 4 plus the
  * escalation; Cal's last stand, the final lockdown, is 5. Worked out when the
  * offer turns up, and fixed while it stands. */
-M.N.ESCALATE = [14, 26];
+M.N.ESCALATE = [18, 30];
 M.escalation = s => M.N.ESCALATE.filter(n => s.research.points >= n).length;
 // a quiet job where the streets are calm: no escalation, no Take Control step
 M.calm = (kind, z) => !!M.KINDS[kind].quiet && !z.lost && M.level(z.C) >= 2;

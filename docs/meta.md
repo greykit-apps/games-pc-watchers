@@ -379,7 +379,7 @@ endgame).
 A mission's **threat** (1 to 5) belongs to the mission, not to the squad
 sent: its kind's base, a step harder where the zone's control is low (a step
 easier at level 3), and **Cal's escalation**, which follows the campaign: he
-arms his people a step at 14 upgrade points and another at 26, and one more
+arms his people a step at 18 upgrade points and another at 30, and one more
 once the city is being taken. Quiet jobs in calm zones (level 2 or 3) take
 neither the escalation nor the Take Control step: that's the training ground,
 threat 1 or 2 all campaign long. A story step is 2, 3 and 4 plus the

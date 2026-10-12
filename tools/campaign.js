@@ -165,10 +165,11 @@ function play(opt = {}) {
       if (short && need - z.C < 0.6 && !z.festival && s.cash > 80000) M.event(s, M.EVENTS.find(e => e.id === "festival"), z);
     }
     // at war the tree is nearly done and the squad needs paying for: money first
-    const bal = opt.balance != null ? opt.balance : strategy === "turtle" ? 0.7 : 0.5;
-    M.setBalance(s, s.war ? Math.min(bal, 0.2) : bal);
-    // at war, a BanHammer strike for the siege or lockdown that's out of reach without one
-    if (s.war && !M.carriesBanhammer(s) && M.isDone(s, "banhammer") && s.cash > M.PRICE.banhammer + 40000 && s.offers.some(o => M.bigGun(o) && !M.canRun(s, o) && o.threat > M.squadTier(s, o))) {
+    // a player with money in the bank and nothing to spend it on turns the city to research
+    const bal = opt.balance != null ? opt.balance : (strategy === "turtle" ? 0.7 : 0.5) + (s.cash > 400000 ? 0.4 : s.cash > 200000 ? 0.2 : 0);
+    M.setBalance(s, s.war ? Math.min(bal, s.cash > 400000 ? 0.6 : 0.2) : Math.min(1, bal));
+      // a BanHammer strike for a siege or a lockdown that's at or over the squad's tier: a careful player doesn't storm those without one
+    if (!M.carriesBanhammer(s) && M.isDone(s, "banhammer") && s.cash > M.PRICE.banhammer + (s.war ? 40000 : 150000) && s.offers.some(o => M.bigGun(o) && !M.canRun(s, o) && o.threat >= M.squadTier(s) - 1)) {
       const a = M.squad(s)[0], it = M.shop(s, a).find(x => x.type === "banhammer");
       if (it && !M.canBuy(s, a, it)) M.buy(s, a, it);
     }
@@ -188,7 +189,8 @@ function play(opt = {}) {
         const held = Math.min(extra, room), short = extra > room ? (extra - room) * M.gainOf(s, z) : 0;
         v += s.cal.left * (held * M.yieldOf(z) * M.N.PIP_MONEY + short * CV);
       }
-      if (R.retake) v += 250000;
+      // a zone back; taking control, a lost zone stands between the squad and the end
+      if (R.retake) v += 250000 + (s.war ? 900000 : 0);
       if (R.story) v += 300000 * (o.step + 1);
       return v;
     };

@@ -116,6 +116,7 @@
 .cx-help header{flex:none;display:flex;align-items:center;gap:10px;margin-bottom:4px}
 .cx-help header .hx{flex:1}
 .cx-help .h-body{min-height:0;overflow-y:auto;padding-right:4px;font-size:13px;color:var(--t2)}
+.cx-help .h-body:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 .cx-help .sub:first-child{margin-top:4px}
 .cx-help p{margin:0}
 .cx-help b{color:var(--t1)}

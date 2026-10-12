@@ -219,7 +219,7 @@ W.Command = class {
   cityHTML() {
     const s = this.s, bt = this.briefTarget();
     this.briefKey = bt ? bt.id + (this.zoneId ? "dz-" : "nx-") : null;
-    const zb = s.zones.map(z => {
+    const zb = s.zones.slice().sort((a, b) => { const [ax, ay] = W.CityMap.place(a.id), [bx, by] = W.CityMap.place(b.id); return Math.round(ay / 12) - Math.round(by / 12) || ax - bx; }).map(z => {
       const [x, y] = W.CityMap.place(z.id);
       return `<button class="zb" data-a="zone" data-z="${z.id}" data-fk="zone-${z.id}" aria-pressed="${this.zoneId === z.id}" aria-label="${W.esc(this.zoneSay(z))}"
         style="left:${x}%;top:${y}%"></button>`;
@@ -245,7 +245,7 @@ W.Command = class {
     const tag = (cls, t) => `<span class="tg ${cls}">${this.px(t, "", 2)}</span>`;
     return `<aside class="panel cx-help" id="cx-help" aria-label="How it works">
       <header>${this.hx("HOW IT WORKS", "sub-t", 2)}<button class="x" data-a="help" data-fk="help-x">Close</button></header>
-      <div class="h-body" data-scroll="help">
+      <div class="h-body" data-scroll="help" tabindex="0" aria-label="How it works">
         <h3 class="sub">A day</h3>
         <p>Every zone makes pips each day. Its <b>tax</b> dial, in the zone's dossier, sets how many it hands the city; the rest it spends on <b>control</b>. What the city takes is split between <b>research</b> and <b>money</b> by the slider in the top bar. <b>Wait a day</b> (<kbd>W</kbd>) runs it. <b>Until…</b> waits longer, and stops early if a zone falls or Cal moves.</p>
         <h3 class="sub">Control</h3>
@@ -497,7 +497,7 @@ W.Command = class {
       const open = r.needs.every(n => M.isDone(s, n));
       if (!open) return `<span class="node locked"><b>MK${r.mk || 1}</b><small>needs ${W.esc(r.needs.filter(n => !M.isDone(s, n)).map(n => M.item(n).name).join(", "))}</small></span>`;
       const why = M.canStart(s, r);
-      return `<span class="node open"><button data-a="start" data-r="${r.id}" data-fk="start-${r.id}" ${why ? "disabled" : ""} title="${W.esc(this.what(r))}"><b>MK${r.mk || 1}</b><small>Start: ${W.money(r.cost[0])}</small><small>then ${r.cost[1]} RP${r.points === 2 ? " · counts 2" : ""}</small></button>${why ? `<small class="why">${W.esc(why)}</small>` : ""}</span>`;
+      return `<span class="node open"><button data-a="start" data-r="${r.id}" data-fk="start-${r.id}" ${why ? "disabled" : ""} title="${W.esc(this.what(r))}" aria-label="Start ${W.esc(r.name)}: ${W.money(r.cost[0])}, then ${r.cost[1]} RP${r.points === 2 ? ", counts 2" : ""}${why ? `. ${W.esc(why)}` : ""}"><b>MK${r.mk || 1}</b><small>Start: ${W.money(r.cost[0])}</small><small>then ${r.cost[1]} RP${r.points === 2 ? " · counts 2" : ""}</small></button>${why ? `<small class="why">${W.esc(why)}</small>` : ""}</span>`;
     };
     const lineRow = (lineId, name, what) => {
       const marks = [1, 2, 3].map(k => M.item(`${lineId}:${k}`));
@@ -507,7 +507,7 @@ W.Command = class {
     const single = r => { const a = avail.find(x => x.id === r.id) || r; return `<li><span class="ln"><b>${W.esc(r.name)}</b><small>${W.esc(this.what(r))}</small></span>${node(a)}</li>`; };
     const repeat = id => { const a = avail.find(x => x.id === id), p = run.find(x => x.id === id);
       const name = id === "works" ? "Zone works" : "Requisition", n = s.research[id];
-      return `<li><span class="ln"><b>${name}${n ? ` <small>×${n} done</small>` : ""}</b><small>${W.esc(this.what({ id }))}</small></span>${p ? node({ id, mk: n + 1, needs: [] }) : a ? `<span class="node open"><button data-a="start" data-r="${id}" data-fk="start-${id}" ${M.canStart(s, a) ? "disabled" : ""}><b>#${n + 1}</b><small>Start: ${W.money(a.cost[0])}</small><small>then ${a.cost[1]} RP</small></button>${M.canStart(s, a) ? `<small class="why">${W.esc(M.canStart(s, a))}</small>` : ""}</span>` : ""}</li>`; };
+      return `<li><span class="ln"><b>${name}${n ? ` <small>×${n} done</small>` : ""}</b><small>${W.esc(this.what({ id }))}</small></span>${p ? node({ id, mk: n + 1, needs: [] }) : a ? `<span class="node open"><button data-a="start" data-r="${id}" data-fk="start-${id}" ${M.canStart(s, a) ? "disabled" : ""} aria-label="Start ${name} number ${n + 1}: ${W.money(a.cost[0])}, then ${a.cost[1]} RP"><b>#${n + 1}</b><small>Start: ${W.money(a.cost[0])}</small><small>then ${a.cost[1]} RP</small></button>${M.canStart(s, a) ? `<small class="why">${W.esc(M.canStart(s, a))}</small>` : ""}</span>` : ""}</li>`; };
     const counters = avail.filter(r => r.kind === "counter");
     const runCounters = run.filter(p => p.id.startsWith("counter:"));
     return `<section class="panel lab-war">
@@ -554,7 +554,7 @@ W.Command = class {
           <button class="who" data-a="agent" data-id="${x.id}" data-fk="agent-${x.id}" aria-pressed="${x.id === this.agentId}"><canvas width="44" height="44" data-port="${x.id}"></canvas>
             <span><b>${W.esc(x.name)}</b><small>${W.RANK.names[M.rank(x)]} · ${x.missions} mission${x.missions === 1 ? "" : "s"} · ${x.kills} down</small><small>worth ${W.money(M.worth(x))}</small></span>
             <span class="st ${x.deployed ? "in" : ""}">${x.deployed ? "Squad" : "Reserve"}</span></button>
-          <button class="mini" data-a="deploytoggle" data-id="${x.id}" data-fk="dt-${x.id}">${x.deployed ? "Send to reserve" : "Put in the squad"}</button></li>`).join("")}</ul>
+          <button class="mini" data-a="deploytoggle" data-id="${x.id}" data-fk="dt-${x.id}" aria-label="${x.deployed ? `Send ${W.esc(x.name)} to reserve` : `Put ${W.esc(x.name)} in the squad`}">${x.deployed ? "Send to reserve" : "Put in the squad"}</button></li>`).join("")}</ul>
       <button data-a="hire" data-fk="hire" ${why ? "disabled" : ""}>Recruit · ${W.money(M.PRICE.recruit)}</button>${why ? `<small class="why">${W.esc(why)}</small>` : ""}
       ${s.fallen.length ? `<div class="fallen"><h4>Fallen</h4><p>${s.fallen.map(W.esc).join(" · ")}</p></div>` : ""}
     </section>`;
@@ -563,7 +563,7 @@ W.Command = class {
       const v = a.mods[m.id] || 0, why3 = M.canInstall(s, a, m.id);
       return `<div class="slot" data-part="${m.id}"><header><b>${m.name}</b><span class="mk">${[1, 2, 3].map(k => `<i class="${k <= v ? "on" : M.isDone(s, `${m.id}:${k}`) ? "ready" : ""}" title="MK${k}${k <= v ? " fitted" : M.isDone(s, `${m.id}:${k}`) ? " researched" : ""}"></i>`).join("")}</span></header>
         <small>${W.esc(m.what)}</small>
-        ${v < 3 ? `<button data-a="install" data-part="${m.id}" data-fk="install-${m.id}" ${why3 ? "disabled" : ""}>Fit MK${v + 1} · ${W.money(M.PRICE.mod[v + 1])}</button>${why3 ? `<small class="why">${W.esc(why3)}</small>` : ""}` : `<span class="max">MK3 fitted</span>`}</div>`;
+        ${v < 3 ? `<button data-a="install" data-part="${m.id}" data-fk="install-${m.id}" ${why3 ? "disabled" : ""} aria-label="Fit ${W.esc(a.name)} with ${W.esc(m.name)} MK${v + 1}: ${W.money(M.PRICE.mod[v + 1])}">Fit MK${v + 1} · ${W.money(M.PRICE.mod[v + 1])}</button>${why3 ? `<small class="why">${W.esc(why3)}</small>` : ""}` : `<span class="max">MK3 fitted</span>`}</div>`;
     };
     const left = ["brain", "eyes", "arms"], right = ["heart", "chest", "legs"];
     const body = `<section class="panel body">
@@ -835,7 +835,7 @@ W.Command = class {
         return;
       }
       case "waituntil": this.untilOpen = false; return this.wait(d.u);
-      case "zone": return this.pickZone(d.z, !b.classList.contains("zb"));
+      case "zone": return this.pickZone(d.z, !b.classList.contains("zb") || ev.detail === 0);
       case "alloffers": this.allOffers = !this.allOffers; return this.draw();
       case "showfar": this.showFar = !this.showFar; return this.draw();
       case "log": this.showLog = !this.showLog; return this.draw();
@@ -938,7 +938,8 @@ W.Command = class {
   pickZone(id, moveFocus) {
     const open = this.zoneId !== id;
     this.zoneId = open ? id : null; this.allOffers = false; W.audio.play("click");
-    if (moveFocus) this.focusTo = open ? `close-${id}` : `zone-${id}`;
+    const z = open && W.M.zone(this.s, id);
+    if (moveFocus) this.focusTo = open ? (z.lost || z.locked ? `close-${id}` : `dial-${id}`) : `zone-${id}`;
     this.draw();
   }
   go(screen) {
@@ -1074,7 +1075,7 @@ W.Command = class {
       if (this.escArmed) { this.game.toTitle(); return true; }
       this.escArmed = true; this.toast("Press Esc again to leave for the title."); return true;
     }
-    if (tag === "INPUT" || tag === "SELECT") return false;
+    if (tag === "SELECT" || (tag === "INPUT" && ev.target.type !== "range")) return false;
     if (k >= "1" && k <= String(W.Command.SCREENS.length)) { this.go(W.Command.SCREENS[+k - 1]); return true; }
     if (k === "w") { this.wait(1); return true; }
     if (k === "?") { this.toggleHelp(); return true; }

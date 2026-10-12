@@ -90,7 +90,7 @@ W.Command = class {
     W.Command.kept = { s: this.s, zoneId: this.zoneId, allOffers: this.allOffers };
     if (this.map) this.map.stop();
     window.removeEventListener("resize", this.onResize);
-    clearTimeout(this.bannerT); clearTimeout(this.toastT);
+    clearTimeout(this.bannerT); clearTimeout(this.toastT); clearTimeout(this.bannerDelay);
     if (this.el) { this.el.remove(); this.el = null; }
     if (this.layer) { this.layer.remove(); this.layer = null; }
   }
@@ -840,7 +840,7 @@ W.Command = class {
       case "showfar": this.showFar = !this.showFar; return this.draw();
       case "log": this.showLog = !this.showLog; return this.draw();
       case "office": this.officeZone = d.z; return this.go("office");
-      case "declare": if (!M.declareWar(s)) return W.audio.play("deny"); this.banners.push({ tone: "red", big: "TAKE CONTROL", sub: "Casey Benton gives the order. Cal commits. Lock the city down, zone by zone.", sound: "alarm" }); break;
+      case "declare": if (!M.declareWar(s)) return W.audio.play("deny"); this.banners.push({ tone: "gold", big: "TAKE CONTROL", sub: "Casey Benton gives the order. Cal commits. Lock the city down, zone by zone.", sound: "alarm" }); break;
       case "works": if (!M.placeWorks(s, M.zone(s, d.z))) return W.audio.play("deny"); W.audio.play("heal"); break;
       case "deploy": return this.game.toBriefing(d.o);
       case "start": { const r = M.available(s).find(x => x.id === d.r); if (!r || !M.start(s, r)) return W.audio.play("deny"); W.audio.play("select"); this.focusTo = `cancel-${r.id}`; break; }
@@ -992,10 +992,12 @@ W.Command = class {
     // the banners: what nobody should miss
     for (const z of s.zones) if (z.lost && !before.zones[z.id].lost) this.banners.push({ tone: "red", big: "ZONE LOST", sub: `${M.zoneDef(z.id).name} has fallen to Cal. A siege takes it back.`, sound: "lose" });
     if (s.cal.zone && s.cal.zone !== before.cal) this.banners.push({ tone: "red", big: "CAL MOVES", sub: `He's pushing ${M.zoneDef(s.cal.zone).name}${M.zone(s, s.cal.zone).lost ? ", which he already holds" : ""}. A mission against his crew ends it.`, sound: "alarm" });
-    if (s.war && !before.war) this.banners.push({ tone: "red", big: "TAKE CONTROL", sub: "Cal has committed. Decay runs faster everywhere.", sound: "alarm" });
+    if (s.war && !before.war) this.banners.push({ tone: "gold", big: "TAKE CONTROL", sub: "Cal has committed. Decay runs faster everywhere.", sound: "alarm" });
     if (s.won && !before.won) this.banners.push({ tone: "gold", big: "PUMACITY IS HERS", sub: "Every zone is locked down. You win.", sound: "win" });
     W.audio.play("order");
     W.M.save(s);
+    // the map's sweep is the thing to watch: the banner lands after it
+    this.bannerAt = performance.now() + (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 900);
     this.fresh = { points: before.points };
     this.draw();
     this.fresh = null;
@@ -1024,11 +1026,16 @@ W.Command = class {
   nextBanner() {
     const el = this.layer && this.layer.querySelector(".cx-banner");
     if (!this.banners.length || !el) { this.bannerOn = false; return; }
+    const hold = (this.bannerAt || 0) - performance.now();
+    if (hold > 0) { clearTimeout(this.bannerDelay); this.bannerDelay = setTimeout(() => this.nextBanner(), hold); return; }
+    // docked under the screen bar, over the top of the screen, not over the dispatch it announces
+    const bar = this.el && this.el.querySelector(".cx-bar");
+    if (bar) el.style.top = Math.round(bar.getBoundingClientRect().bottom) + "px";
     // what one wait brought comes as one banner: the first headline, every line under it
     const all = this.banners.splice(0), b = all[0], tone = all.some(x => x.tone === "red") ? "red" : b.tone;
     this.bannerOn = true;
     el.className = `cx-banner ${tone}`;
-    el.innerHTML = `<div role="alert">${this.px(b.big, "ban-t", 4)}<p>${W.esc(b.sub)}</p>${all.slice(1).map(x => `<p class="more"><b>${W.esc(x.big)}</b> ${W.esc(x.sub)}</p>`).join("")}<small>Click or Esc to dismiss</small></div>`;
+    el.innerHTML = `<div role="alert">${this.px(b.big, "ban-t", 3)}<div class="ban-l"><p>${W.esc(b.sub)}</p>${all.slice(1).map(x => `<p class="more"><b>${W.esc(x.big)}</b> ${W.esc(x.sub)}</p>`).join("")}</div><small>Click or Esc</small></div>`;
     el.hidden = false;
     W.pix.paint(el);
     W.audio.play(b.sound);

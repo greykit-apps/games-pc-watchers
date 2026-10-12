@@ -75,7 +75,36 @@ W.makeUnit = (kind, x, y, o = {}) => {
     react: K.react, sight: K.sight, baseSpeed: K.speed * (o.speedMul || 1), acc: K.acc, armor: K.armor || 1,
   }, o);
   if (!u.look) u.look = W.lookFor(kind);
+  if (!u.look.species) u.look = W.withSpecies(u.look, W.speciesFor(kind));
   return u;
+};
+
+/* Who the city is: cat-folk mostly, with wolves and horses among them. The
+ * Watchers and the named targets are cats. Looks only: a species changes the
+ * drawing, never the numbers. */
+W.SPECIES_MIX = {
+  civ:   { cat: 0.5, wolf: 0.3, horse: 0.2 },
+  sec:   { cat: 0.4, wolf: 0.35, horse: 0.25 },
+  crew:  { cat: 0.45, wolf: 0.35, horse: 0.2 },
+  guard: { cat: 0.2, wolf: 0.35, horse: 0.45 },
+};
+W.WOLF_FURS = ["#7c7c84", "#9a948a", "#5a5a60", "#b8b2a6", "#3a3a3e", "#8a7a64", "#d9d3c7", "#6a5a4a"];
+// a horse's coat and the mane and tail that go with it: bay, chestnut, black, grey, palomino, dun, white
+W.HORSE_COATS = [["#6a3a22", "#1a1414"], ["#4a2c1e", "#141010"], ["#8a4a2a", "#5a2a16"], ["#2a2422", "#141010"],
+  ["#9a9a9a", "#4a4a4e"], ["#d8b46a", "#f0ead8"], ["#b08a5a", "#2a2018"], ["#e2ddd2", "#b8b2a6"]];
+W.speciesFor = kind => {
+  const mix = W.SPECIES_MIX[kind];
+  if (!mix) return "cat";
+  let r = Math.random();
+  for (const s in mix) if ((r -= mix[s]) < 0) return s;
+  return "cat";
+};
+/* A look with a species' body on it: fur (and a horse's mane) to suit; clothes stay. */
+W.withSpecies = (look, species) => {
+  const L = Object.assign({}, look, { species });
+  if (species === "wolf") L.fur = W.pick(W.WOLF_FURS);
+  else if (species === "horse") { const [fur, mane] = W.pick(W.HORSE_COATS); L.fur = fur; L.mane = mane; }
+  return L;
 };
 
 W.lookFor = kind => {
@@ -813,7 +842,13 @@ W.thinkUnarmed = (world, u) => {
 W.SUSPICION = 2;
 W.UNDERCOVER = { 1: 0, 2: 0, 3: 0.15, 4: 0.3, 5: 0.45 };
 W.SCAN = { 1: { armed: 0 }, 2: { armed: 12 }, 3: { armed: 22, walls: true } };
-W.disguise = (u, look) => { u.undercover = true; u.look = look || W.lookFor("civ"); return u; };
+// plain clothes over the same body: species, fur and mane stay
+W.disguise = (u, look) => {
+  const b = u.look || {};
+  u.undercover = true;
+  u.look = Object.assign({}, look || W.lookFor("civ"), { species: b.species, fur: b.fur || (look && look.fur), mane: b.mane, patch: b.patch });
+  return u;
+};
 W.reveal = u => { u.revealed = true; u.look = Object.assign({}, u.look, { trim: "#ff5266" }); };
 W.scanMk = world => {
   let mk = world.level.scannerMk || 1;

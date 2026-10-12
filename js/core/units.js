@@ -299,6 +299,13 @@ W.separate = (world, dt) => {
 };
 
 /* ---- firing ---- */
+// on guard: someone who'd see a rifle coming. Crew alerted or fighting or running, police called in, civilians panicking
+W.onGuard = u => u.kind === "civ" ? u.state === "panic" || u.state === "flee"
+  : u.kind === "sec" ? !!(u.angryAt && (u.angryAt.player || u.angryAt.crew))
+  : !!(u.alert || u.hostile || u.state === "flee" || u.state === "alerted");
+// the element of surprise (W.WEAPONS[..].surprise): nobody round the one hit, them included, on guard
+W.surprised = (world, t) => !world.units.some(o => o.alive && !o.isAgent && !o.follower && !o.inCar && W.dist(o.x, o.y, t.x, t.y) < W.SURPRISE_R && W.onGuard(o));
+
 W.tryFire = (world, u, tx, ty, victim) => {
   const w = W.curWeapon(u), def = W.curDef(u);
   if (!def || !def.gun || u.cd > 0) return false;
@@ -359,6 +366,8 @@ W.tryFire = (world, u, tx, ty, victim) => {
     world.tracer(u.x + Math.cos(ang) * 0.3, u.y + Math.sin(ang) * 0.3, mz, ex, ey, ez, def.tracer, def.beam ? 2 : 1, def.beam ? 0.25 : 0.07);
     if (hit) {
       if (hit.isCar) world.damageCar(hit, dmg, u);
+      // a Watcher's rifle on someone who doesn't see it coming: one shot (not the crew's on a Watcher)
+      else if (def.surprise && u.isAgent && !hit.isAgent && W.surprised(world, hit)) world.damage(hit, hit.hp + 1, u, def.silenced);
       else world.damage(hit, dmg, u, def.silenced);
     }
     if (def.blast) world.explode(ex, ey, def.blast.r, def.blast.dmg * blastMul, u);

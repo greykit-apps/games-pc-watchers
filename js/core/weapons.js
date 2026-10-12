@@ -6,6 +6,10 @@
 /* silenced: a shot is heard only within W.SILENT_R of the shooter and of where
  * it lands, and whoever it kills raises no alarm (see World.damage). */
 W.SILENT_R = 3;
+/* surprise: a hit kills outright while nobody within W.SURPRISE_R of the one
+ * hit (them included) is on guard (W.onGuard): crew alerted or fighting, the
+ * police called in, civilians panicking. Once the street is up, it's a rifle. */
+W.SURPRISE_R = 12;
 W.WEAPONS = {
   pistol: {
     name: "Pistol", short: "PSTL", gun: true, dmg: 3, range: 7, cd: 0.5, acc: 0.78, pellets: 1, silenced: true,
@@ -24,7 +28,7 @@ W.WEAPONS = {
     ammo: 300, sound: "uzi", tracer: "#ffe08a", desc: "A wall of lead. Slows whoever carries it, unless their arms are modded."
   },
   longrange: {
-    name: "Longwhisker", short: "LONG", gun: true, dmg: 7, range: 11.5, cd: 1.3, acc: 0.95, pellets: 1, silenced: true,
+    name: "Longwhisker", short: "LONG", gun: true, dmg: 7, range: 11.5, cd: 1.3, acc: 0.95, pellets: 1, silenced: true, surprise: true,
     ammo: 30, sound: "silenced", tracer: "#e8f4ff", desc: "A silenced rifle for the far side of the plaza. Heard only up close, by the shooter or the one hit."
   },
   laser: {

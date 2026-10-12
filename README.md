@@ -125,6 +125,11 @@ What makes them play:
   shout reaches no further than those 3 tiles. So a lone lookout can be
   picked off from range without waking the block; two together, and the
   second calls it in. (The crew's own pistols are silenced too.)
+- **Surprise.** A Watcher's Longwhisker kills with one shot while nobody
+  within 12 tiles of the one hit (them included) is on guard: crew alerted
+  or fighting, police called in, civilians panicking. Shoot one of a crowd
+  and the rest panic, and the next shot is just a rifle again. A miss lands
+  close enough to be heard, and spends the surprise too.
 - **Cars and people.** Drivers brake for pedestrians, now and then too late:
   a knockdown and some damage. A speeding car (a getaway, or a driver
   panicking away from gunfire) kills whoever it hits, but a Watcher's

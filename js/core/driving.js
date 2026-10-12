@@ -12,6 +12,7 @@ W.CAR_SPEED = 4.8;     // a little under W.SPEEDING: a careful driver
 W.HAIL_R = 10;         // how close a Watcher must be (in the driver's sight) for them to stop
 W.CHASE_R = 25;        // further than this (or than it was, and then some), the car has got away
 W.BOARD_R = 1.4;       // close enough to get in
+W.CAR_BLAST = 36;      // what the squad inside take when the car goes up, before armour: 27 kills a stock Watcher (24)
 
 /* can the squad get into this car (another seat, or a car in traffic)? */
 W.canBoard = c => !!c && !c.dead && !c.gone && !c.train && !c.escape && !c.escapeCar && !c.stash &&
@@ -244,12 +245,18 @@ W.kerbBeside = (world, c, fx, fy, away) => {
   }
   return m.nearestWalkable(c.x, c.y, 4);
 };
-/* The car goes up: everyone in it goes with it. */
+/* The car goes up (after its blast, which nobody inside feels twice): each
+ * Watcher in it takes W.CAR_BLAST through their armour, and any left alive
+ * is thrown clear on to the pavement, flat for a moment. Enough to kill one
+ * with the stock body; a Chest mod (more health, harder to hurt) gets them out. */
 W.carLost = (world, c, src) => {
   for (const a of c.riders || []) {
     if (!a.alive || a.car !== c) continue;
-    a.inCar = false; a.car = null; a.x = c.x; a.y = c.y;
-    world.kill(a, src);
+    const p = W.kerbBeside(world, c, c.x, c.y, false) || [c.x, c.y];
+    a.inCar = false; a.car = null; a.x = p[0] + W.rand(-0.3, 0.3); a.y = p[1] + W.rand(-0.3, 0.3); a.path = null;
+    if (!world.map.walkable(a.x, a.y)) { a.x = p[0]; a.y = p[1]; }
+    world.damage(a, W.CAR_BLAST, src);
+    if (a.alive) { a.stunT = a.downT = 1.6; a.deadSide = Math.random() < 0.5 ? -1 : 1; world.msg(`${a.name} is thrown clear of the wreck.`, "#ffb000"); }
   }
   if (c.riders) c.riders = [];
 };

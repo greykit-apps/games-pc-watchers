@@ -309,8 +309,8 @@ W.World = class {
         p.inCar = false; p.x = car.x; p.y = car.y;
         this.kill(p, src);
       }
-      if (car.player) W.carLost(this, car, src);
       this.explode(car.x, car.y, 2.4, 14, src);
+      if (car.player) W.carLost(this, car, src);
     }
   }
   boardEscape(u, car) {

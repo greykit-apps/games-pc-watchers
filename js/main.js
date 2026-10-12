@@ -100,7 +100,7 @@ const Game = W.game = {
         <tr><td><kbd>V</kbd></td><td>the scanner view, over the city: the better the scanner, the more ground it covers and the more it shows</td></tr>
         <tr><td><kbd>X</kbd></td><td>the BanHammer: click a spot a Watcher can see, and a few seconds later the orbital platform clears it. Everything in the circle dies. <kbd>Esc</kbd> stands it down</td></tr>
         <tr><td>Weapon panel</td><td>click a weapon to draw it</td></tr>
-        <tr><td>Left click a car</td><td>take it: the driver stops for a Watcher close by, gets out and runs. Inside, the squad is out of sight, unless the crew or the police saw them get in; then the car is a target, and it goes up with them in it. Left click to drive: by the roads, keeping to the rules of the road. Left click the car (or <kbd>G</kbd>) to get out</td></tr>
+        <tr><td>Left click a car</td><td>take it: the driver stops for a Watcher close by, gets out and runs. Inside, the squad is out of sight, unless the crew or the police saw them get in; then the car is a target. If it goes up, the blast kills a Watcher with the stock body; a Chest mod gets them out alive. Left click to drive: by the roads, keeping to the rules of the road. Left click the car (or <kbd>G</kbd>) to get out</td></tr>
         </table><h3>The view</h3><table>
         <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>, arrows</td><td>scroll; or push the pointer to an edge, or drag with the middle button</td></tr>
         <tr><td>Double-tap <kbd>1</kbd>–<kbd>4</kbd></td><td>look at that Watcher; or double-click their card</td></tr>

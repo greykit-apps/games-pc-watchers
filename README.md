@@ -30,7 +30,10 @@ The rules, and the numbers behind them, are in [docs/meta.md](docs/meta.md);
   goes next. He learns how the Watchers work: lean on one way (the BanHammer,
   stealth, guns, talk) and his people are set out against it until you vary it.
 - **The briefing** offers a choice of drop-offs and getaway car spots, and
-  counts the armed trouble along each way.
+  counts the armed trouble along each way. Its map marks each with a moving
+  ring and a word: the drop-off cyan, pulling in; the getaway car blue,
+  pushing out; the job red; where the target runs amber; side jobs gold. The
+  scanner in the field uses the same colours.
 - **PVN** runs the news along the bottom of the command screen: your work, as
   Casey Benton would have it told.
 - **Research** costs money to start and research points to finish; points

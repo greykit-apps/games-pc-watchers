@@ -224,8 +224,8 @@ const Game = W.game = {
         ${L.options && (L.options.spawn.length > 1 || L.options.pickup.length > 1) ? `<div class="panel plan"><h3>The plan: where you go in, and where the car waits</h3><div data-plan></div></div>` : ""}
       </div>
       <div>
-        <div class="panel"><h3>The ground</h3><canvas class="map" data-map width="300" height="300"></canvas>
-          <div class="legend"><span><i style="background:#54f2ff"></i>Watchers</span><span><i style="background:#ffb000"></i>${W.esc(w.names.target)}</span><span><i style="background:#ff5266"></i>crew</span><span><i style="background:#4c6fd0"></i>security</span></div></div>
+        <div class="panel"><h3>The ground</h3><canvas class="map" data-map width="340" height="340" role="img" aria-label="Map of the district: where the squad goes in, the job, and the getaway car"></canvas>
+          <div class="legend" data-legend></div></div>
         <div class="panel"><h3>Intel</h3><table data-intel>${L.briefing.intel.map(([a, b]) => `<tr><td>${W.esc(a)}</td><td>${W.esc(b)}</td></tr>`).join("")}</table></div>
         <div class="panel"><h3>Your squad</h3><div class="squad">${w.agents.map(a => `<div class="agent"><canvas width="40" height="40" data-agent="${a.slot}"></canvas><div><b>${W.esc(a.name)}</b>${a.weapons.map(x => W.WEAPONS[x.type].name).join(", ")}</div></div>`).join("")}</div></div>
       </div>
@@ -248,7 +248,7 @@ const Game = W.game = {
   drawPlan() {
     const el = this.briefEl, L = this.level, w = this.world;
     if (!el) return;
-    this.renderer.scanner(el.querySelector("[data-map]").getContext("2d"), w, { full: true, noCiv: true, noView: true });
+    this.drawBriefMap();
     el.querySelector("[data-text]").innerHTML = L.briefing.text.map(p => `<p>${W.esc(p)}</p>`).join("");
     el.querySelector("[data-intel]").innerHTML = L.briefing.intel.map(([a, b]) => `<tr><td>${W.esc(a)}</td><td>${W.esc(b)}</td></tr>`).join("");
     const slot = el.querySelector("[data-plan]");
@@ -270,6 +270,37 @@ const Game = W.game = {
       const again = this.briefEl.querySelector(`[data-plan-${kind}="${L.options[kind].indexOf(p)}"]`);
       if (again) again.focus();
     }));
+  },
+
+  /* The briefing's map: the district as the scanner sees it, drawn once into
+   * a cache, and over it the marks (W.briefMarks), moving, every frame the
+   * briefing is up. The legend under it names the marks there are. */
+  drawBriefMap() {
+    const el = this.briefEl, w = this.world;
+    const cv = el && el.querySelector("[data-map]");
+    if (!cv) return;
+    const base = this.briefBase || (this.briefBase = document.createElement("canvas"));
+    base.width = cv.width; base.height = cv.height;
+    this.renderer.scanner(base.getContext("2d"), w, { full: true, noCiv: true, noView: true });
+    this.briefScan = Object.assign({}, this.renderer.scan);
+    this.briefMarks = W.briefMarks(w);
+    const kinds = Object.keys(W.MARK_STYLE).filter(k => this.briefMarks.some(m => m.kind === k));
+    const name = { target: (this.briefMarks.find(m => m.kind === "target") || {}).label };
+    el.querySelector("[data-legend]").innerHTML = kinds.map(k => `<span><i class="mk mk-${k}" style="--c:${W.MARK_STYLE[k].color}"></i>${W.esc(k === "target" && name.target ? name.target[0] + name.target.slice(1).toLowerCase() : W.MARK_STYLE[k].name)}</span>`).join("")
+      + `<span class="dots"><i style="background:#54f2ff"></i>Watchers <i style="background:#ff5266"></i>crew <i style="background:#4c6fd0"></i>police</span>`;
+    if (this.briefRaf) return;
+    const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches, t0 = performance.now();
+    const frame = () => {
+      const cv2 = this.briefEl && this.mode === "brief" && this.briefEl.querySelector("[data-map]");
+      if (!cv2) { this.briefRaf = null; return; }
+      const c = cv2.getContext("2d");
+      c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(this.briefBase, 0, 0);
+      // the marks go where the cache's scanner put the ground
+      this.renderer.scan = this.briefScan;
+      this.renderer.briefMarks(c, this.briefMarks, (performance.now() - t0) / 1000, still);
+      this.briefRaf = still ? null : requestAnimationFrame(frame);
+    };
+    frame();
   },
 
   backFromBrief() { if (this.run && this.run.contract) this.toOverworld(); else if (this.fromMapRoom) this.toMapRoom(); else this.toTitle(); },

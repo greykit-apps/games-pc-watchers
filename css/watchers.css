@@ -119,9 +119,15 @@ h1,h2,h3{font-weight:600;margin:0}
 .brief table{border-collapse:collapse;width:100%;font-size:12px}
 .brief td{padding:3px 8px 3px 0;vertical-align:top;color:var(--ink)}
 .brief td:first-child{color:var(--steel);white-space:nowrap}
-.brief .map{display:block;width:100%;max-width:300px;margin:0 auto;image-rendering:pixelated;border:1px solid var(--line);background:#03050b}
+.brief .map{display:block;width:100%;max-width:340px;margin:0 auto;image-rendering:pixelated;border:1px solid var(--line);background:#03050b}
 .brief .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--dim);margin-top:6px}
 .brief .legend i{display:inline-block;width:8px;height:8px;margin-right:5px;vertical-align:0}
+.brief .legend .mk{width:10px;height:10px;border-radius:50%;border:2px solid var(--c);box-shadow:0 0 0 2px rgba(0,0,0,.4),inset 0 0 0 2px #03050b;background:var(--c);vertical-align:-2px}
+.brief .legend .mk-runs{border-style:dashed;background:transparent}
+.brief .legend .dots{color:var(--steel)}
+.brief .legend .dots i{width:6px;height:6px;margin:0 3px 0 6px}
+.brief .legend .dots i:first-child{margin-left:0}
+.brief .legend span{color:var(--ink)}
 .brief .squad{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .brief .agent{display:flex;gap:8px;align-items:center;font-size:11px}
 .brief .agent canvas{width:40px;height:40px;border:1px solid var(--line);image-rendering:pixelated}

@@ -19,6 +19,29 @@ W.SCAN_COL = {
 };
 W.CHUNK = 512;
 
+/* The map marks a briefing shows (and the legend under it): the drop point
+ * pulls in, cyan; the getaway car pushes out, a darker blue; the job itself
+ * beats in red; where the target runs, amber and dashed; side jobs, gold. */
+W.MARK_STYLE = {
+  drop:   { color: "#54f2ff", motion: "in", period: 1.4, r: [4, 16], dot: 3, width: 2.5, name: "Drop-off" },
+  car:    { color: "#4f8bff", motion: "out", period: 1.6, r: [4, 17], dot: 3, width: 2.5, name: "Getaway car" },
+  target: { color: "#ff3b4e", motion: "breathe", period: 0.9, r: [6, 11], dot: 3.5, width: 3, name: "The job" },
+  runs:   { color: "#ffb000", motion: "breathe", period: 2.2, r: [5, 7], dot: 2, width: 1.5, dash: [3, 3], name: "Where they run" },
+  bonus:  { color: "#ffd84a", motion: "breathe", period: 1.3, r: [3, 6], dot: 2, width: 1.5, name: "Side job" },
+};
+/* What's marked on a mission's briefing map, from the world as built. */
+W.briefMarks = world => {
+  const out = [], L = world.level, sp = world.startAt || (L.picks && [L.picks.spawn.x, L.picks.spawn.y]);
+  const job = world.subjectUnit ? ["SUBJECT", world.subjectUnit] : world.terminal ? [world.terminal.safe ? "SAFE" : "TERMINAL", world.terminal]
+    : world.stash ? ["STASH", world.stash] : world.siege ? ["DUG IN", world.siege] : world.sweep ? ["HANGOUT", world.sweep] : world.targetUnit ? ["TARGET", world.targetUnit] : null;
+  if (job) out.push({ kind: "target", x: job[1].x, y: job[1].y, label: job[0] });
+  if ((world.targetUnit || world.subjectUnit) && world.escapePoint) out.push({ kind: "runs", x: world.escapePoint[0], y: world.escapePoint[1], label: "RUNS" });
+  (world.contracts || []).forEach((c, i) => { const p = world.contractAt(c); out.push({ kind: "bonus", x: p.x, y: p.y, label: world.sweep ? "" : "BONUS", phase: i * 0.23 }); });
+  if (world.pickupAt) out.push({ kind: "car", x: world.pickupAt[0], y: world.pickupAt[1], label: "CAR" });
+  if (sp) out.push({ kind: "drop", x: sp[0], y: sp[1], label: "DROP" });
+  return out;
+};
+
 W.Renderer = class {
   constructor(canvas, overlay) {
     this.cv = canvas; this.c = canvas.getContext("2d");
@@ -395,7 +418,7 @@ W.Renderer = class {
       if (!sel && !isT && !(u.isAgent)) continue;
       if ((u.z || 0) > 3) continue;            // rings for people up on a walkway are drawn with them
       const [sx, sy] = W.proj(u.x, u.y);
-      c.strokeStyle = sel ? "#54f2ff" : isT ? (Math.sin(t * 6) > 0 ? "#ffb000" : "#7a5500") : "rgba(84,242,255,.35)";
+      c.strokeStyle = sel ? "#54f2ff" : isT ? (Math.sin(t * 6) > 0 ? W.MARK_STYLE.target.color : "#8a1f2c") : "rgba(84,242,255,.35)";
       c.lineWidth = 1;
       c.beginPath(); c.ellipse(Math.round(sx + ox), Math.round(sy + oy), 6, 3, 0, 0, Math.PI * 2); c.stroke();
     }
@@ -489,7 +512,7 @@ W.Renderer = class {
           if (u.out || !vis(u.x, u.y)) continue;
           const [px, py] = W.proj(u.x, u.y, u.z || 0);
           if ((u.z || 0) > 3 && u.alive && (world.selected.has(u) || u.isAgent || u.kind === "target")) {
-            c.strokeStyle = world.selected.has(u) ? "#54f2ff" : u.kind === "target" ? "#ffb000" : "rgba(84,242,255,.35)"; c.lineWidth = 1;
+            c.strokeStyle = world.selected.has(u) ? "#54f2ff" : u.kind === "target" ? W.MARK_STYLE.target.color : "rgba(84,242,255,.35)"; c.lineWidth = 1;
             c.beginPath(); c.ellipse(Math.round(px + ox), Math.round(py + oy), 6, 3, 0, 0, Math.PI * 2); c.stroke();
           }
           W.drawUnit(c, u, px + ox, py + oy, t);
@@ -631,11 +654,11 @@ W.Renderer = class {
     o.textAlign = "center"; o.textBaseline = "bottom";
     if (world.terminal && !world.terminal.done) {
       const D = world.terminal, [sx, sy] = this.toScreen(world, D.x, D.y, 0);
-      o.fillStyle = "#7dffb0"; o.fillText(D.t > 0 ? `${D.safe ? "CRACKING" : "COPYING"} ${Math.floor(100 * Math.min(1, D.t / D.need))}%` : D.safe ? "SAFE" : "TERMINAL", sx * k, sy * k - 24 * k);
+      o.fillStyle = W.MARK_STYLE.target.color; o.fillText(D.t > 0 ? `${D.safe ? "CRACKING" : "COPYING"} ${Math.floor(100 * Math.min(1, D.t / D.need))}%` : D.safe ? "SAFE" : "TERMINAL", sx * k, sy * k - 24 * k);
     }
     if (world.stash && !world.stash.dead) {
       const [sx, sy] = this.toScreen(world, world.stash.x, world.stash.y, 0);
-      o.fillStyle = "#7dffb0"; o.fillText("STASH", sx * k, sy * k - 20 * k);
+      o.fillStyle = W.MARK_STYLE.target.color; o.fillText("STASH", sx * k, sy * k - 20 * k);
     }
     if (world.siege && world.siege.left) {
       const [sx, sy] = this.toScreen(world, world.siege.x, world.siege.y, 0);
@@ -645,11 +668,11 @@ W.Renderer = class {
     for (const c of world.contracts || []) {
       if (c.done) continue;
       const p = world.contractAt(c), [sx, sy] = this.toScreen(world, p.x, p.y, 0);
-      o.fillStyle = "rgba(255,176,0,.8)"; o.fillText(world.sweep ? "TARGET" : "BONUS", sx * k, sy * k - 30);
+      o.fillStyle = W.MARK_STYLE.bonus.color; o.fillText(world.sweep ? "TARGET" : "BONUS", sx * k, sy * k - 30);
     }
     for (const p of W.waysOut(world)) {
       const [sx, sy] = this.toScreen(world, p.x, p.y, 0);
-      o.fillStyle = world.phase === "exfil" ? "#54f2ff" : "rgba(84,242,255,.55)"; o.fillText(world.phase === "exfil" ? "EXFIL" : "PICKUP", sx * k, sy * k - 14);
+      o.fillStyle = world.phase === "exfil" ? W.MARK_STYLE.car.color : "rgba(79,139,255,.65)"; o.fillText(world.phase === "exfil" ? "EXFIL" : "PICKUP", sx * k, sy * k - 14);
     }
     for (const u of world.units) {
       if (!u.alive || u.out) continue;
@@ -674,14 +697,14 @@ W.Renderer = class {
         o.beginPath(); o.moveTo(X, Y - top); o.lineTo(X + 4, Y - top - 6); o.lineTo(X, Y - top - 12); o.lineTo(X - 4, Y - top - 6); o.closePath(); o.fill();
       }
       if (u.subject && !u.follower) {
-        o.fillStyle = Math.sin(world.time * 6) > 0 ? "#7dffb0" : "#3aa070";
+        o.fillStyle = Math.sin(world.time * 6) > 0 ? W.MARK_STYLE.target.color : "#8a1f2c";
         o.beginPath(); o.moveTo(X, Y - top); o.lineTo(X + 6, Y - top - 8); o.lineTo(X - 6, Y - top - 8); o.closePath(); o.fill();
       }
       if (u.carries === "data" && !u.out) { o.fillStyle = "#7dffb0"; o.fillText("DATA", X, Y - top - 11 * k); }
       if (u.isAgent && !u.out && u.weapons.some(w => w.type === "goods")) { o.fillStyle = "#7dffb0"; o.fillText("GOODS", X, Y - top - 11 * k); }
       if (u.kind === "target") {
         const b = Math.sin(world.time * 6) > 0;
-        o.fillStyle = b ? "#ffb000" : "#a87400";
+        o.fillStyle = b ? W.MARK_STYLE.target.color : "#8a1f2c";
         o.beginPath(); o.moveTo(X, Y - top); o.lineTo(X + 6, Y - top - 8); o.lineTo(X - 6, Y - top - 8); o.closePath(); o.fill();
       }
       if (u.say && u.say.t > 0) {
@@ -773,7 +796,7 @@ W.Renderer = class {
       if (!u.alive || u.inCar || hidden(u)) continue;
       let col, sz = 2;
       if (u.isAgent) { col = world.selected.has(u) ? "#ffffff" : "#54f2ff"; sz = 3; }
-      else if (u.kind === "target") { target = u; col = blink ? "#ffb000" : "#7a5500"; sz = 4; }
+      else if (u.kind === "target") { target = u; col = blink ? W.MARK_STYLE.target.color : "#8a1f2c"; sz = 4; }
       else if (u.faction === "player") col = "#2fb8c4";
       // plain clothes pass for the crowd, unless the scanner marks the gun
       // MK3, against Cal: his people show as what they are, plain clothes or not
@@ -788,13 +811,14 @@ W.Renderer = class {
     }
     if (!target && world.escapeCar && world.escapeCar.passenger && !world.escapeCar.dead) target = world.escapeCar;
     const S = world.subjectUnit;
-    if (S && S.alive && !S.follower && !S.inCar) { blip(S.x, S.y, blink ? "#7dffb0" : "#2a6a4a", 4); if (!target) target = { x: S.x, y: S.y, mark: true }; }
-    if (world.terminal && !world.terminal.done) { blip(world.terminal.x, world.terminal.y, blink ? "#7dffb0" : "#2a6a4a", 4); if (!target) target = { x: world.terminal.x, y: world.terminal.y, mark: true }; }
-    if (world.stash && !world.stash.dead) { blip(world.stash.x, world.stash.y, blink ? "#7dffb0" : "#2a6a4a", 4); if (!target) target = { x: world.stash.x, y: world.stash.y, mark: true }; }
+    const job = blink ? W.MARK_STYLE.target.color : "#8a1f2c";
+    if (S && S.alive && !S.follower && !S.inCar) { blip(S.x, S.y, job, 4); if (!target) target = { x: S.x, y: S.y, mark: true }; }
+    if (world.terminal && !world.terminal.done) { blip(world.terminal.x, world.terminal.y, job, 4); if (!target) target = { x: world.terminal.x, y: world.terminal.y, mark: true }; }
+    if (world.stash && !world.stash.dead) { blip(world.stash.x, world.stash.y, job, 4); if (!target) target = { x: world.stash.x, y: world.stash.y, mark: true }; }
     if (world.siege && world.siege.left && world.phase !== "exfil" && !target) target = { x: world.siege.x, y: world.siege.y, mark: true };
-    if (world.phase === "exfil") for (const p of world.exfilPoints || []) { blip(p.x, p.y, blink ? "#54f2ff" : "#1c6a74", 4); if (!target) target = { x: p.x, y: p.y, exfil: true }; }
-    else for (const p of W.waysOut(world)) blip(p.x, p.y, "#1c6a74", 3);
-    for (const c of world.contracts || []) if (!c.done) { const p = world.contractAt(c); blip(p.x, p.y, blink ? "#ffb000" : "#7a5a10", 3); if (!target && world.sweep) target = { x: p.x, y: p.y, mark: true }; }
+    if (world.phase === "exfil") for (const p of world.exfilPoints || []) { blip(p.x, p.y, blink ? W.MARK_STYLE.car.color : "#1f3a78", 4); if (!target) target = { x: p.x, y: p.y, exfil: true }; }
+    else for (const p of W.waysOut(world)) blip(p.x, p.y, "#2a4f9a", 3);
+    for (const c of world.contracts || []) if (!c.done) { const p = world.contractAt(c); blip(p.x, p.y, blink ? W.MARK_STYLE.bonus.color : "#7a6a1c", 3); if (!target && world.sweep) target = { x: p.x, y: p.y, mark: true }; }
     // the target off the edge: an arrow on the rim
     if (target && !opts.full) {
       const [px, py] = P(target.x, target.y);
@@ -803,7 +827,7 @@ W.Renderer = class {
         const rx = Wd / 2 - 9, ry = Ht / 2 - 9, f = Math.min(rx / Math.abs(Math.cos(a) || 1e-6), ry / Math.abs(Math.sin(a) || 1e-6));
         const ax = Wd / 2 + Math.cos(a) * f, ay = Ht / 2 + Math.sin(a) * f;
         c.save(); c.translate(ax, ay); c.rotate(a);
-        c.fillStyle = target.exfil ? (blink ? "#54f2ff" : "#1c6a74") : target.mark ? (blink ? "#7dffb0" : "#2a6a4a") : blink ? "#ffb000" : "#a87400";
+        c.fillStyle = target.exfil ? (blink ? W.MARK_STYLE.car.color : "#1f3a78") : blink ? W.MARK_STYLE.target.color : "#8a1f2c";
         c.beginPath(); c.moveTo(7, 0); c.lineTo(-4, -5); c.lineTo(-2, 0); c.lineTo(-4, 5); c.closePath(); c.fill();
         c.restore();
       }
@@ -816,6 +840,50 @@ W.Renderer = class {
     }
     // the frame
     c.strokeStyle = "rgba(84,242,255,.25)"; c.strokeRect(0.5, 0.5, Wd - 1, Ht - 1);
+  }
+  /* The briefing's map marks (W.briefMarks), over the last scanner drawn:
+   * a ring for each, moving, and a word beside it. t in seconds; still for
+   * reduced motion. */
+  briefMarks(c, marks, t, still = false) {
+    const S = this.scan; if (!S) return;
+    c.save();
+    c.font = "bold 10px ui-monospace, Menlo, Consolas, monospace";
+    c.textBaseline = "middle";
+    // labels go where they cover no mark and no other label: right, left, above, below, then further out
+    const pts = marks.map(mk => { const [x, y] = this.scanPoint(mk.x, mk.y); return { x, y, r: W.MARK_STYLE[mk.kind].r[1] }; });
+    const placed = [];
+    const clash = (x, y, w) => placed.some(q => x < q.x + q.w && x + w > q.x && Math.abs(q.y - y) < 13)
+      || pts.some(q => q.x + q.r > x && q.x - q.r < x + w && Math.abs(q.y - y) < q.r + 6);
+    const spot = (px, py, r, w) => {
+      for (const d of [r * 0.75 + 3, r + 10, r + 20]) for (const [x, y] of [[px + d, py - d * 0.6], [px - d - w, py - d * 0.6], [px - w / 2, py - d - 4], [px - w / 2, py + d + 4], [px + d, py + d * 0.6], [px - d - w, py + d * 0.6]]) {
+        const lx = Math.max(2, Math.min(S.Wd - w - 2, x)), ly = Math.max(8, Math.min(S.Ht - 8, y));
+        if (!clash(lx, ly, w)) return [lx, ly];
+      }
+      return [Math.max(2, Math.min(S.Wd - w - 2, px + r * 0.75 + 3)), Math.max(8, Math.min(S.Ht - 8, py - r * 0.6))];
+    };
+    for (const mk of marks) {
+      const [px, py] = this.scanPoint(mk.x, mk.y), st = W.MARK_STYLE[mk.kind];
+      const ph = still ? 0.5 : ((t / st.period) + (mk.phase || 0)) % 1;
+      // the ring: in (from wide to the spot), out (from the spot to wide), or breathing
+      const [r0, r1] = st.r, r = st.motion === "in" ? r1 - (r1 - r0) * ph : st.motion === "out" ? r0 + (r1 - r0) * ph : r0 + (r1 - r0) * (0.5 + 0.5 * Math.sin(ph * Math.PI * 2));
+      const a = st.motion === "breathe" || still ? 0.9 : st.motion === "in" ? 0.25 + 0.75 * ph : 1 - 0.8 * ph;
+      c.globalAlpha = 1;
+      c.fillStyle = st.color; c.beginPath(); c.arc(px, py, st.dot, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = st.color; c.lineWidth = st.width;
+      if (st.dash) c.setLineDash(st.dash); else c.setLineDash([]);
+      c.globalAlpha = a; c.beginPath(); c.arc(px, py, r, 0, Math.PI * 2); c.stroke();
+      // a second, steady ring, so it reads even between beats
+      c.globalAlpha = 0.55; c.lineWidth = 1; c.setLineDash([]); c.beginPath(); c.arc(px, py, st.r[0] + 2, 0, Math.PI * 2); c.stroke();
+      // the word: beside the mark, moved down out of the way of one already there
+      if (mk.label) {
+        const w = c.measureText(mk.label).width + 6;
+        const [lx, ly] = mk.at || (mk.at = spot(px, py, st.r[1], w));
+        placed.push({ x: lx, y: ly, w });
+        c.globalAlpha = 0.85; c.fillStyle = "#03050b"; c.fillRect(lx, ly - 7, w, 14);
+        c.globalAlpha = 1; c.fillStyle = st.color; c.fillText(mk.label, lx + 3, ly + 0.5);
+      }
+    }
+    c.restore();
   }
   /* world -> scanner pixel, for the last scanner drawn */
   scanPoint(x, y) {

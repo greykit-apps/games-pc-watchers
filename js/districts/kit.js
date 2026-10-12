@@ -407,7 +407,7 @@ W.missionLevel = (o) => {
           `${T.secNote}`,
           exit ? `If the alarm goes up, ${names.target} runs for ${exit.name}. If they make it, or die, the job is lost.` : `If they die, the job is lost.`,
         ],
-        intel: [["Subject", `${names.target}, marked in green, at ${target.name}. Not to be harmed.`]].concat(common),
+        intel: [["Subject", `${names.target}, at ${target.name}: the red ring on the map. Not to be harmed.`]].concat(common),
       };
       const jk = W.jobKind(this);
       if (jk === "job") return {
@@ -418,7 +418,7 @@ W.missionLevel = (o) => {
           `${T.secNote}`,
           `If the carrier goes down, the goods drop where they fall. Pick them up and keep going.`,
         ],
-        intel: [["Safe", `At ${target.name}, marked in green.`]].concat(common),
+        intel: [["Safe", `At ${target.name}: the red ring on the map.`]].concat(common),
       };
       if (jk === "crackdown") return {
         from: "Watch-Captain Joyeuse",
@@ -428,7 +428,7 @@ W.missionLevel = (o) => {
           `${T.secNote}`,
           `Then get out: the getaway car waits at ${picks.pickup.name}. Nowhere else counts.`,
         ],
-        intel: [["Stash", `At ${target.name}, marked in green. It burns.`]].concat(common),
+        intel: [["Stash", `At ${target.name}: the red ring on the map. It burns.`]].concat(common),
       };
       if (jk === "sweep") return {
         from: "Watch-Captain Joyeuse",
@@ -438,7 +438,7 @@ W.missionLevel = (o) => {
           `${T.secNote}`,
           `Leave when you've had enough: the getaway car waits at ${picks.pickup.name}. Nowhere else counts, and nothing's paid if nobody gets there.`,
         ],
-        intel: [["Hangout", `At ${target.name}, and the trouble round it, marked in amber.`]].concat(common),
+        intel: [["Hangout", `At ${target.name}: the red ring on the map. The trouble round it, their operations, in gold.`]].concat(common),
       };
       if (jk === "siege") return {
         from: "Watch-Captain Joyeuse",
@@ -458,7 +458,7 @@ W.missionLevel = (o) => {
           `${T.secNote}`,
           `If whoever carries the data dies, it dies with them.`,
         ],
-        intel: [["Terminal", `At ${target.name}, marked in green.`]].concat(common),
+        intel: [["Terminal", `At ${target.name}: the red ring on the map.`]].concat(common),
       };
       return {
         from: "Watch-Captain Joyeuse",
@@ -469,7 +469,7 @@ W.missionLevel = (o) => {
           exit ? `If ${names.target} spooks, expect a run for ${exit.name}. If they make it out, the contract is lost.` : `${names.target} has nowhere to run. Make it count.`,
           `Then get out: the getaway car waits at ${picks.pickup.name}. Nowhere else counts.`,
         ],
-        intel: [["Target", `${names.target}, marked in amber, at ${target.name}.`]].concat(common),
+        intel: [["Target", `${names.target}, at ${target.name}: the red ring on the map. The amber one is where they'll run.`]].concat(common),
       };
     },
     intro() {

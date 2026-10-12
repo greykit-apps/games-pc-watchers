@@ -660,27 +660,28 @@ W.Renderer = class {
           o.fillStyle = u.hp / u.maxHp > 0.4 ? "#4ade6a" : "#ff5266"; o.fillRect(X - 10, Y - 26 * k, 20 * u.hp / u.maxHp, 3);
         }
       }
+      const top = W.unitTop(u) * k;
       // the scanner's mark on a gun under plain clothes
       if (u.undercover && !u.revealed && (W.scanArmed(world, u) || W.scanCal(world, u))) {
         const cal = W.scanCal(world, u), on = Math.sin(world.time * 8) > 0;
         o.fillStyle = cal ? (on ? "#ff5266" : "#8a2a36") : on ? "#ff8a3c" : "#a8541c";
-        o.beginPath(); o.moveTo(X, Y - 25 * k); o.lineTo(X + 4, Y - 25 * k - 6); o.lineTo(X, Y - 25 * k - 12); o.lineTo(X - 4, Y - 25 * k - 6); o.closePath(); o.fill();
+        o.beginPath(); o.moveTo(X, Y - top); o.lineTo(X + 4, Y - top - 6); o.lineTo(X, Y - top - 12); o.lineTo(X - 4, Y - top - 6); o.closePath(); o.fill();
       }
       if (u.subject && !u.follower) {
         o.fillStyle = Math.sin(world.time * 6) > 0 ? "#7dffb0" : "#3aa070";
-        o.beginPath(); o.moveTo(X, Y - 25 * k); o.lineTo(X + 6, Y - 25 * k - 8); o.lineTo(X - 6, Y - 25 * k - 8); o.closePath(); o.fill();
+        o.beginPath(); o.moveTo(X, Y - top); o.lineTo(X + 6, Y - top - 8); o.lineTo(X - 6, Y - top - 8); o.closePath(); o.fill();
       }
-      if (u.carries === "data" && !u.out) { o.fillStyle = "#7dffb0"; o.fillText("DATA", X, Y - 36 * k); }
-      if (u.isAgent && !u.out && u.weapons.some(w => w.type === "goods")) { o.fillStyle = "#7dffb0"; o.fillText("GOODS", X, Y - 36 * k); }
+      if (u.carries === "data" && !u.out) { o.fillStyle = "#7dffb0"; o.fillText("DATA", X, Y - top - 11 * k); }
+      if (u.isAgent && !u.out && u.weapons.some(w => w.type === "goods")) { o.fillStyle = "#7dffb0"; o.fillText("GOODS", X, Y - top - 11 * k); }
       if (u.kind === "target") {
         const b = Math.sin(world.time * 6) > 0;
         o.fillStyle = b ? "#ffb000" : "#a87400";
-        o.beginPath(); o.moveTo(X, Y - 25 * k); o.lineTo(X + 6, Y - 25 * k - 8); o.lineTo(X - 6, Y - 25 * k - 8); o.closePath(); o.fill();
+        o.beginPath(); o.moveTo(X, Y - top); o.lineTo(X + 6, Y - top - 8); o.lineTo(X - 6, Y - top - 8); o.closePath(); o.fill();
       }
       if (u.say && u.say.t > 0) {
         const txt = u.say.text;
         const w = o.measureText(txt).width + 12;
-        const by = Y - 30 * k;
+        const by = Y - top - 5 * k;
         o.fillStyle = "rgba(5,7,15,.88)"; o.fillRect(X - w / 2, by - 18, w, 17);
         o.strokeStyle = u.say.color || "#94a0c4"; o.lineWidth = 1; o.strokeRect(X - w / 2 + 0.5, by - 17.5, w - 1, 16);
         o.fillStyle = u.say.color || "#dbe4fb"; o.fillText(txt, X, by - 4);

@@ -1408,10 +1408,22 @@ W.drawProp = (c, p, sx, sy, t) => {
 };
 
 /* ---- people ----
- * Cat-folk in coats. (sx, sy) is the point between the feet. Looks come from
- * the unit's `look`: coat, trim, fur, legs, hat, visor. */
+ * Cat-folk, wolves and horses, in coats. (sx, sy) is the point between the
+ * feet. Looks come from the unit's `look`: species, coat, trim, fur, mane,
+ * legs, hat, visor. A body is a row of measures: leg length, coat top above
+ * the feet, half-widths at shoulder and hem, neck, legs and arms. A wolf is a
+ * cat's build a little taller, with a snout and a brush of a tail; a horse is
+ * a size up all round, broad in the shoulder, with a long head and a hanging tail. */
+W.BODIES = {
+  cat:   { leg: 6, top: 15, sh: 4, hh: 4.5, neck: 3, legW: 2, legX: 3, arm: 6, armW: 2 },
+  wolf:  { leg: 6, top: 16, sh: 4, hh: 4.5, neck: 3, legW: 2, legX: 3, arm: 6, armW: 2 },
+  horse: { leg: 8, top: 20, sh: 6, hh: 5.5, neck: 4, legW: 3, legX: 4, arm: 8, armW: 3 },
+};
+// how far above the feet a unit's head reaches, for the marks and words over it
+W.unitTop = u => (u.look && u.look.species === "horse" ? 31 : 25);
+
 W.drawUnit = (c, u, sx, sy, t) => {
-  const L = u.look;
+  const L = u.look, sp = L.species || "cat", B = W.BODIES[sp] || W.BODIES.cat;
   sx = Math.round(sx); sy = Math.round(sy);
   if (!u.alive) return W.drawCorpse(c, u, sx, sy);
   if (u.downT > 0) return W.drawCorpse(c, u, sx, sy, true);
@@ -1422,76 +1434,163 @@ W.drawUnit = (c, u, sx, sy, t) => {
   const s = right ? 1 : -1;
   const moving = u.moving;
   const ph = moving ? Math.sin(u.anim) : 0;
+  // the coat runs from its top, under the head, down to the hem, longer for agents
+  const top = sy - B.top, hem = sy - B.leg + (L.long ? 2 : 0), flare = L.long ? 0.5 : 0;
 
   // shadow
-  c.fillStyle = "rgba(0,0,0,.4)"; c.beginPath(); c.ellipse(sx, sy, 5, 2.5, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "rgba(0,0,0,.4)"; c.beginPath(); c.ellipse(sx, sy, B.hh + 0.5, (B.hh + 0.5) / 2, 0, 0, Math.PI * 2); c.fill();
 
   const drawArm = () => {
+    const ay = top + 2;
     if (u.weaponOut) {
       // arm and gun out toward the facing direction
-      const ax = sx + s * 2, ay = sy - 13;
-      const ex = ax + scx * 5, ey = ay + scy * 5 + 1;
-      c.strokeStyle = L.coat; c.lineWidth = 2; c.beginPath(); c.moveTo(ax, ay); c.lineTo(ex, ey); c.stroke();
+      const ax = sx + s * (B.sh - 2);
+      const ex = ax + scx * (B.arm - 1), ey = ay + scy * (B.arm - 1) + 1;
+      c.strokeStyle = L.coat; c.lineWidth = B.armW; c.beginPath(); c.moveTo(ax, ay); c.lineTo(ex, ey); c.stroke();
       c.strokeStyle = "#0a0a0e"; c.lineWidth = 2; c.beginPath(); c.moveTo(ex, ey); c.lineTo(ex + scx * 3.5, ey + scy * 3.5); c.stroke();
       if (u.flash > 0) { c.fillStyle = "#fff4c2"; c.beginPath(); c.arc(ex + scx * 5, ey + scy * 5, 2.2, 0, Math.PI * 2); c.fill(); }
     } else {
-      c.fillStyle = W.shade(L.coat, 0.8); c.fillRect(sx + s * 3 - (s < 0 ? 1 : 0), sy - 13 + Math.round(ph), 2, 6);
+      c.fillStyle = W.shade(L.coat, 0.8); c.fillRect(sx + s * (B.sh - 1) - (s < 0 ? B.armW - 1 : 0), ay + Math.round(ph), B.armW, B.arm);
     }
   };
 
-  // legs
+  // the tail: a cat's curls up, a wolf's brush hangs low and out, a horse's falls from the rump
+  const drawTail = () => {
+    if (sp === "wolf") {
+      c.lineCap = "round";
+      c.strokeStyle = W.shade(L.fur, 0.85); c.lineWidth = 3.5;
+      c.beginPath(); c.moveTo(sx - s * 2, sy - 9); c.quadraticCurveTo(sx - s * 7, sy - 9 + ph * 0.5, sx - s * 8, sy - 4); c.stroke();
+      c.strokeStyle = W.shade(L.fur, 1.35); c.lineWidth = 2.5;
+      c.beginPath(); c.moveTo(sx - s * 7.8, sy - 5.2); c.lineTo(sx - s * 8, sy - 4); c.stroke();
+      c.lineCap = "butt";
+    } else if (sp === "horse") {
+      const hx = sx - s * (B.hh - 1), hy0 = hem - 4, sw = ph * 0.6;
+      c.lineCap = "round";
+      c.strokeStyle = L.mane || W.shade(L.fur, 0.5); c.lineWidth = 3;
+      c.beginPath(); c.moveTo(hx, hy0); c.quadraticCurveTo(hx - s * 3, hy0 + 1, hx - s * (2.5 + sw), sy - 2); c.stroke();
+      c.lineWidth = 1;
+      c.beginPath(); c.moveTo(hx - s * 2, hy0 + 2); c.lineTo(hx - s * (4 + sw), sy - 1); c.stroke();
+      c.lineCap = "butt";
+    } else {
+      c.strokeStyle = L.fur; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(sx - s * 2, sy - 7); c.quadraticCurveTo(sx - s * 7, sy - 8 + ph, sx - s * 6, sy - 13); c.stroke();
+    }
+  };
+
+  // legs, and a horse's hooves
+  const l0 = Math.max(0, Math.round(ph * 1.5)), l1 = Math.max(0, Math.round(-ph * 1.5));
   c.fillStyle = L.legs;
-  c.fillRect(sx - 3, sy - 6 + Math.max(0, Math.round(ph * 1.5)), 2, 6 - Math.max(0, Math.round(ph * 1.5)));
-  c.fillRect(sx + 1, sy - 6 + Math.max(0, Math.round(-ph * 1.5)), 2, 6 - Math.max(0, Math.round(-ph * 1.5)));
+  c.fillRect(sx - B.legX, sy - B.leg + l0, B.legW, B.leg - l0);
+  c.fillRect(sx + 1, sy - B.leg + l1, B.legW, B.leg - l1);
+  if (sp === "horse") { c.fillStyle = "#141012"; c.fillRect(sx - B.legX, sy - 1, B.legW, 1); c.fillRect(sx + 1, sy - 1, B.legW, 1); }
   // tail, behind when facing us
-  if (toward) { c.strokeStyle = L.fur; c.lineWidth = 1.5; c.beginPath(); c.moveTo(sx - s * 2, sy - 7); c.quadraticCurveTo(sx - s * 7, sy - 8 + ph, sx - s * 6, sy - 13); c.stroke(); }
+  if (toward) drawTail();
 
   if (!toward) drawArm();
-  // coat: a trapezoid, longer for agents
-  const hem = L.long ? -4 : -6;
+  // coat: a trapezoid, wider at the hem (or, on a horse, at the shoulder)
   c.fillStyle = L.coat;
-  c.beginPath(); c.moveTo(sx - 4, sy - 15); c.lineTo(sx + 4, sy - 15); c.lineTo(sx + 4.5 + (L.long ? 0.5 : 0), sy + hem); c.lineTo(sx - 4.5 - (L.long ? 0.5 : 0), sy + hem); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(sx - B.sh, top); c.lineTo(sx + B.sh, top); c.lineTo(sx + B.hh + flare, hem); c.lineTo(sx - B.hh - flare, hem); c.closePath(); c.fill();
   // lapel / trim line down the front
-  c.fillStyle = L.trim; c.fillRect(sx + (toward ? 0 : s * 2), sy - 15, 1, 15 + hem);
+  c.fillStyle = L.trim; c.fillRect(sx + (toward ? 0 : s * 2), top, 1, hem - top);
   // shoulders
-  c.fillStyle = W.shade(L.coat, 1.2); c.fillRect(sx - 4, sy - 15, 8, 1);
+  c.fillStyle = W.shade(L.coat, 1.2); c.fillRect(sx - B.sh, top, B.sh * 2, sp === "horse" ? 2 : 1);
   if (toward) drawArm();
-  if (!toward) { c.strokeStyle = L.fur; c.lineWidth = 1.5; c.beginPath(); c.moveTo(sx - s * 2, sy - 7); c.quadraticCurveTo(sx - s * 7, sy - 8 + ph, sx - s * 6, sy - 13); c.stroke(); }
+  if (!toward) drawTail();
 
   // head and ears
-  const hy = sy - 18;
-  c.fillStyle = L.fur;
-  c.beginPath(); c.arc(sx, hy, 3.2, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.moveTo(sx - 3.2, hy - 1); c.lineTo(sx - 2.6, hy - 5.5); c.lineTo(sx - 0.6, hy - 2.6); c.closePath(); c.fill();
-  c.beginPath(); c.moveTo(sx + 3.2, hy - 1); c.lineTo(sx + 2.6, hy - 5.5); c.lineTo(sx + 0.6, hy - 2.6); c.closePath(); c.fill();
-  if (L.patch) { c.fillStyle = L.patch; c.beginPath(); c.arc(sx - s * 1.3, hy - 1, 1.8, 0, Math.PI * 2); c.fill(); }
+  const hy = top - B.neck;
+  if (sp === "horse") W.drawHorseHead(c, L, sx, hy, top, s, toward);
+  else if (sp === "wolf") W.drawWolfHead(c, L, sx, hy, s, toward);
+  else {
+    c.fillStyle = L.fur;
+    c.beginPath(); c.arc(sx, hy, 3.2, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.moveTo(sx - 3.2, hy - 1); c.lineTo(sx - 2.6, hy - 5.5); c.lineTo(sx - 0.6, hy - 2.6); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(sx + 3.2, hy - 1); c.lineTo(sx + 2.6, hy - 5.5); c.lineTo(sx + 0.6, hy - 2.6); c.closePath(); c.fill();
+    if (L.patch) { c.fillStyle = L.patch; c.beginPath(); c.arc(sx - s * 1.3, hy - 1, 1.8, 0, Math.PI * 2); c.fill(); }
+  }
   if (L.hat) {
+    // a horse's skull sits a little higher
+    const by = sp === "horse" ? hy - 1 : hy;
     c.fillStyle = L.hat;
-    if (L.hatKind === "cap") { c.fillRect(sx - 3, hy - 4, 6, 2); c.fillRect(sx + (s > 0 ? 0 : -5), hy - 2.5, 5, 1); }
-    else { c.fillRect(sx - 4, hy - 3, 8, 1); c.fillRect(sx - 2.5, hy - 6, 5, 3); }
+    if (L.hatKind === "cap") { c.fillRect(sx - 3, by - 4, 6, 2); c.fillRect(sx + (s > 0 ? 0 : -5), by - 2.5, 5, 1); }
+    else { c.fillRect(sx - 4, by - 3, 8, 1); c.fillRect(sx - 2.5, by - 6, 5, 3); }
   }
   // eyes or visor, only when facing us
   if (toward) {
-    if (L.visor) { c.fillStyle = L.visor; c.fillRect(sx - 2 + s, hy - 1, 4, 1); }
+    if (sp === "horse") {
+      // eyes set on the sides of a long head: the near one shows
+      if (L.visor) { c.fillStyle = L.visor; c.fillRect(s > 0 ? sx - 1 : sx - 4, hy - 1, 5, 1); }
+      else { c.fillStyle = L.eyes || "#e8f070"; c.fillRect(sx + (s > 0 ? 1 : -2), hy - 1, 1, 1); }
+    } else if (L.visor) { c.fillStyle = L.visor; c.fillRect(sx - 2 + s, hy - 1, 4, 1); }
     else { c.fillStyle = L.eyes || "#e8f070"; c.fillRect(sx - 2 + s, hy - 1, 1, 1); c.fillRect(sx + 1 + s, hy - 1, 1, 1); }
   }
   // a little glyph over followers
-  if (u.follower && !u.isAgent) { c.fillStyle = "#54f2ff"; c.fillRect(sx - 1, hy - 9, 2, 2); }
+  if (u.follower && !u.isAgent) { c.fillStyle = "#54f2ff"; c.fillRect(sx - 1, sy - W.unitTop(u) - 2, 2, 2); }
 };
 
-/* The dead, or (down) someone knocked flat and getting up: no blood for them. */
+/* A wolf's head: a cat's round skull with tall ears and a snout out the way it faces. */
+W.drawWolfHead = (c, L, sx, hy, s, toward) => {
+  c.fillStyle = L.fur;
+  c.beginPath(); c.arc(sx, hy, 3.2, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.moveTo(sx - 3.2, hy - 1.5); c.lineTo(sx - 2.4, hy - 7); c.lineTo(sx - 0.4, hy - 2.8); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(sx + 3.2, hy - 1.5); c.lineTo(sx + 2.4, hy - 7); c.lineTo(sx + 0.4, hy - 2.8); c.closePath(); c.fill();
+  // inner ear
+  c.fillStyle = W.shade(L.fur, 0.6);
+  c.fillRect(sx - 2.5, hy - 5, 1, 2); c.fillRect(sx + 1.5, hy - 5, 1, 2);
+  if (L.patch) { c.fillStyle = L.patch; c.beginPath(); c.arc(sx - s * 1.3, hy - 1, 1.8, 0, Math.PI * 2); c.fill(); }
+  // the snout
+  c.fillStyle = L.fur;
+  c.beginPath(); c.moveTo(sx + s * 1, hy - 1.5); c.lineTo(sx + s * 6, hy + 0.5); c.lineTo(sx + s * 5.5, hy + 2); c.lineTo(sx + s * 1, hy + 2.5); c.closePath(); c.fill();
+  // and the pale jaw under it
+  c.fillStyle = W.shade(L.fur, 1.35);
+  c.beginPath(); c.moveTo(sx + s * 1, hy + 1.2); c.lineTo(sx + s * 5.5, hy + 1.8); c.lineTo(sx + s * 1, hy + 2.8); c.closePath(); c.fill();
+  if (toward) { c.fillStyle = "#141014"; c.fillRect(sx + s * 6 - (s > 0 ? 1 : 0), hy, 1, 1); }
+};
+
+/* A horse's head: thick neck with the mane down the back of it, small ears
+ * set back, and a long face sloping down and out the way it faces, a blaze
+ * down it for a patch. */
+W.drawHorseHead = (c, L, sx, hy, top, s, toward) => {
+  const mane = L.mane || W.shade(L.fur, 0.5);
+  c.fillStyle = L.fur; c.fillRect(sx - 2, hy, 4, top - hy + 1);
+  c.fillStyle = mane; c.fillRect(s > 0 ? sx - 3 : sx + 1, hy - 3, 2, top - hy + 3);
+  // ears
+  c.fillStyle = L.fur;
+  c.beginPath(); c.moveTo(sx - s * 2.8, hy - 2.5); c.lineTo(sx - s * 2.4, hy - 6.5); c.lineTo(sx - s * 1, hy - 3); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(sx - s * 0.6, hy - 3); c.lineTo(sx - s * 0.2, hy - 6.5); c.lineTo(sx + s * 1.2, hy - 3); c.closePath(); c.fill();
+  // skull, then the long face
+  c.beginPath(); c.ellipse(sx - s * 0.5, hy - 1, 3, 3, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.moveTo(sx - s * 2.5, hy - 2); c.lineTo(sx + s * 1.5, hy - 3.5); c.lineTo(sx + s * 5, hy + 2.5); c.lineTo(sx + s * 4.5, hy + 5.5); c.lineTo(sx + s * 1.5, hy + 5.5); c.lineTo(sx - s * 2.5, hy + 2); c.closePath(); c.fill();
+  // the muzzle, darker, and a nostril
+  c.fillStyle = W.shade(L.fur, 0.75); c.beginPath(); c.ellipse(sx + s * 3.2, hy + 4.4, 2, 1.4, 0, 0, Math.PI * 2); c.fill();
+  if (L.patch) { c.strokeStyle = "#ece8de"; c.lineWidth = 1; c.beginPath(); c.moveTo(sx + s * 0.8, hy - 2.5); c.lineTo(sx + s * 3.4, hy + 3); c.stroke(); }
+  if (toward) { c.fillStyle = "#141012"; c.fillRect(sx + s * 4 - (s > 0 ? 1 : 0), hy + 4, 1, 1); }
+  // forelock between the ears
+  c.fillStyle = mane; c.fillRect(sx - 1 - (s > 0 ? 1 : 0), hy - 4, 2, 2);
+};
+
+/* The dead, or (down) someone knocked flat and getting up: no blood for them.
+ * Laid along the ground with the head toward -s; a horse is a size up. */
 W.drawCorpse = (c, u, sx, sy, down) => {
-  const L = u.look;
+  const L = u.look, sp = L.species || "cat", k = sp === "horse" ? 1.3 : 1;
   if (!down) {
     if (!u.pool) u.pool = { r: 0, rx: W.rand(-2, 2) };
-    u.pool.r = Math.min(7, u.pool.r + 0.05);
+    u.pool.r = Math.min(7 * k, u.pool.r + 0.05);
     c.fillStyle = u.isAgent ? "rgba(20,60,70,.85)" : "rgba(95,10,22,.85)";
     c.beginPath(); c.ellipse(sx + u.pool.rx, sy, u.pool.r + 2, (u.pool.r + 2) * 0.5, 0, 0, Math.PI * 2); c.fill();
   }
-  const s = u.deadSide || 1;
-  c.fillStyle = L.coat; c.fillRect(sx - 6 * s - (s < 0 ? 0 : 0), sy - 3, 10, 4);
-  c.fillStyle = L.legs; c.fillRect(sx + (s > 0 ? 4 : -8), sy - 2, 4, 2);
-  c.fillStyle = L.fur; c.beginPath(); c.arc(sx - 7 * s, sy - 2, 2.6, 0, Math.PI * 2); c.fill();
+  const s = u.deadSide || 1, X = v => sx + v * s * k, R = Math.round;
+  if (sp === "wolf" || sp === "horse") {
+    c.lineCap = "round";
+    c.strokeStyle = sp === "wolf" ? W.shade(L.fur, 0.85) : L.mane || W.shade(L.fur, 0.5); c.lineWidth = sp === "wolf" ? 3 : 2.5;
+    c.beginPath(); c.moveTo(X(4), sy - 2); c.lineTo(X(9), sy - (sp === "wolf" ? 1 : 0)); c.stroke();
+    c.lineCap = "butt";
+  }
+  c.fillStyle = L.coat; c.fillRect(R(Math.min(X(-6), X(4))), sy - R(3 * k), R(10 * k), R(4 * k));
+  c.fillStyle = L.legs; c.fillRect(R(Math.min(X(4), X(8))), sy - 2, R(4 * k), 2);
+  c.fillStyle = L.fur; c.beginPath(); c.arc(X(-7), sy - 2, 2.6 * k, 0, Math.PI * 2); c.fill();
+  if (sp === "wolf") { c.beginPath(); c.ellipse(X(-9.5), sy - 1.5, 2, 1.2, 0, 0, Math.PI * 2); c.fill(); }
+  else if (sp === "horse") { c.beginPath(); c.ellipse(X(-9.8), sy - 1.5, 2.6, 1.6, 0, 0, Math.PI * 2); c.fill(); }
 };
 
 /* A train carriage: a long box with a lit window band. The carriages at

@@ -360,7 +360,7 @@ const Game = W.game = {
       if (!u.alive || u.inCar) continue;
       const [sx, sy] = r.toScreen(w, u.x, u.y, u.z || 0);
       const X = sx * k, Y = sy * k;
-      if (px > X - 7 * k && px < X + 7 * k && py > Y - 25 * k && py < Y + 3 * k) {
+      if (px > X - 7 * k && px < X + 7 * k && py > Y - W.unitTop(u) * k && py < Y + 3 * k) {
         const d = u.x + u.y;
         if (d > bd) { bd = d; best = u; }
       }

@@ -208,26 +208,30 @@ const Game = W.game = {
     el.className = "brief";
     el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Mission briefing");
     const w = this.world, sly = w.targetUnit;
+    // three columns that share the screen's height: the briefing; the ground and the plan; the terms, the intel and the squad
+    const plan = L.options && (L.options.spawn.length > 1 || L.options.pickup.length > 1);
     el.innerHTML = `<div class="wrap">
-      <div>
+      <div class="col">
         <div class="tag">${c ? `Day ${this.campaign.day} · ` : "Skirmish · "}${W.esc(L.district)}</div>
         <h1>${W.esc(L.name)}</h1>
         <div class="code">OPERATION ${W.esc(L.codename)}</div>
         <div class="from">From: ${W.esc(L.briefing.from)}</div>
         <div class="text" data-text>${L.briefing.text.map(p => `<p>${W.esc(p)}</p>`).join("")}</div>
+        <div class="panel squad-panel"><h3>Your squad</h3><div class="squad">${w.agents.map(a => `<div class="agent"><canvas width="40" height="40" data-agent="${a.slot}"></canvas><div><b>${W.esc(a.name)}</b>${a.weapons.map(x => W.WEAPONS[x.type].name).join(", ")}</div></div>`).join("")}</div></div>
+      </div>
+      <div class="col">
+        <div class="panel ground"><h3>The ground</h3><div class="map-box"><canvas class="map" data-map width="340" height="340" role="img" aria-label="Map of the district: where the squad goes in, the job, and the getaway car"></canvas></div>
+          <div class="legend" data-legend></div></div>
+        ${plan ? `<div class="panel plan"><h3>The plan: where you go in, and where the car waits</h3><div data-plan></div></div>` : ""}
+      </div>
+      <div class="col">
         ${c ? (z => `<div class="panel"><h3>${W.esc(W.M.KINDS[c.kind].name)} in ${W.esc(W.M.zoneDef(c.zone).name)}</h3><table>
           <tr><td>Reward</td><td>${W.esc(W.M.describeReward(this.campaign, c))}</td></tr>
           <tr><td>The streets</td><td>${z.lost ? "lost to Cal: the enemy is dug in" : `control level ${W.M.level(z.C)}`}</td></tr>
-          <tr><td>Time</td><td>${c.days} days: the zones' pips stand as they are set while you are out</td></tr>
-          <tr><td>Losses</td><td>Watchers killed are gone for good, with everything spent on them</td></tr>
+          <tr><td>Time</td><td>${c.days} days away; the zones' pips stand as set</td></tr>
+          <tr><td>Losses</td><td>the dead are gone for good, with all spent on them</td></tr>
           ${this.campaign.cal.reads ? `<tr><td>Cal's answer</td><td>He has heard about ${W.esc(W.M.CAL_ANSWER[this.campaign.cal.reads].heard)}: ${W.esc(W.M.CAL_ANSWER[this.campaign.cal.reads].answer)}</td></tr>` : ""}</table></div>`)(W.M.zone(this.campaign, c.zone)) : ""}
-        ${L.options && (L.options.spawn.length > 1 || L.options.pickup.length > 1) ? `<div class="panel plan"><h3>The plan: where you go in, and where the car waits</h3><div data-plan></div></div>` : ""}
-      </div>
-      <div>
-        <div class="panel"><h3>The ground</h3><canvas class="map" data-map width="340" height="340" role="img" aria-label="Map of the district: where the squad goes in, the job, and the getaway car"></canvas>
-          <div class="legend" data-legend></div></div>
-        <div class="panel"><h3>Intel</h3><table data-intel>${L.briefing.intel.map(([a, b]) => `<tr><td>${W.esc(a)}</td><td>${W.esc(b)}</td></tr>`).join("")}</table></div>
-        <div class="panel"><h3>Your squad</h3><div class="squad">${w.agents.map(a => `<div class="agent"><canvas width="40" height="40" data-agent="${a.slot}"></canvas><div><b>${W.esc(a.name)}</b>${a.weapons.map(x => W.WEAPONS[x.type].name).join(", ")}</div></div>`).join("")}</div></div>
+        <div class="panel"><h3>Intel</h3><table data-intel>${this.intelRows(L)}</table></div>
       </div>
       <div class="acts"><button class="primary" data-go><kbd>Enter</kbd>Begin mission</button><button data-back><kbd>Esc</kbd>Back</button></div>
     </div>`;
@@ -250,7 +254,7 @@ const Game = W.game = {
     if (!el) return;
     this.drawBriefMap();
     el.querySelector("[data-text]").innerHTML = L.briefing.text.map(p => `<p>${W.esc(p)}</p>`).join("");
-    el.querySelector("[data-intel]").innerHTML = L.briefing.intel.map(([a, b]) => `<tr><td>${W.esc(a)}</td><td>${W.esc(b)}</td></tr>`).join("");
+    el.querySelector("[data-intel]").innerHTML = this.intelRows(L);
     const slot = el.querySelector("[data-plan]");
     if (!slot) return;
     const sp = L.picks.spawn, tg = L.picks.target, car = w.pickupAt ? { x: w.pickupAt[0], y: w.pickupAt[1] } : L.picks.pickup;
@@ -279,6 +283,10 @@ const Game = W.game = {
     const el = this.briefEl, w = this.world;
     const cv = el && el.querySelector("[data-map]");
     if (!cv) return;
+    // the map as big as its box allows, square, at one canvas pixel to a screen pixel
+    const box = cv.parentElement.getBoundingClientRect(), side = Math.max(200, Math.floor(Math.min(box.width, box.height)));
+    if (cv.width !== side) { cv.width = side; cv.height = side; }
+    cv.style.width = cv.style.height = `${side}px`;
     const base = this.briefBase || (this.briefBase = document.createElement("canvas"));
     base.width = cv.width; base.height = cv.height;
     this.renderer.scanner(base.getContext("2d"), w, { full: true, noCiv: true, noView: true });
@@ -301,6 +309,12 @@ const Game = W.game = {
       this.briefRaf = still ? null : requestAnimationFrame(frame);
     };
     frame();
+  },
+
+  // the intel table; the pickup's row only where there's no plan to show it
+  intelRows(L) {
+    const plan = L.options && L.options.pickup.length > 1;
+    return L.briefing.intel.filter(([a]) => !(plan && a === "Pickup")).map(([a, b]) => `<tr><td>${W.esc(a)}</td><td>${W.esc(b)}</td></tr>`).join("");
   },
 
   backFromBrief() { if (this.run && this.run.contract) this.toOverworld(); else if (this.fromMapRoom) this.toMapRoom(); else this.toTitle(); },
@@ -351,6 +365,8 @@ const Game = W.game = {
   },
 
   resize() {
+    // the briefing's map follows the room its column leaves it
+    if (this.mode === "brief" && this.briefEl && this.briefBase) this.drawBriefMap();
     const s = W.prefs.scale || (window.innerWidth >= 1800 ? 3 : 2);
     if (this.mode === "play" || this.mode === "brief" || this.mode === "debrief") {
       const r = this.view.getBoundingClientRect();

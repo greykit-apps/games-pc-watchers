@@ -56,7 +56,8 @@ W.Command = class {
       // what must survive a redraw: the toast, the banner, and the region that announces each day
       this.layer = document.createElement("div");
       this.layer.className = "cx-layer";
-      this.layer.innerHTML = `<div class="cx-toast" role="status"></div><div class="cx-banner" hidden></div><div class="sr" aria-live="polite" data-live></div>`;
+      this.layer.innerHTML = `<div class="cx-toast" role="status"></div><div class="cx-banner" hidden></div><div class="sr" aria-live="polite" data-live></div>
+        <div class="cx-ticker" role="region" aria-label="PVN news"><b class="tk-tag">PVN</b><div class="tk-run"><div class="tk-text" data-ticker></div></div></div>`;
       this.layer.addEventListener("click", ev => { if (ev.target.closest(".cx-banner")) this.hideBanner(); });
       document.body.appendChild(this.layer);
       this.mapCv = document.createElement("canvas");
@@ -118,6 +119,21 @@ W.Command = class {
       if (back) back.focus({ preventScroll: true });
     }
     if (this.banners.length && !this.bannerOn) this.nextBanner();
+    this.drawTicker();
+  }
+  /* PVN along the bottom (M.ticker): it lives in the layer, so a redraw doesn't
+   * start it over; the text changes only when the news does. Twice over, so
+   * the loop has no seam; the second copy is for eyes only. */
+  drawTicker() {
+    const el = this.layer && this.layer.querySelector("[data-ticker]");
+    if (!el) return;
+    const items = W.M.ticker(this.s), key = items.join("|");
+    if (el.dataset.key === key) return;
+    el.dataset.key = key;
+    const run = items.map(t => `<span>${W.esc(t)}</span>`).join("");
+    el.innerHTML = `<span class="tk-copy">${run}</span><span class="tk-copy" aria-hidden="true">${run}</span>`;
+    // about 70 pixels a second, whatever the length
+    requestAnimationFrame(() => { const w = el.firstChild ? el.firstChild.offsetWidth : 0; el.style.animationDuration = `${Math.max(20, w / 70)}s`; });
   }
 
   px(text, cls = "", k = 2) { return W.pix.html(text, cls, k); }
@@ -291,7 +307,10 @@ W.Command = class {
     const watch = s.zones.filter(z => !z.locked).map(z => ({ z, f: M.forecast(s, z) }))
       .filter(({ z, f }) => z.lost || (f && (f.lost || (f.to != null && f.to < M.level(z.C)))))
       .sort((a, b) => (b.z.lost - a.z.lost) || ((a.f && a.f.days) || 0) - ((b.f && b.f.days) || 0));
-    return `<article class="panel cal ${c.zone ? "on" : ""}">${this.hx("CAL", "cal-t", 2)}${cal}</article>
+    // what he has made of the Watchers (M.noteHabits)
+    const A = c.reads && M.CAL_ANSWER[c.reads];
+    const reads = A ? `<p class="reads"><b class="warn">He has heard about ${W.esc(A.heard)}.</b> His answer: ${W.esc(A.answer)}. Work another way and he loses the thread.</p>` : "";
+    return `<article class="panel cal ${c.zone ? "on" : ""}">${this.hx("CAL", "cal-t", 2)}${cal}${reads}</article>
       <article class="panel watch"><h3 class="sub">Zones slipping <span>${watch.length || "none"}</span></h3>
         ${watch.length ? `<ul>${watch.map(({ z, f }) => `<li><button data-a="zone" data-z="${z.id}" data-fk="w-${z.id}"><b>${W.esc(M.zoneDef(z.id).name)}</b><span class="${z.lost ? "bad" : "down"}">${z.lost ? "Lost: siege to retake" : this.fcText(f)}</span></button></li>`).join("")}</ul>`
           : `<p class="quiet">Every zone is holding or climbing. Pick one on the map to set what it spends on control.</p>`}

@@ -108,6 +108,24 @@ something behind in the zone (a new drug on the streets, a corrupted
 official, an informer network), and control pips there buy a quarter less
 until it is countered by research (see Research).
 
+**He learns how the Watchers work.** The street talks: every mission tells
+him how it was done (a BanHammer strike; in and out without the alarm going
+up near the mark; in shooting; a crowd talked round). He keeps a fading
+tally (each mission counts 1, every older one 0.7 as much as the one after
+it), and once one habit is clearly ahead (1.6, about two missions of the
+last three, and 0.4 clear of the next) he answers it, on every mission,
+until the squad works another way (below 1.2, or another habit overtakes):
+
+| He has heard about | His answer |
+|---|---|
+| the orbital strikes | nobody bunches up: bodyguards stand two and a half times as far out, the crew further off, and every other siege defender holds the streets round the building |
+| Watchers walking in unseen | more lookouts across the ways in and out, and everyone round the mark sees 1.5 tiles further |
+| Watchers coming in shooting | a third more bodyguards round the mark, a quarter tougher |
+| his people being talked round | packs of enforcers on the streets; a citizen wants one more in the crowd before they listen, and the following is two smaller |
+
+It shows on Cal's panel, in the briefing and on the news. Whatever works
+keeps working, a little less well; the answer is to vary it.
+
 **Intel tells you where he is going next.** Intel missions pay research
 points, and they also reveal Cal's plans: which zone he will push next, and
 when. Forewarned, you
@@ -376,6 +394,18 @@ those ranges, so no two are quite the same.
 
 **Story missions** arrive once the order to Take Control is given (see The
 endgame).
+
+**The plan.** The briefing offers two or three drop-offs and two or three
+spots for the getaway car, the seed's first: a short walk in that leaves a
+long one out, a car on the far side of the trouble, a drop by the target's
+way out. Each choice builds the mission again on the same seed, and the
+briefing counts the armed groups near the way in and the way out.
+
+**The news.** PVN, Casey Benton's own station, runs along the bottom of the
+command screen: the squad's missions as Benton would have them told ("Power
+cut at PumaCorp blamed on squirrels"), Cal's pushes, zones lost and taken
+back, Cal's answers to the Watchers, and when there's little to report, how
+the calm and the rough zones are doing.
 
 ## Threat and the squad
 

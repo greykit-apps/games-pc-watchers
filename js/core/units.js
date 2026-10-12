@@ -381,7 +381,9 @@ W.followingCap = world => {
     const d = W.WEAPONS[w.type];
     if (d && d.persuade) mk = Math.max(mk, Math.max(d.persuade, w.mk || 1));
   }
-  return mk ? W.FOLLOWING[Math.min(3, mk)] : 0;
+  // Cal's enforcers on the streets: fewer will follow
+  const CC = W.CAL_COUNTERS[world.level.mission && world.level.mission.counter];
+  return mk ? Math.max(1, W.FOLLOWING[Math.min(3, mk)] + (CC && CC.following || 0)) : 0;
 };
 /* how many followers it takes to talk t round (before the brain mods count) */
 W.persuadeNeed = (world, agent, t) => {
@@ -390,6 +392,9 @@ W.persuadeNeed = (world, agent, t) => {
   // the Purrsuader II needs no crowd for anyone not already fighting us, and half the crowd for those who are
   const def = W.curDef(agent);
   if (def && def.persuade > 1) need = W.hostileTo(world, agent, t) ? Math.ceil(need / 2) : 0;
+  // Cal's enforcers: a citizen wants one more in the crowd before they listen
+  const CC = W.CAL_COUNTERS[world.level.mission && world.level.mission.counter];
+  if (CC && CC.need && t.kind === "civ") need += CC.need;
   return need;
 };
 W.canPersuade = (world, agent, t) => {

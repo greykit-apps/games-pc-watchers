@@ -67,7 +67,7 @@ W.World = class {
     this.alarm = false; this.alarmAt = null; this.markAlarm = false;
     this.status = "play"; this.endT = 0; this.endReason = "";
     // civ: civilians the fight killed, which count against the squad; civAcc: accidents, which do not
-    this.stats = { shots: 0, crew: 0, sec: 0, civ: 0, civAcc: 0, lost: 0, recruited: 0, time: 0 };
+    this.stats = { shots: 0, crew: 0, sec: 0, civ: 0, civAcc: 0, lost: 0, recruited: 0, time: 0, strikes: 0 };
     this.trains = [];
     this.objectives = [];
     this.light = { x: true, y: false };
@@ -210,6 +210,7 @@ W.World = class {
     if (this.canStrike(a, x, y)) return false;
     const def = W.WEAPONS.banhammer, k = a.weapons.findIndex(w => w.type === "banhammer" && (w.ammo == null || w.ammo > 0)), w = a.weapons[k];
     w.ammo = (w.ammo ?? 1) - 1;
+    this.stats.strikes++;
     if (w.ammo <= 0) { a.weapons.splice(k, 1); if (a.cur === k) a.cur = -1; else if (a.cur > k) a.cur--; }
     this.strikes.push({ x, y, by: a, t: 0, delay: def.strike.delay, r: def.strike.r, dmg: def.strike.dmg });
     this.msg(`${a.name}: target painted. Strike in ${def.strike.delay} seconds. Clear the circle.`, "#ff5266");
@@ -710,6 +711,8 @@ W.World = class {
     this.stats.persuaded = this.units.filter(u => u.alive && u.persuadedCiv && u.follower).length;
     // and the crew and the police talked round: people who will speak for Casey Benton on their own streets
     this.stats.turned = this.units.filter(u => u.alive && u.follower && !u.isAgent && !u.merc && !u.subject && (u.faction === "player") && (u.kind === "crew" || u.kind === "sec")).length;
+    // how it was done, for Cal to hear about (M.noteHabits): did the alarm ever go up near the mark?
+    this.stats.quiet = !this.markAlarm;
     for (const o of this.objectives) if (o.state === "active") o.state = o.type === "civcap" && status === "won" ? "done" : o.optional ? "failed" : (status === "won" ? "done" : "failed");
     this.msg(reason, status === "won" ? "#4ade6a" : "#ff5266");
     W.audio.play(status === "won" ? "win" : "lose");

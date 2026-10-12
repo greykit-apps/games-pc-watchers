@@ -118,6 +118,24 @@ W.segDist = (x, y, a, b) => {
   return W.dist(x, y, a.x + t * dx, a.y + t * dy);
 };
 
+/* Cal's answers to how the squad plays (the campaign's M.noteHabits picks
+ * one, L.mission.counter). Each sets his people out to blunt it:
+ *   spread     against the BanHammer: nobody bunches up. Bodyguards stand
+ *              two and a half times as far out, the crew further off, and
+ *              every other siege defender holds the streets round the building.
+ *   watch      against walking in unseen: more lookouts across the ways in and
+ *              out, and everyone round the mark sees 1.5 tiles further.
+ *   dig        against going in shooting: a third more bodyguards, a quarter
+ *              tougher.
+ *   enforcers  against talking people round: more of the crew walking the
+ *              streets in packs, a following two smaller, and every citizen
+ *              wants one more in the crowd before they listen. */
+W.CAL_COUNTERS = {
+  spread: { spread: 2.5 },
+  watch: { sight: 1.5, extra: { id: "lookouts", n: 2 } },
+  dig: { guards: 1.35, tough: 1.25 },
+  enforcers: { extra: { id: "pack", n: 1 }, following: -2, need: 1 },
+};
 W.populateEncounters = (world, L, d, opts) => {
   if (opts.attract) return;
   const m = world.map, T = d.theme, mod = L.mod, rng = W.rng((L.seed || 1) * 31 + 23), R = () => rng();
@@ -215,7 +233,7 @@ W.populateEncounters = (world, L, d, opts) => {
     // a pair watching a corner: whatever they see, everyone hears about
     lookouts(s) {
       const n = 1 + (R() < 0.5 + 0.1 * threat ? 1 : 0);
-      for (let i = 0; i < n; i++) { const u = crew(s.x, s.y, 1.5, i === 0 && R() < armedShare); if (u) u.sight += 2; }
+      for (let i = 0; i < n; i++) { const u = crew(s.x, s.y, 1.5, i === 0 && R() < armedShare); if (u) { u.sight += 2; u.lookout = true; } }
       return true;
     },
     mugging(s) {
@@ -284,6 +302,17 @@ W.populateEncounters = (world, L, d, opts) => {
       // who it is: the crew it put down, for a side job on them
       const crewOf = world.units.slice(before).filter(u => u.faction === "crew");
       (world.encounters || (world.encounters = [])).push({ id: e.id, kind: s.kind, x: s.x, y: s.y, name: s.name, onWay: onWay(s), hostile: !!e.hostile, crew: crewOf });
+    }
+  }
+  // Cal's answer (W.CAL_COUNTERS): more of one kind of trouble across the ways in and out
+  const CC = W.CAL_COUNTERS[L.mission && L.mission.counter];
+  if (CC && CC.extra) for (let k = 0, n = CC.extra.n + Math.floor(threat / 2); k < n; k++) {
+    const e = W.ENCOUNTERS.find(x => x.id === CC.extra.id), places = sites.filter(s => fits(e, s) && onWay(s));
+    if (!places.length) break;
+    const s = pick(places), before = world.units.length;
+    if (make[e.id](s)) {
+      used.push(s);
+      (world.encounters || (world.encounters = [])).push({ id: e.id, kind: s.kind, x: s.x, y: s.y, name: s.name, onWay: true, hostile: true, crew: world.units.slice(before).filter(u => u.faction === "crew"), cal: true });
     }
   }
   W.makeContracts(world, L, R);

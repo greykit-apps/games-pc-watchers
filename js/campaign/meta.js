@@ -387,8 +387,49 @@ M.calStep = s => {
     if (c.next && !M.zone(s, c.next).locked) {
       c.zone = c.next; c.left = s.war ? M.N.CAL.war.push : M.N.CAL.push;
       M.note(s, `Cal is pushing ${M.zoneDef(c.zone).name}.`, "bad");
+      M.news(s, M.pickNews(s, M.NEWS.push, { zone: M.zoneDef(c.zone).name }), "bad");
     } else M.planCal(s);
   } else c.nextIn = c.rest;
+};
+
+/* ---------------- Cal reads the squad ----------------
+ * Every mission tells the street how the Watchers work: a BanHammer strike,
+ * a job done without the alarm going up near the mark, one gone in shooting,
+ * a crowd talked round. Cal keeps a fading tally (each mission counts 1, and
+ * every older one 0.7 as much as the one after), and once one habit is clearly
+ * ahead (1.6, about two missions of the last three, and 0.4 clear of the
+ * next) he answers it: the engine's W.CAL_COUNTERS set his people out
+ * against it. Change how the squad works and he loses the thread (below 1.2,
+ * or another habit overtakes). Whatever works keeps working a little less well. */
+M.N.HABIT = { keep: 0.7, reads: 1.6, margin: 0.4, drop: 1.2 };
+M.CAL_ANSWER = {
+  strike: { counter: "spread", heard: "the orbital strikes", answer: "his people don't bunch up any more: bodyguards stand well apart, and a siege's defenders hold the streets round it too" },
+  quiet: { counter: "watch", heard: "Watchers walking in unseen", answer: "more lookouts across the ways in and out, and sharper eyes round the mark" },
+  loud: { counter: "dig", heard: "Watchers coming in shooting", answer: "more bodyguards round the mark, and tougher ones" },
+  talk: { counter: "enforcers", heard: "his people being talked round", answer: "enforcers on the streets: people want a bigger crowd before they listen, and fewer will follow" },
+};
+// how a mission was done, from what the engine reports (strikes, quiet: no alarm near the mark)
+M.styleOf = res => {
+  const strike = (res.strikes || 0) > 0;
+  return { strike, talk: (res.persuaded || 0) + (res.turned || 0) >= 4, quiet: !strike && !!res.won && res.quiet === true, loud: !strike && res.quiet === false };
+};
+M.noteHabits = (s, res) => {
+  if (res.quiet == null && res.strikes == null) return null;
+  const N = M.N.HABIT, h = s.habits || (s.habits = { strike: 0, quiet: 0, loud: 0, talk: 0 }), st = M.styleOf(res);
+  for (const k of Object.keys(h)) h[k] = h[k] * N.keep + (st[k] ? 1 : 0);
+  const ranked = Object.entries(h).sort((a, b) => b[1] - a[1]), was = s.cal.reads || null;
+  let reads = was && h[was] >= N.drop ? was : null;
+  if (ranked[0][1] >= N.reads && ranked[0][1] - ranked[1][1] >= N.margin) reads = ranked[0][0];
+  if (reads === was) return null;
+  s.cal.reads = reads;
+  if (reads) {
+    const A = M.CAL_ANSWER[reads];
+    M.note(s, `Cal has heard about ${A.heard}. His answer: ${A.answer}.`, "bad");
+    M.news(s, M.pickNews(s, M.NEWS.reads[reads]), "bad");
+    return A;
+  }
+  M.note(s, "Cal's people have lost the thread of how the Watchers work. They're back to the usual.", "good");
+  return null;
 };
 
 /* ---------------- research ---------------- */
@@ -439,6 +480,7 @@ M.canDeclareWar = s => s.war ? "already taking control" : s.research.points < M.
 M.declareWar = s => { if (M.canDeclareWar(s)) return false; M.toWar(s); M.refreshOffers(s, true); return true; };
 M.toWar = s => {
   s.war = true;
+  M.news(s, M.pickNews(s, M.NEWS.takeControl), "good");
   M.note(s, "Casey Benton gives the order: take control. Cal stops probing and commits, and control decays faster everywhere. Each zone has a story to finish; lock them all down.", "bad");
 };
 // research points into the running projects, split evenly; nothing running, they're wasted
@@ -477,6 +519,7 @@ M.advanceDay = (s, onMission = false) => {
     if (z.C <= 0) {
       z.C = 0; z.lost = true;
       M.note(s, `${M.zoneDef(z.id).name} is lost. Nothing comes out of it until it's taken back by siege.`, "bad");
+      M.news(s, M.pickNews(s, M.NEWS.lostZone, { zone: M.zoneDef(z.id).name }), "bad");
     } else {
       // the milestones only: reaching or losing level 3, falling to level 0
       const now = M.level(z.C);
@@ -798,6 +841,8 @@ M.missionFor = (s, o) => {
   L.mission.mindControl = z.floor === 2;
   // what a side job pays, at weight 1: the engine shows it on each one
   L.mission.pay = M.contractPay(s, o);
+  // Cal's answer to how the squad has been working (M.noteHabits)
+  L.mission.counter = s.cal.reads ? M.CAL_ANSWER[s.cal.reads].counter : null;
   L.offer = o;
   return L;
 };
@@ -865,6 +910,8 @@ M.settle = (s, o, res) => {
       } else lines.push([`${D.name}: story`, `step ${z.story} of ${M.STORY.length} done`]);
     }
     M.note(s, `${M.KINDS[o.kind].name} in ${D.name}: done.`, "good");
+    const key = o.kind === "story" && z.locked ? "lockdown" : o.kind;
+    if (M.NEWS.won[key]) M.news(s, M.pickNews(s, M.NEWS.won[key], { zone: D.name, area: o.landmark || D.name }), "good");
   }
   // side jobs (a sweep's are the job): paid for each broken up, won or lost, as long as somebody got out
   const broke = (res.contracts || []).filter(c => c.done);
@@ -879,8 +926,12 @@ M.settle = (s, o, res) => {
     lines.push(["Mission failed", "no reward"]);
     if (!z.lost && !z.locked) { z.C = Math.max(0.01, z.C - 0.3); lines.push([`Control in ${D.name}`, "-0.3"]); }
     M.note(s, `${M.KINDS[o.kind].name} in ${D.name}: failed.`, "bad");
+    M.news(s, M.pickNews(s, M.NEWS.lost, { zone: D.name, area: o.landmark || D.name }), "bad");
   }
   s.hired = false;
+  // the street talks: Cal hears how it was done
+  const read = M.noteHabits(s, res);
+  if (read) lines.push(["Cal has heard about " + read.heard, read.answer]);
   // a BanHammer strike is spent in the field, when it's called down: the engine hands back what's left
   // the squad comes home, or doesn't; what they picked up goes to the armoury
   const haul = [];
@@ -947,11 +998,65 @@ M.settle = (s, o, res) => {
       z.C = Math.min(M.N.CAP, z.C + g);
       lines.push([`Talked round: ${talked} citizen${talked === 1 ? "" : "s"}${turned ? `, ${turned} of the crew and the police` : ""}`, `control ${f(g)}${g >= M.N.PERSUADE_CAP ? " (as far as talk goes)" : ""}`]);
     }
+    if (dead >= 3) M.news(s, M.pickNews(s, M.NEWS.bloody, { zone: D.name, n: dead }), "bad");
     if (dead) { const g = dead * M.N.CIV_KILLED; z.C = Math.max(0.01, z.C - g); lines.push([`Civilians killed: ${dead}`, `control ${f(-g)}`]); }
   }
   const lostNow = s.zones.filter(q => q.lost).length;
   if (lostNow > lost0) lines.push(["While you were out", `${lostNow - lost0} zone${lostNow - lost0 > 1 ? "s" : ""} lost`]);
   return { lines };
+};
+
+/* ---------------- the news ----------------
+ * PVN, Casey Benton's own station, on what the Watchers did and what Cal is
+ * up to: the city's events as Benton would have them told. s.news is newest
+ * first; the command screen runs it along the bottom, with a few lines on how
+ * the zones are doing when there isn't much to report. */
+M.NEWS = {
+  won: {
+    persuade: ["{area}: local figure backs City Hall's plans for {zone}", "{zone} community leader: 'Casey Benton listens'"],
+    intel: ["Power cut at {area} blamed on squirrels", "{area}: computer fault 'nothing to worry about', say engineers"],
+    job: ["{area}: safe found empty; owners decline to comment", "Insurers baffled by {zone} break-in that 'never happened'"],
+    crackdown: ["Police praise 'community clean-up' at {area}", "{zone}: warehouse fire clears out 'unwanted tenants'"],
+    assassinate: ["{area}: businessman's sudden death 'not suspicious', say police", "{zone} mourns a man few will miss"],
+    sweep: ["{zone} quieter after a night of 'routine checks'", "Arrests down, calm up in {zone}, says City Hall"],
+    cal: ["Gang trouble in {zone} 'under control', says City Hall", "{zone}: the streets are quiet again"],
+    siege: ["{zone} reopens after 'renovations'", "Casey Benton welcomes {zone} home"],
+    story: ["{zone}: Benton's people 'closing in' on the gangs", "Sources: big changes coming to {zone}"],
+    lockdown: ["{zone}: curfew lifted as streets are declared secure", "{zone} is Benton's for good, says City Hall"],
+  },
+  lost: ["Gunfire in {zone}; City Hall urges calm", "{area}: 'a misunderstanding', says Benton's office"],
+  bloody: ["{n} dead in {zone} 'gas leak'", "{zone}: {n} lives lost to 'faulty wiring', officials say"],
+  push: ["Unrest reported in {zone}", "{zone}: residents told to stay indoors after dark"],
+  lostZone: ["{zone} 'temporarily closed' to visitors", "City Hall: {zone} 'not a priority right now'"],
+  takeControl: ["Casey Benton: 'PumaCity will be safe. All of it.'", "City Hall announces a 'new era of order'"],
+  reads: {
+    strike: ["Meteor showers over PumaCity: gang bosses 'keeping their distance'", "Astronomers baffled; street crews stop meeting in groups"],
+    quiet: ["Neighbourhood watch schemes booming across PumaCity", "Lookouts on every corner, residents report"],
+    loud: ["Private security firms report record hiring", "Bodyguard business 'never better', says agency"],
+    talk: ["Street preachers chased off by 'concerned residents'", "Crowds thinning at public meetings, say organisers"],
+  },
+  // filler, by how the zones are doing
+  calm: ["Property prices up in {zone}", "{zone} named PumaCity's friendliest streets", "Late-night cafes return to {zone}"],
+  rough: ["Residents of {zone} told to stay indoors", "Shops in {zone} close early again", "{zone}: 'we just want to feel safe'"],
+  always: ["PVN: all the news Casey Benton wants you to hear", "Weather: rain over the Starport, clear over the Towers", "The Expo: a new event every week", "The Moonsugar stands ready on her cradle", "Traffic: delays round Central Station"],
+};
+M.news = (s, text, kind = "") => { (s.news || (s.news = [])).unshift({ day: s.day, text, kind }); s.news.length = Math.min(s.news.length, 30); };
+// one of a list of headlines, the same one for the same day and story (it doesn't touch the campaign's dice)
+M.pickNews = (s, list, fill = {}) => {
+  const t = list[(s.day * 7 + (s.news ? s.news.length : 0) * 3) % list.length];
+  return t.replace(/\{(\w+)\}/g, (_, k) => fill[k] != null ? fill[k] : `{${k}}`);
+};
+// what runs along the bottom: the latest stories, and the zones' moods when there are few
+M.ticker = s => {
+  const out = (s.news || []).filter(n => n.day >= s.day - 20).slice(0, 8).map(n => n.text);
+  const zs = s.zones.filter(z => !z.lost && !z.locked), name = z => M.zoneDef(z.id).name;
+  const calm = zs.filter(z => M.level(z.C) >= 3), rough = zs.filter(z => M.level(z.C) <= 0);
+  const fill = [];
+  if (calm.length) fill.push(M.pickNews(s, M.NEWS.calm, { zone: name(calm[s.day % calm.length]) }));
+  if (rough.length) fill.push(M.pickNews(s, M.NEWS.rough, { zone: name(rough[s.day % rough.length]) }));
+  fill.push(M.NEWS.always[s.day % M.NEWS.always.length]);
+  for (const f of fill) if (out.length < 6 && !out.includes(f)) out.push(f);
+  return out;
 };
 
 W.money = n => (n < 0 ? "-$" : "$") + Math.abs(Math.round(n)).toLocaleString("en-US");

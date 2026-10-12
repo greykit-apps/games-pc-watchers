@@ -17,6 +17,8 @@ L.mission = {
   cal: true|false,   // the crew are Cal's own: his push, a siege, or a zone he holds
   hired: 0|4,        // a hired mercenary crew to field beside the squad (followers with guns)
   mindControl: bool, // the zone is under mind control: nobody there can be persuaded
+  counter: null | "spread" | "watch" | "dig" | "enforcers",   // Cal's answer to the squad's habits (W.CAL_COUNTERS, js/districts/encounters.js)
+  pay: { money, control },  // what a side job pays at weight 1, shown on each
 };
 L.mod = {            // the enemy at this threat, against the district's usual numbers
   crew: 0.35..1.7,   // multiplies theme.crew
@@ -28,7 +30,15 @@ L.mod = {            // the enemy at this threat, against the district's usual n
 
 The squad arrives as now (`opts.roster`), each weapon with an `mk` (1 to 3). The squad's scanner mark (0 to 3) is on the level as `L.scannerMk`.
 The campaign reads the result as the debrief does today: won or lost, and for
-each Watcher alive or dead, kills, and the items they carried home. It would
+each Watcher alive or dead, kills, and the items they carried home; and how it
+was done, for Cal to hear about: BanHammer strikes called (`stats.strikes`),
+whether the alarm ever went up near the mark (`stats.quiet`), people talked
+round (`stats.persuaded`, `stats.turned`).
+
+The level also carries `L.options`: up to three drop points and three pickups
+(`W.planOptions`), the seed's own first. The briefing sets `L.picks.spawn` and
+`L.picks.pickup` from them and builds the world again; the briefing's text
+follows the picks. It would
 help if the items came home with their `mk` (today the engine drops it; the
 campaign works round that).
 

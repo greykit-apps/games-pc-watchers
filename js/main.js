@@ -214,30 +214,62 @@ const Game = W.game = {
         <h1>${W.esc(L.name)}</h1>
         <div class="code">OPERATION ${W.esc(L.codename)}</div>
         <div class="from">From: ${W.esc(L.briefing.from)}</div>
-        <div class="text">${L.briefing.text.map(p => `<p>${W.esc(p)}</p>`).join("")}</div>
+        <div class="text" data-text>${L.briefing.text.map(p => `<p>${W.esc(p)}</p>`).join("")}</div>
         ${c ? (z => `<div class="panel"><h3>${W.esc(W.M.KINDS[c.kind].name)} in ${W.esc(W.M.zoneDef(c.zone).name)}</h3><table>
           <tr><td>Reward</td><td>${W.esc(W.M.describeReward(this.campaign, c))}</td></tr>
           <tr><td>The streets</td><td>${z.lost ? "lost to Cal: the enemy is dug in" : `control level ${W.M.level(z.C)}`}</td></tr>
           <tr><td>Time</td><td>${c.days} days: the zones' pips stand as they are set while you are out</td></tr>
-          <tr><td>Losses</td><td>Watchers killed are gone for good, with everything spent on them</td></tr></table></div>`)(W.M.zone(this.campaign, c.zone)) : ""}
+          <tr><td>Losses</td><td>Watchers killed are gone for good, with everything spent on them</td></tr>
+          ${this.campaign.cal.reads ? `<tr><td>Cal's answer</td><td>He has heard about ${W.esc(W.M.CAL_ANSWER[this.campaign.cal.reads].heard)}: ${W.esc(W.M.CAL_ANSWER[this.campaign.cal.reads].answer)}</td></tr>` : ""}</table></div>`)(W.M.zone(this.campaign, c.zone)) : ""}
+        ${L.options && (L.options.spawn.length > 1 || L.options.pickup.length > 1) ? `<div class="panel plan"><h3>The plan: where you go in, and where the car waits</h3><div data-plan></div></div>` : ""}
       </div>
       <div>
         <div class="panel"><h3>The ground</h3><canvas class="map" data-map width="300" height="300"></canvas>
           <div class="legend"><span><i style="background:#54f2ff"></i>Watchers</span><span><i style="background:#ffb000"></i>${W.esc(w.names.target)}</span><span><i style="background:#ff5266"></i>crew</span><span><i style="background:#4c6fd0"></i>security</span></div></div>
-        <div class="panel"><h3>Intel</h3><table>${L.briefing.intel.map(([a, b]) => `<tr><td>${W.esc(a)}</td><td>${W.esc(b)}</td></tr>`).join("")}</table></div>
+        <div class="panel"><h3>Intel</h3><table data-intel>${L.briefing.intel.map(([a, b]) => `<tr><td>${W.esc(a)}</td><td>${W.esc(b)}</td></tr>`).join("")}</table></div>
         <div class="panel"><h3>Your squad</h3><div class="squad">${w.agents.map(a => `<div class="agent"><canvas width="40" height="40" data-agent="${a.slot}"></canvas><div><b>${W.esc(a.name)}</b>${a.weapons.map(x => W.WEAPONS[x.type].name).join(", ")}</div></div>`).join("")}</div></div>
       </div>
       <div class="acts"><button class="primary" data-go><kbd>Enter</kbd>Begin mission</button><button data-back><kbd>Esc</kbd>Back</button></div>
     </div>`;
     document.body.appendChild(el);
     this.briefEl = el;
-    const mc = el.querySelector("[data-map]");
-    this.renderer.scanner(mc.getContext("2d"), w, { full: true, noCiv: true, noView: true });
+    this.drawPlan();
     this.resize();
     el.querySelectorAll("[data-agent]").forEach(c => W.drawPortrait(c.getContext("2d"), w.agents[+c.dataset.agent].look, 40, 40));
     el.querySelector("[data-go]").addEventListener("click", () => this.beginMission());
     el.querySelector("[data-back]").addEventListener("click", () => this.backFromBrief());
     el.querySelector("[data-go]").focus();
+  },
+
+  /* The plan: where the squad is dropped and where the getaway car waits,
+   * from the two or three the briefing offers (L.options). A change builds the
+   * mission again on the same seed, so the streets are the same each time a
+   * choice is picked; what's armed across the way in and out is counted. */
+  drawPlan() {
+    const el = this.briefEl, L = this.level, w = this.world;
+    if (!el) return;
+    this.renderer.scanner(el.querySelector("[data-map]").getContext("2d"), w, { full: true, noCiv: true, noView: true });
+    el.querySelector("[data-text]").innerHTML = L.briefing.text.map(p => `<p>${W.esc(p)}</p>`).join("");
+    el.querySelector("[data-intel]").innerHTML = L.briefing.intel.map(([a, b]) => `<tr><td>${W.esc(a)}</td><td>${W.esc(b)}</td></tr>`).join("");
+    const slot = el.querySelector("[data-plan]");
+    if (!slot) return;
+    const sp = L.picks.spawn, tg = L.picks.target, car = w.pickupAt ? { x: w.pickupAt[0], y: w.pickupAt[1] } : L.picks.pickup;
+    // armed trouble within reach of the straight line in, and the one out
+    const armed = e => e.hostile && e.crew.some(u => u.alive && W.hasGun(u));
+    const near = (a, b) => (w.encounters || []).filter(e => armed(e) && W.segDist(e.x, e.y, a, b) < W.WAY_WIDTH / 2).length;
+    const walk = (a, b) => Math.round(W.dist(a.x, a.y, b.x, b.y));
+    const row = (kind, label, list, cur) => list.length > 1 ? `<div class="plan-row"><span>${label}</span>${list.map((p, i) => `<button type="button" data-plan-${kind}="${i}" aria-pressed="${p === cur}">${W.esc(p.name)}</button>`).join("")}</div>` : "";
+    slot.innerHTML = `${row("spawn", "Drop-off", L.options.spawn, sp)}${row("pickup", "Getaway car", L.options.pickup, L.picks.pickup)}
+      <p class="plan-note">In: ${walk(sp, tg)} tiles, ${near(sp, tg) || "no"} armed group${near(sp, tg) === 1 ? "" : "s"} near the way. Out: ${walk(tg, car)} tiles, ${near(tg, car) || "no"} armed group${near(tg, car) === 1 ? "" : "s"}.</p>`;
+    slot.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+      const kind = b.dataset.planSpawn != null ? "spawn" : "pickup", p = L.options[kind][+(b.dataset.planSpawn ?? b.dataset.planPickup)];
+      if (L.picks[kind] === p) return;
+      L.picks[kind] = p;
+      this.world = new W.World(L, this.run.opts);
+      this.drawPlan();
+      const again = this.briefEl.querySelector(`[data-plan-${kind}="${L.options[kind].indexOf(p)}"]`);
+      if (again) again.focus();
+    }));
   },
 
   backFromBrief() { if (this.run && this.run.contract) this.toOverworld(); else if (this.fromMapRoom) this.toMapRoom(); else this.toTitle(); },
@@ -718,6 +750,8 @@ const Game = W.game = {
         return;
       }
       if (this.mode === "brief") {
+        // Enter on one of the plan's choices picks it; anywhere else, it begins
+        if (k === "enter" && document.activeElement && document.activeElement.closest && document.activeElement.closest(".plan")) return;
         if (k === "enter") { ev.preventDefault(); this.beginMission(); }
         if (k === "escape") { ev.preventDefault(); this.backFromBrief(); }
         return;
@@ -867,7 +901,7 @@ const Game = W.game = {
     let slip = null;
     if (camp) {
       slip = W.M.settle(this.campaign, this.run.contract, {
-        won, persuaded: s.persuaded || 0, turned: s.turned || 0, civKilled: s.civ || 0,
+        won, persuaded: s.persuaded || 0, turned: s.turned || 0, civKilled: s.civ || 0, strikes: s.strikes || 0, quiet: !!s.quiet,
         contracts: (w.contracts || []).map(c => ({ id: c.id, weight: c.weight, done: c.done })),
         agents: w.agents.map(a => ({ id: a.rosterId, alive: a.alive, kills: a.kills || 0, items: a.weapons.map(x => ({ type: x.type, ammo: x.ammo, mk: x.mk })) })),
       });

@@ -38,7 +38,7 @@ const FIGHTS = require(path.join(__dirname, "fights.json"));
 const engineKind = o => o.kind === "story" ? ["assassinate", "persuade", "siege"][o.step] : o.kind === "cal" ? "crackdown" : o.kind;
 // where the bench has no cell: by threat minus tier, the chance to win and the Watchers lost (the engine's test bot, 2026-10-11)
 const ROLL = { "-2": [0.99, 0], "-1": [0.98, 0.03], 0: [0.95, 0.2], 1: [0.88, 1.0], 2: [0.5, 2.4], 3: [0.15, 3.2] };
-const guess = gap => { const [w, l] = ROLL[Math.max(-2, Math.min(3, gap))]; return [w, l, 0.5, 2, 0]; };
+const guess = gap => { const [w, l] = ROLL[Math.max(-2, Math.min(3, gap))]; return [w, l, 0.5, 2, 0, ["assault"]]; };
 /* The odds for a mission: [chance to win, Watchers lost, side jobs done, side jobs offered, loot].
  * level is the squad's (tier less one). The bench measured each threat for squads one level over
  * it to two under (gaps -1 to +2); past that, the nearest of those cells at the mission's own
@@ -49,17 +49,18 @@ function odds(kind, level, threat, ways, careful) {
   let lv = Math.max(0, Math.min(level, t, 4), t - 3), cell = FIGHTS.cells[`${kind} L${lv} t${t}`];
   while (!cell && lv > 0) { lv--; cell = FIGHTS.cells[`${kind} L${lv} t${t}`]; }
   if (!cell) return guess(gap);
-  const rows = Object.entries(cell).filter(([w, r]) => ways.includes(w) && r[0]).map(([, r]) => r.map((x, i) => i ? x / r[0] : x));
+  const rows = Object.entries(cell).filter(([w, r]) => ways.includes(w) && r[0]).map(([w, r]) => Object.assign(r.map((x, i) => i ? x / r[0] : x), { way: w }));
   if (!rows.length) return guess(gap);
   // careful: the two best ways in (most won, then fewest lost); raw: every way the squad has
   rows.sort((a, b) => b[1] - a[1] || a[2] - b[2]);
   // a strike carried is called down, careful or not: half the time, for the raw player
-  const strike = ways.includes("banhammer") && cell.banhammer && cell.banhammer[0] ? cell.banhammer.map((x, i) => i ? x / cell.banhammer[0] : x) : null;
+  const strike = ways.includes("banhammer") && cell.banhammer && cell.banhammer[0] ? Object.assign(cell.banhammer.map((x, i) => i ? x / cell.banhammer[0] : x), { way: "banhammer" }) : null;
   const use = careful ? rows.slice(0, 2) : strike ? rows.concat(Array(rows.length).fill(strike)) : rows, mean = i => use.reduce((s, r) => s + r[i], 0) / use.length;
   let [won, lost, done, offered, loot] = [mean(1), mean(2), mean(3), mean(4), mean(5)];
   if (level > lv + 0) for (let k = lv; k < level && k < 4; k++) lost /= 3;
   if (level < lv - 0 || gap > 2) { won *= 0.5; lost = Math.min(4, lost * 1.33); }
-  return [won, lost, done, offered, loot];
+  // the way in this player takes: the best, careful; any of them, raw
+  return [won, lost, done, offered, loot, use.map(r => r.way)];
 }
 
 /* ---------------- what things are worth, to the bot ---------------- */
@@ -218,14 +219,16 @@ function play(opt = {}) {
     if (fight) {
       const L = M.missionFor(s, offer);
       const out = run(W, i, false, true, false, M.missionRoster(s), L);
-      res = { won: out.status === "won", persuaded: out.world.stats.persuaded || 0, turned: out.world.stats.turned || 0, civKilled: out.world.stats.civ || 0, contracts: (out.world.contracts || []).map(c => ({ id: c.id, weight: c.weight, done: c.done })), agents: out.world.agents.map(a => ({ id: a.rosterId, alive: a.alive, kills: a.kills || 0, items: a.weapons.map(x => ({ type: x.type, ammo: x.ammo, mk: x.mk })) })) };
+      res = { won: out.status === "won", persuaded: out.world.stats.persuaded || 0, turned: out.world.stats.turned || 0, civKilled: out.world.stats.civ || 0, strikes: out.world.stats.strikes || 0, quiet: !!out.world.stats.quiet, contracts: (out.world.contracts || []).map(c => ({ id: c.id, weight: c.weight, done: c.done })), agents: out.world.agents.map(a => ({ id: a.rosterId, alive: a.alive, kills: a.kills || 0, items: a.weapons.map(x => ({ type: x.type, ammo: x.ammo, mk: x.mk })) })) };
     } else {
-      const [pw, deaths, done, offered, loot] = odds(engineKind(offer), M.squadTier(s, offer) - 1, offer.threat, ways(offer), careful), sq = M.squad(s);
+      const [pw, deaths, done, offered, loot, used] = odds(engineKind(offer), M.squadTier(s, offer) - 1, offer.threat, ways(offer), careful), sq = M.squad(s);
       const won = rand() < pw;
       // a careful player calls a BanHammer strike down on the siege or lockdown it's carried for, and nowhere else
       const fire = M.bigGun(offer) && sq.find(a => a.items.some(x => x.type === "banhammer"));
       const n = Math.round(offered), d = Math.min(n, Math.floor(done + rand()));
-      res = { won, contracts: Array.from({ length: n }, (_, k) => ({ id: k, weight: 1, done: k < d })),
+      // how it was done, for Cal to hear about: a strike, quiet (stealth, the rifles), loud, a crowd talked round
+      const way = used ? used[Math.floor(rand() * used.length)] : "assault";
+      res = { won, strikes: way === "banhammer" ? 1 : 0, quiet: way === "stealth" || way === "snipe", persuaded: way === "mob" ? 6 : 0, contracts: Array.from({ length: n }, (_, k) => ({ id: k, weight: 1, done: k < d })),
         agents: sq.map(a => ({ id: a.id, alive: rand() >= deaths / sq.length, kills: 3, items: a.items.map(x => ({ type: x.type, mk: x.mk, ammo: x.type === "banhammer" && a === fire ? (x.count || 1) - 1 : x.count })) })) };
       // what they bring home, sold: the bench counts it at what it fetches
       if (res.agents.some(a => a.alive)) s.cash += Math.round(loot * (0.5 + rand()));
@@ -237,6 +240,7 @@ function play(opt = {}) {
     const gap = offer.threat - tierNow, G = stats.gaps[gap] = stats.gaps[gap] || [0, 0, 0];
     G[0]++; G[1] += dead; G[2] += res.won ? 1 : 0;
     stats.tiers.push(tierNow);
+    stats.reads = stats.reads || {}; if (s.cal.reads) stats.reads[s.cal.reads] = (stats.reads[s.cal.reads] || 0) + 1;
     M.settle(s, offer, res);
     check();
     for (let d = 0; d < idle && !s.won; d++) { M.advanceDay(s); check(); }
@@ -277,6 +281,8 @@ function report(opt) {
   row("Kinds taken", kinds.map(([k, n]) => `${k} ${Math.round(100 * n / missions)}%`).join(", "), "", null);
   const ordinaryLow = ["persuade", "intel", "job", "crackdown", "assassinate", "sweep"].filter(k => (taken[k] || 0) / missions < 0.05);
   row("Ordinary kinds taken under 5% of missions", ordinaryLow.join(", ") || "none", "none", !ordinaryLow.length);
+  const reads = {}; for (const r of runs) for (const [k, n] of Object.entries(r.reads || {})) reads[k] = (reads[k] || 0) + n;
+  row("Missions with Cal answering a habit", `${Math.round(100 * Object.values(reads).reduce((t, n) => t + n, 0) / missions)}%: ${Object.entries(reads).map(([k, n]) => `${k} ${Math.round(100 * n / missions)}%`).join(", ")}`, "", null);
   row("Watchers lost per mission at or under the tier", (atTier[1] / Math.max(1, atTier[0])).toFixed(2), "0.15 to 0.3", null);
   row("Watchers lost per mission, all", (fallen / missions).toFixed(2), "", null);
   console.log("      by threat minus tier:  " + Object.keys(gaps).map(Number).sort((a, b) => a - b).map(g => `${g > 0 ? "+" : ""}${g}: ${gaps[g][0]} taken, ${(gaps[g][2] / gaps[g][0] * 100).toFixed(0)}% won, ${(gaps[g][1] / gaps[g][0]).toFixed(2)} lost`).join(" · "));

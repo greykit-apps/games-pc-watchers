@@ -287,7 +287,7 @@ W.DROP_FAR = 0.75;
  * where the squad gets out once the job is done. Far from the target, never
  * the way the target runs, and if it can be, nowhere near the drop point, so
  * the way out is a second long walk and not the first one again. */
-W.pickupFor = (m, target, spawn, exit, rng) => {
+W.pickupFor = (m, target, spawn, exit, rng, all = false) => {
   const size = Math.max(m.w, m.h), edge = p => Math.min(p.x, p.y, m.w - p.x, m.h - p.y);
   const pool = m.points.exit.concat(m.points.spawn).filter(p => p !== exit && edge(p) <= 12);
   const dT = p => W.dist(p.x, p.y, target.x, target.y), dS = p => W.dist(p.x, p.y, spawn.x, spawn.y);
@@ -296,9 +296,30 @@ W.pickupFor = (m, target, spawn, exit, rng) => {
     pool.filter(p => dT(p) >= 0.4 * size && dS(p) >= 24),
     pool.filter(p => dT(p) >= 0.3 * size),
   ];
+  // all: every spot that would do, for the briefing's plan (W.planOptions)
+  if (all) return pool.filter(p => dT(p) >= 0.3 * size);
   const list = tiers.find(t => t.length);
   if (!list) return spawn;   // nowhere better: back where the squad came in
   return list[Math.floor(rng() * list.length)];
+};
+/* The plan: what the briefing offers in place of the drop point and the
+ * pickup the seed picked. Up to three of each, the seed's first, the others
+ * at least 30 tiles from any already in, each with its own name: a short walk
+ * in that leaves a long one out, a pickup on the far side of the trouble, a
+ * drop near the target's way out. */
+W.PLAN_APART = 30;
+W.planOptions = (L, spawns, pickups) => {
+  const pick = (first, list) => {
+    const out = [first];
+    // the furthest from the seed's own first, so the choices differ
+    for (const p of list.slice().sort((a, b) => W.dist(first.x, first.y, b.x, b.y) - W.dist(first.x, first.y, a.x, a.y))) {
+      if (out.length >= 3) break;
+      if (out.some(o => o.name === p.name || W.dist(o.x, o.y, p.x, p.y) < W.PLAN_APART)) continue;
+      out.push(p);
+    }
+    return out;
+  };
+  return { spawn: pick(L.picks.spawn, spawns), pickup: pick(L.picks.pickup, pickups) };
 };
 /* The getaway car: parked off the road (a sidewalk, a verge, a yard) a few
  * tiles in from the pickup's spot on the edge, side-on to that edge. It is
@@ -364,6 +385,7 @@ W.missionLevel = (o) => {
   const pickup = W.pickupFor(full, target, spawn, exit, rng);
   // the whole district is the mission: the squad can go anywhere in it
   const map = () => full, picks = { spawn, target, exit, pickup }, win = null;
+  const options = W.planOptions({ picks }, spawns.map(([p]) => p), W.pickupFor(full, target, spawn, exit, rng, true));
   const names = Object.assign({}, d.names, { target: d.names.targets[Math.floor(rng() * d.names.targets.length)] });
   const codename = W.CODENAMES[Math.floor(rng() * W.CODENAMES.length)];
   const T = d.theme;
@@ -371,17 +393,17 @@ W.missionLevel = (o) => {
   return {
     id: `${d.id}/${sec ? sec.id : o.landmark || "any"}/${seed}`, district: d.name, name: area || (sec ? sec.name : d.name), codename, names, seed,
     w: win ? win.w : full.w, h: win ? win.h : full.h, window: win, districtId: d.id,
-    picks,
+    picks, options,
     makeMap: map,
     // the briefing follows the kind of job the campaign attaches (L.mission.kind)
     get briefing() {
       const kind = W.jobKind(this), at = `${target.name}${area && !target.name.includes(area.toLowerCase()) ? `, ${area}` : ""}`;
-      const common = [["Bodyguards", `${T.guards}, in black. They stay close.`], ["Crew", `${T.crew} of ${names.crew}, in red; at the higher threats, not all of them.`], [names.sec, `${T.sec} on patrol. Neutral until provoked.`], ["Ground", T.ground], ["Pickup", `The getaway car, at ${pickup.name}: the only way out. Whatever is on the streets between is still there on the way back.`]];
+      const common = [["Bodyguards", `${T.guards}, in black. They stay close.`], ["Crew", `${T.crew} of ${names.crew}, in red; at the higher threats, not all of them.`], [names.sec, `${T.sec} on patrol. Neutral until provoked.`], ["Ground", T.ground], ["Pickup", `The getaway car, at ${picks.pickup.name}: the only way out. Whatever is on the streets between is still there on the way back.`]];
       if (kind === "persuade") return {
         from: "Watch-Captain Joyeuse",
         text: [
           `${names.target} knows how ${T.racket} runs in ${d.name}, and Casey Benton wants them working for him. Nobody dies for this one.`,
-          `They are at ${at}, with minders. You go in from ${spawn.name}. Get close with the Purrsuader, talk them round, and walk them out to the getaway car at ${pickup.name}.`,
+          `They are at ${at}, with minders. You go in from ${picks.spawn.name}. Get close with the Purrsuader, talk them round, and walk them out to the getaway car at ${picks.pickup.name}.`,
           `${T.secNote}`,
           exit ? `If the alarm goes up, ${names.target} runs for ${exit.name}. If they make it, or die, the job is lost.` : `If they die, the job is lost.`,
         ],
@@ -392,7 +414,7 @@ W.missionLevel = (o) => {
         from: "Watch-Captain Joyeuse",
         text: [
           `${names.crew} keep something in a safe at ${at} that Casey Benton would rather have himself.`,
-          `You go in from ${spawn.name}. A Watcher has to stand at the safe while it opens, a few seconds; then the goods go out with whoever carries them, to the getaway car at ${pickup.name}.`,
+          `You go in from ${picks.spawn.name}. A Watcher has to stand at the safe while it opens, a few seconds; then the goods go out with whoever carries them, to the getaway car at ${picks.pickup.name}.`,
           `${T.secNote}`,
           `If the carrier goes down, the goods drop where they fall. Pick them up and keep going.`,
         ],
@@ -402,9 +424,9 @@ W.missionLevel = (o) => {
         from: "Watch-Captain Joyeuse",
         text: [
           `${this.mission && this.mission.cal ? "Cal's people are" : names.crew + " are"} running ${T.racket} out of ${at}, under Casey Benton's nose.`,
-          `Break it up. Burn the stash, and put down or drive off most of the crew; when the stash goes, some of them will run. You go in from ${spawn.name}.`,
+          `Break it up. Burn the stash, and put down or drive off most of the crew; when the stash goes, some of them will run. You go in from ${picks.spawn.name}.`,
           `${T.secNote}`,
-          `Then get out: the getaway car waits at ${pickup.name}. Nowhere else counts.`,
+          `Then get out: the getaway car waits at ${picks.pickup.name}. Nowhere else counts.`,
         ],
         intel: [["Stash", `At ${target.name}, marked in green. It burns.`]].concat(common),
       };
@@ -412,9 +434,9 @@ W.missionLevel = (o) => {
         from: "Watch-Captain Joyeuse",
         text: [
           `${this.mission && this.mission.cal ? "Cal's people are" : names.crew + " are"} all over ${d.name}, from their hangout at ${at} out. Casey Benton wants them taught a lesson.`,
-          `Their hangout, and the worst of what's on the streets near it, are marked. Break up one and they'll know you're there; every one you break pays. You go in from ${spawn.name}.`,
+          `Their hangout, and the worst of what's on the streets near it, are marked. Break up one and they'll know you're there; every one you break pays. You go in from ${picks.spawn.name}.`,
           `${T.secNote}`,
-          `Leave when you've had enough: the getaway car waits at ${pickup.name}. Nowhere else counts, and nothing's paid if nobody gets there.`,
+          `Leave when you've had enough: the getaway car waits at ${picks.pickup.name}. Nowhere else counts, and nothing's paid if nobody gets there.`,
         ],
         intel: [["Hangout", `At ${target.name}, and the trouble round it, marked in amber.`]].concat(common),
       };
@@ -422,9 +444,9 @@ W.missionLevel = (o) => {
         from: "Watch-Captain Joyeuse",
         text: [
           `${this.mission && this.mission.cal ? "Cal's people have" : names.crew + " have"} dug in near ${at}, and they are not coming out.`,
-          `Every one of them goes down. They will hold their posts and shoot from cover; the BanHammer was made for this. You go in from ${spawn.name}.`,
+          `Every one of them goes down. They will hold their posts and shoot from cover; the BanHammer was made for this. You go in from ${picks.spawn.name}.`,
           `${T.secNote}`,
-          `Then get out: the getaway car waits at ${pickup.name}. Nowhere else counts.`,
+          `Then get out: the getaway car waits at ${picks.pickup.name}. Nowhere else counts.`,
         ],
         intel: [["Defenders", `Inside the building nearest ${target.name}. Armed, all of them.`]].concat(common.slice(2)),
       };
@@ -432,7 +454,7 @@ W.missionLevel = (o) => {
         from: "Watch-Captain Joyeuse",
         text: [
           `${names.crew} keep their books on a terminal at ${at}. Casey Benton wants a copy, and nobody needs to know.`,
-          `You go in from ${spawn.name}. A Watcher has to stand at the terminal while it copies, a few seconds, then carry the data out to the getaway car at ${pickup.name}.`,
+          `You go in from ${picks.spawn.name}. A Watcher has to stand at the terminal while it copies, a few seconds, then carry the data out to the getaway car at ${picks.pickup.name}.`,
           `${T.secNote}`,
           `If whoever carries the data dies, it dies with them.`,
         ],
@@ -442,10 +464,10 @@ W.missionLevel = (o) => {
         from: "Watch-Captain Joyeuse",
         text: [
           `${names.target} is running ${T.racket} out of ${d.name}. Casey Benton wants it stopped, and ${names.target} with it.`,
-          `Last seen at ${at}. You go in from ${spawn.name}.`,
+          `Last seen at ${at}. You go in from ${picks.spawn.name}.`,
           `${T.secNote}`,
           exit ? `If ${names.target} spooks, expect a run for ${exit.name}. If they make it out, the contract is lost.` : `${names.target} has nowhere to run. Make it count.`,
-          `Then get out: the getaway car waits at ${pickup.name}. Nowhere else counts.`,
+          `Then get out: the getaway car waits at ${picks.pickup.name}. Nowhere else counts.`,
         ],
         intel: [["Target", `${names.target}, marked in amber, at ${target.name}.`]].concat(common),
       };
@@ -459,7 +481,7 @@ W.missionLevel = (o) => {
         : kind === "siege" ? `JOYEUSE: they're dug in by ${target.name}. Nobody walks out of there but us.`
         : kind === "sweep" ? `JOYEUSE: their hangout's at ${target.name}, and they're all over the streets round it. Break what you can.`
         : `JOYEUSE: ${names.target} is at ${target.name}. Go quietly.`;
-      return [[first, "#54f2ff"], [`The getaway car is at ${pickup.name}. Plan the way back.`, "#54f2ff"], [`Weapons are holstered. ${names.sec} will warn anyone with a gun out.`, "#94a0c4"]];
+      return [[first, "#54f2ff"], [`The getaway car is at ${picks.pickup.name}. Plan the way back.`, "#54f2ff"], [`Weapons are holstered. ${names.sec} will warn anyone with a gun out.`, "#94a0c4"]];
     },
     populate(world, opts) { W.populateMission(world, this, d, opts); },
   };
@@ -504,7 +526,9 @@ W.populateMission = (world, L, d, opts) => {
   const count = (n, k) => mod ? Math.round(n * (mod[k] ?? 1)) : n;
   // a quiet job is watched, not held: fewer of the operation's people round the mark than a crackdown or a hit
   const kind = W.jobKind(L), threat = L.mission ? L.mission.threat : 3, quietJob = kind === "persuade" || kind === "intel" || kind === "job";
-  const nSec = count(T.sec, "sec"), nGuards = Math.round(count(T.guards, "guards") * (quietJob ? 0.5 : 1)), nCrew = Math.round(count(T.crew, "crew") * (quietJob ? 0.6 : 1));
+  // Cal's answer to how the squad has been playing (W.CAL_COUNTERS): set out differently round the mark
+  const counter = L.mission && L.mission.counter, CC = W.CAL_COUNTERS[counter] || {};
+  const nSec = count(T.sec, "sec"), nGuards = Math.round(count(T.guards, "guards") * (quietJob ? 0.5 : 1) * (CC.guards || 1)), nCrew = Math.round(count(T.crew, "crew") * (quietJob ? 0.6 : 1));
   // who carries anything: an exact share of crew and guards together, picked by the seed
   const nArmed = Math.round((nGuards + nCrew) * F.armed);
   const all = [...Array(nGuards + nCrew).keys()];
@@ -553,11 +577,13 @@ W.populateMission = (world, L, d, opts) => {
     world.targetUnit = target;
   }
   // bodyguards stand close round a target; on a quiet job they watch the approaches from further out
-  const ring = kind === "persuade" ? 7 : kind === "intel" || kind === "job" ? 5 : kind === "crackdown" || kind === "sweep" ? 2.4 : 1.6;
+  const ring = (kind === "persuade" ? 7 : kind === "intel" || kind === "job" ? 5 : kind === "crackdown" || kind === "sweep" ? 2.4 : 1.6) * (CC.spread || 1);
   // a siege: every guard and crew member a defender, posted inside, holding
   const reach = W.reachable(m), reached = c => c && reach[m.i(Math.floor(c[0]), Math.floor(c[1]))];
   const defend = (u, i, n) => {
     let c = fort.cells ? fort.cells[Math.floor(i * fort.cells.length / Math.max(1, n))] : null;
+    // spread out against the BanHammer: every other defender holds the streets round the building instead
+    if (CC.spread && i % 2) c = near(fort.x, fort.y, 8 + 4 * CC.spread);
     // never somewhere nobody can get to
     for (let k = 0; !reached(c) && k < 24; k++) c = m.nearestWalkable(fort.x + R() * 8 - 4, fort.y + R() * 8 - 4, 3);
     if (!reached(c)) c = [fort.x, fort.y];
@@ -569,10 +595,11 @@ W.populateMission = (world, L, d, opts) => {
     let p = m.nearestWalkable(tp[0] + Math.cos(a) * ring, tp[1] + Math.sin(a) * ring, 3);
     if (!reachable(p)) p = near(tp[0], tp[1], ring) || tp;
     const g = W.kitFoe(world.add(W.makeUnit("guard", p[0], p[1], { post: [p[0], p[1], a], dir: a, op: true })), level, armedSlots.has(i), R, "guard");
+    if (CC.tough) { g.hp = g.maxHp = Math.round(g.maxHp * CC.tough); }
     if (fort) defend(g, i, nGuards + nCrew);
   }
   for (let i = 0; i < nCrew; i++) {
-    const p = near(tp[0], tp[1], i % 2 ? 9 : 16);
+    const p = near(tp[0], tp[1], (i % 2 ? 9 : 16) * (CC.spread ? 1.6 : 1));
     if (!p) continue;
     const o = i % 3 === 2 ? { patrol: [p, near(p[0], p[1], 10), near(tp[0], tp[1], 12)] } : { post: [p[0], p[1], R() * 6.28] };
     const u = plain(W.kitFoe(world.add(W.makeUnit("crew", p[0], p[1], Object.assign(o, { op: true }))), level, armedSlots.has(nGuards + i), R));
@@ -587,6 +614,7 @@ W.populateMission = (world, L, d, opts) => {
   const sp = L.picks.spawn;
   const spots = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([a, b]) => m.nearestWalkable(sp.x + a - 0.5, sp.y + b - 0.5, 5) || [sp.x, sp.y]);
   W.spawnSquad(world, opts.roster || W.defaultRoster(), spots);
+  if (CC.sight) for (const u of world.units) if (u.op || u.lookout) u.sight += CC.sight;
   world.startAt = [sp.x, sp.y];
   if (world.subjectUnit) world.objective({ type: "persuade", unit: world.subjectUnit, text: `Talk ${L.names.target} round, and walk them out` });
   // a persuade job with nobody carrying a Purrsuader cannot be done: say so at once, rather than let them find out

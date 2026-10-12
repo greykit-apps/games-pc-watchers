@@ -17,6 +17,7 @@
  *   node tools/bench.js --grid [--kinds=assassinate,crackdown] [--tactics=...] [--levels=0-4] [--gaps=-1,0,1] [--n=4] [--jobs=4]
  *   --greedy: go after the side jobs before heading home (a sweep always does)
  *   --out=file.jsonl: each cell's results as it finishes; --dt=0.0167 to step at the game's rate
+ *   --counter=spread|watch|dig|enforcers: Cal's answer to a habit (W.CAL_COUNTERS) on every mission
  *
  * --grid runs every cell (threat = level + 1 + gap) in parallel and prints a
  * table: won, Watchers lost a mission, time, crew down, loot carried home. */
@@ -287,7 +288,7 @@ function cell(kind, threat, level, tactic, n, seed0, district, greedy) {
   const out = [];
   for (let i = 0; i < n; i++) {
     const L = W.missionLevel({ district: district || DISTRICTS[i % DISTRICTS.length], seed: seed0 + i });
-    L.mission = { kind, threat, quiet: !!(W.M.KINDS[kind] || {}).quiet };
+    L.mission = { kind, threat, quiet: !!(W.M.KINDS[kind] || {}).quiet, counter: val("counter", null) };
     L.mod = Object.assign({}, W.M.THREAT[threat]);
     L.scannerMk = KITS[level].scanner;
     const t0 = Date.now();
@@ -345,7 +346,7 @@ if (args.includes("--grid")) {
   const next = () => {
     if (!queue.length) { if (!running) report(); return; }
     const job = queue.shift(); running++;
-    const p = spawn(process.execPath, [__filename, "--worker", `--job=${JSON.stringify(job)}`]);
+    const p = spawn(process.execPath, [__filename, "--worker", `--job=${JSON.stringify(job)}`].concat(val("counter") ? [`--counter=${val("counter")}`] : []));
     let buf = "";
     p.stdout.on("data", d => buf += d);
     p.stderr.on("data", d => process.stderr.write(d));

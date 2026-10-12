@@ -27,7 +27,12 @@ The rules, and the numbers behind them, are in [docs/meta.md](docs/meta.md);
   zone's pips are worth more. At zero the zone is lost until a **siege**.
 - **Cal** pushes one zone at a time, harder the better you're doing, and can
   leave **tactics** behind that need researching away. Intel shows where he
-  goes next.
+  goes next. He learns how the Watchers work: lean on one way (the BanHammer,
+  stealth, guns, talk) and his people are set out against it until you vary it.
+- **The briefing** offers a choice of drop-offs and getaway car spots, and
+  counts the armed trouble along each way.
+- **PVN** runs the news along the bottom of the command screen: your work, as
+  Casey Benton would have it told.
 - **Research** costs money to start and research points to finish; points
   can't be banked and split between the projects running. Weapons, mods, the
   scanner and the Purrsuader come in three marks; the BanHammer, overseers,

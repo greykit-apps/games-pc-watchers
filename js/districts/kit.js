@@ -502,7 +502,9 @@ W.populateMission = (world, L, d, opts) => {
   // one, the district's usual strength at level 2
   const mod = L.mod, level = W.foeLevel(L), F = W.FOE[level];
   const count = (n, k) => mod ? Math.round(n * (mod[k] ?? 1)) : n;
-  const nSec = count(T.sec, "sec"), nGuards = count(T.guards, "guards"), nCrew = count(T.crew, "crew");
+  // a quiet job is watched, not held: fewer of the operation's people round the mark than a crackdown or a hit
+  const kind = W.jobKind(L), threat = L.mission ? L.mission.threat : 3, quietJob = kind === "persuade" || kind === "intel" || kind === "job";
+  const nSec = count(T.sec, "sec"), nGuards = Math.round(count(T.guards, "guards") * (quietJob ? 0.5 : 1)), nCrew = Math.round(count(T.crew, "crew") * (quietJob ? 0.6 : 1));
   // who carries anything: an exact share of crew and guards together, picked by the seed
   const nArmed = Math.round((nGuards + nCrew) * F.armed);
   const all = [...Array(nGuards + nCrew).keys()];
@@ -521,7 +523,6 @@ W.populateMission = (world, L, d, opts) => {
   const tg = L.picks.target;
   const tp = m.nearestWalkable(tg.x, tg.y, 6);
   world.markAt = tp;
-  const kind = W.jobKind(L), threat = L.mission ? L.mission.threat : 3;
   let target = null, fort = null;
   if (kind === "persuade") {
     // the subject: someone to talk round and walk out, not to kill

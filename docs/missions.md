@@ -52,7 +52,9 @@ what they drop, so a harder fight pays better in loot. `W.FOE` holds it:
 | 4 | 3 | 1.25, 1.15 | all | MK3 shotguns, uzis; MK2 rifles, miniguns; MK1 lasers | +45% |
 | 5 | 4 | 1.3, 1.2 | all | MK3 uzis, rifles, miniguns; MK2 lasers; MK1 gauss guns | +50% |
 
-Bodyguards are a level up and carry a sidearm. Aim and reflexes rise a
+Bodyguards are a level up and carry a sidearm. A quiet job (persuade,
+intel, the safe) is watched, not held: 60% of the operation's crew and half
+its guards round the mark. Aim and reflexes rise a
 little with the level too. The mob (an encounter) is always level 0: the
 bottom of the gang, dangerous by numbers.
 

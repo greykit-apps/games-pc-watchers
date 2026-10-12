@@ -133,6 +133,63 @@ a few idle days bring the war forward, and money stops meaning anything.
 - **Keep:** about 100 missions a campaign, war around mission 55 to 65, no
   clock.
 
+## The mission game (done first)
+
+Before the campaign's numbers, the missions themselves: a mission at a
+squad's own level should be winnable whichever way it's played, harder ones
+should need the right way, and there should be reasons to stay out longer.
+
+**What changed**
+
+- **Enemy levels 0 to 4**, the threat less one, matched to the Watchers' own
+  (`W.FOE`): what they carry and drop (MK1 pistols at threat 1, MK3 rifles,
+  miniguns and lasers at 5), how tough, how quick. Bodyguards a level up.
+  One for one the Watchers are better; the enemy has the numbers.
+- **Side jobs** on every mission, and **the sweep**, a job made of them (see
+  `docs/missions.md`); **the mob**, a crowd of the gang's lowest.
+- **Alt-click, the quiet way**: round the armed crew the scanner shows.
+- **Persuasion holds the streets**, up to 0.4 control a mission.
+- **Light veterancy**: Regular, Veteran, Elite at 3, 8, 15 missions.
+- **Fixes the bench found:** a speeding car knocks a Watcher (or a persuade
+  job's subject) flat instead of killing them; the police don't shoot the
+  subject; quiet jobs (persuade, intel, the safe) have 60% of the
+  operation's crew and half its guards round the mark, the minders further
+  out; threats 4 and 5 trimmed (1.25 and 1.3 crew; level 4 at +50% hit
+  points, gauss guns rare).
+
+**The tactics bench** (`tools/bench.js`): kits for Watcher levels 0 to 4 and
+a bot for each way in: assault, stealth (the quiet way), snipe, mob (talk a
+following round, raid small trouble so it can pick up guns, then storm) and
+the BanHammer. At the squad's own level (threat = level + 1), 4 to 6 fights
+a cell over the five districts:
+
+| Job | L0 | L1 | L2 | L3 | L4 | Best way at the top |
+|---|---|---|---|---|---|---|
+| Assassination | 92% / 0.17 | 88% / 0 | 95% / 0.15 | 89% / 0.58 | 90% / 0.80 | the BanHammer |
+| Crackdown | 100% / 0.25 | 100% / 0.06 | 100% / 0.30 | 95% / 0.50 | 90% / 1.30 | assault, the BanHammer |
+| Sweep | (not offered) | 100% / 0.06 | 100% / 0.30 | 100% / 0.60 | 100% / 0.95 | the mob, the BanHammer |
+| Intel | 100% / 0.17 | 100% / 0.08 | 100% / 0.11 | 94% / 0.28 | 100% / 0.44 | stealth |
+| Persuade | 100% / 0.50 | 92% / 0.08 | 100% / 0.11 | 100% / 0 | 78% / 0.28 | talking, then shooting |
+| Siege | 100% / 0.25 | 100% / 0.06 | 89% / 0.63 | 100% / 0.55 | 78% / 1.39 | the BanHammer (100%, none lost) |
+
+(won / Watchers lost a mission, over every tactic.) A step over the squad's
+level costs one to two Watchers a mission unless the way in suits the job:
+at level 3 against threat 5, assault won 1 in 4 where stealth, the rifles
+and the BanHammer won every time. Going after the side jobs as well (3
+assassination and crackdown cells a level, 6 fights each) did 2.5 of 3
+instead of 0.5, for 0.27 Watchers lost a mission instead of 0.15: about
+$33,000 and a little control more, against about $18,000 of Watcher lost on
+average. Worth it, at a risk.
+
+Loot rises with the level: nothing at threat 1, $2,000 to $10,000 at 2,
+$20,000 to $40,000 at 3, $25,000 to $100,000 at 4 and 5 (a sweep most).
+That's a lot of money late, and it goes into the campaign's numbers below.
+
+Still open: the top threat costs about one Watcher a mission whichever way
+it's played, which may be right for the hardest jobs in the game; the
+bench's BanHammer bot now and then stalls (2% of fights), which the summary
+counts apart.
+
 ## The plan, in order
 
 ### Step 1: measure again, with a bot that plays like a player

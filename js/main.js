@@ -865,6 +865,7 @@ const Game = W.game = {
     if (camp) {
       slip = W.M.settle(this.campaign, this.run.contract, {
         won, persuaded: s.persuaded || 0, civKilled: s.civ || 0,
+        contracts: (w.contracts || []).map(c => ({ id: c.id, weight: c.weight, done: c.done })),
         agents: w.agents.map(a => ({ id: a.rosterId, alive: a.alive, kills: a.kills || 0, items: a.weapons.map(x => ({ type: x.type, ammo: x.ammo, mk: x.mk })) })),
       });
       W.M.save(this.campaign);

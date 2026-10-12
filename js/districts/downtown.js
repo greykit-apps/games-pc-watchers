@@ -28,7 +28,6 @@ W.district({
     secNote: "City police walk the beat Downtown. They do not know who you are, and the precinct is full of them. Keep weapons holstered near them.",
     ground: "Long avenues with traffic and a tram, alleys behind every block, and buildings you can walk into.",
     guards: 4, crew: 10, sec: 10, civ: 0.0035, civMax: 110,
-    crewGuns: ["pistol", "pistol", "uzi", "shotgun"],
     secLook: () => ({ coat: "#28469a", trim: "#ffd04a", legs: "#1a2a5a", fur: W.pick(W.FURS), hat: "#16285c", hatKind: "cap" }),
   },
   sections: [],

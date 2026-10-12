@@ -408,6 +408,16 @@ W.missionLevel = (o) => {
         ],
         intel: [["Stash", `At ${target.name}, marked in green. It burns.`]].concat(common),
       };
+      if (jk === "sweep") return {
+        from: "Watch-Captain Joyeuse",
+        text: [
+          `${this.mission && this.mission.cal ? "Cal's people are" : names.crew + " are"} all over ${d.name}, from their hangout at ${at} out. Casey Benton wants them taught a lesson.`,
+          `Their hangout, and the worst of what's on the streets near it, are marked. Break up one and they'll know you're there; every one you break pays. You go in from ${spawn.name}.`,
+          `${T.secNote}`,
+          `Leave when you've had enough: the getaway car waits at ${pickup.name}. Nowhere else counts, and nothing's paid if nobody gets there.`,
+        ],
+        intel: [["Hangout", `At ${target.name}, and the trouble round it, marked in amber.`]].concat(common),
+      };
       if (jk === "siege") return {
         from: "Watch-Captain Joyeuse",
         text: [
@@ -447,6 +457,7 @@ W.missionLevel = (o) => {
         : kind === "job" ? `JOYEUSE: the safe is at ${target.name}. Open it, take it, go.`
         : kind === "crackdown" ? `JOYEUSE: the stash is at ${target.name}. Burn it, and break them.`
         : kind === "siege" ? `JOYEUSE: they're dug in by ${target.name}. Nobody walks out of there but us.`
+        : kind === "sweep" ? `JOYEUSE: their hangout's at ${target.name}, and they're all over the streets round it. Break what you can.`
         : `JOYEUSE: ${names.target} is at ${target.name}. Go quietly.`;
       return [[first, "#54f2ff"], [`The getaway car is at ${pickup.name}. Plan the way back.`, "#54f2ff"], [`Weapons are holstered. ${names.sec} will warn anyone with a gun out.`, "#94a0c4"]];
     },
@@ -486,17 +497,16 @@ W.populateMission = (world, L, d, opts) => {
   }
   // standing garrisons
   W.spawnGarrisons(world);
-  // the enemy at the campaign's threat (L.mod, see docs/missions.md); without
-  // one, the district's usual strength, everyone armed
-  const mod = L.mod;
+  // the enemy at the campaign's threat (L.mod, see docs/missions.md): how many, against the
+  // district's usual numbers, and their level (W.FOE: what they carry, how tough); without
+  // one, the district's usual strength at level 2
+  const mod = L.mod, level = W.foeLevel(L), F = W.FOE[level];
   const count = (n, k) => mod ? Math.round(n * (mod[k] ?? 1)) : n;
   const nSec = count(T.sec, "sec"), nGuards = count(T.guards, "guards"), nCrew = count(T.crew, "crew");
   // who carries anything: an exact share of crew and guards together, picked by the seed
-  const nArmed = mod ? Math.round((nGuards + nCrew) * (mod.armed ?? 1)) : nGuards + nCrew;
+  const nArmed = Math.round((nGuards + nCrew) * F.armed);
   const all = [...Array(nGuards + nCrew).keys()];
-  const armedSlots = new Set(mod ? all.map(i => [R(), i]).sort((a, b) => a[0] - b[0]).slice(0, nArmed).map(([, i]) => i) : all);
-  const toughen = u => { if (mod && mod.armour) u.maxHp = u.hp = Math.round(u.maxHp * mod.armour * 10) / 10; return u; };
-  const modGun = () => mod.guns[Math.floor(R() * mod.guns.length)];
+  const armedSlots = new Set(all.map(i => [R(), i]).sort((a, b) => a[0] - b[0]).slice(0, nArmed).map(([, i]) => i));
   // plain clothes: more of them the higher the threat (Math.random, so the seed's layout stands)
   const undercover = W.UNDERCOVER[L.mission ? L.mission.threat : 3] || 0;
   const plain = u => { if (Math.random() < undercover) W.disguise(u, T.civLook ? T.civLook() : undefined); return u; };
@@ -527,18 +537,22 @@ W.populateMission = (world, L, d, opts) => {
     // the operation's stash: crates that burn, among the crew
     const st = { isCar: true, id: "stash", stash: true, parked: true, axis: "x", dir: 1, x: tp[0], y: tp[1], z: 0, len: 1.4, wid: 1.2, speed: 0, hp: 30, maxHp: 30, color: "#6a5236", alive: true };
     world.cars.push(st); world.stash = st;
+  } else if (kind === "sweep") {
+    // no one name: their hangout at the mark, and the trouble round it (the side jobs are the job)
+    world.sweep = { x: tp[0], y: tp[1], name: tg.name };
   } else if (kind === "siege") {
     // dug in: the building nearest the mark, held from inside
     const inside = W.encounterSites(m).filter(s => s.kind === "indoor" && s.cells && s.cells.length >= 12).sort((a, b) => W.dist(a.x, a.y, tp[0], tp[1]) - W.dist(b.x, b.y, tp[0], tp[1]))[0];
     fort = inside && W.dist(inside.x, inside.y, tp[0], tp[1]) < 45 ? inside : { x: tp[0], y: tp[1], name: tg.name, cells: null };
     world.siege = { x: fort.x, y: fort.y, name: fort.name || tg.name };
   } else {
-    target = toughen(world.add(W.makeUnit("target", tp[0], tp[1], { post: [tp[0], tp[1], R() * 6.28], name: L.names.target })));
-    W.giveWeapon(target, "pistol");
+    target = world.add(W.makeUnit("target", tp[0], tp[1], { post: [tp[0], tp[1], R() * 6.28], name: L.names.target }));
+    W.kitFoe(target, level, false, R);
+    W.giveWeapon(target, "pistol", undefined, Math.min(3, level));
     world.targetUnit = target;
   }
   // bodyguards stand close round a target; on a quiet job they watch the approaches from further out
-  const ring = kind === "persuade" || kind === "intel" || kind === "job" ? 5 : kind === "crackdown" ? 2.4 : 1.6;
+  const ring = kind === "persuade" || kind === "intel" || kind === "job" ? 5 : kind === "crackdown" || kind === "sweep" ? 2.4 : 1.6;
   // a siege: every guard and crew member a defender, posted inside, holding
   const reach = W.reachable(m), reached = c => c && reach[m.i(Math.floor(c[0]), Math.floor(c[1]))];
   const defend = (u, i, n) => {
@@ -553,22 +567,16 @@ W.populateMission = (world, L, d, opts) => {
     const a = i / nGuards * Math.PI * 2 + R();
     let p = m.nearestWalkable(tp[0] + Math.cos(a) * ring, tp[1] + Math.sin(a) * ring, 3);
     if (!reachable(p)) p = near(tp[0], tp[1], ring) || tp;
-    const g = toughen(world.add(W.makeUnit("guard", p[0], p[1], { post: [p[0], p[1], a], dir: a, op: true })));
+    const g = W.kitFoe(world.add(W.makeUnit("guard", p[0], p[1], { post: [p[0], p[1], a], dir: a, op: true })), level, armedSlots.has(i), R, "guard");
     if (fort) defend(g, i, nGuards + nCrew);
-    if (!armedSlots.has(i)) continue;
-    if (mod) { const gun = modGun(); W.giveWeapon(g, gun); if (gun !== "pistol") W.giveWeapon(g, "pistol"); }
-    else { W.giveWeapon(g, T.guardGun || "shotgun", 40); W.giveWeapon(g, "pistol"); }
   }
   for (let i = 0; i < nCrew; i++) {
     const p = near(tp[0], tp[1], i % 2 ? 9 : 16);
     if (!p) continue;
     const o = i % 3 === 2 ? { patrol: [p, near(p[0], p[1], 10), near(tp[0], tp[1], 12)] } : { post: [p[0], p[1], R() * 6.28] };
-    const u = plain(toughen(world.add(W.makeUnit("crew", p[0], p[1], Object.assign(o, { op: true })))));
+    const u = plain(W.kitFoe(world.add(W.makeUnit("crew", p[0], p[1], Object.assign(o, { op: true }))), level, armedSlots.has(nGuards + i), R));
     if (fort) defend(u, nGuards + i, nGuards + nCrew);
-    if (!armedSlots.has(nGuards + i) && !fort) continue;
-    if (fort && !armedSlots.has(nGuards + i)) { W.giveWeapon(u, "pistol"); continue; }   // a siege: nobody inside is unarmed
-    const gun = mod ? modGun() : W.pick(T.crewGuns || ["pistol", "pistol", "uzi"]);
-    W.giveWeapon(u, gun, gun === "uzi" ? 60 : undefined);
+    if (fort && !W.hasGun(u)) W.giveWeapon(u, "pistol", undefined, Math.min(3, level || 1));   // a siege: nobody inside is unarmed
   }
   // what else is going on: gangs, deals, the police, crowds, roaming crew (encounters.js)
   W.populateEncounters(world, L, d, opts);
@@ -589,7 +597,10 @@ W.populateMission = (world, L, d, opts) => {
   else if (world.terminal) world.objective({ type: "intel", text: `Copy the data at ${tg.name} (hold the terminal ${world.terminal.need} seconds)` });
   else if (world.stash) world.objective({ type: "crackdown", text: `Break up the operation at ${tg.name}: destroy the stash, and put down or drive off most of the crew` });
   else if (world.siege) world.objective({ type: "siege", text: `Take ${world.siege.name}: every defender down` });
+  else if (world.sweep) world.objective({ type: "sweep", text: "Take out the opposition: break up at least one of them, more for more pay" });
   else world.objective({ type: "kill", unit: target, text: `Eliminate ${L.names.target}` });
+  // the side jobs (a sweep's are the job itself)
+  for (const c of world.contracts || []) world.objective({ type: "contract", optional: !world.sweep, contract: c, text: c.text });
   world.objective({ type: "recruit", n: 5, optional: true, text: "Recruit 5 followers with the Purrsuader" });
   world.objective({ type: "civcap", n: 4, optional: true, text: "Lose no more than 4 civilians" });
 };

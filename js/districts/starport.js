@@ -27,7 +27,6 @@ W.district({
     secNote: "Port Authority officers patrol the field, the yards and the terminal. They answer to the port, not the Boss, and they will not know you. Keep weapons holstered near them.",
     ground: "Wide open pads with nowhere to hide, a ship to fight through deck by deck, the container yard's narrow aisles.",
     guards: 4, crew: 11, sec: 10, civ: 0.005, civMax: 70,
-    crewGuns: ["pistol", "pistol", "uzi", "shotgun"],
     civLook: () => ({ coat: W.pick(["#c86a1a", "#d8a01a", "#5a6a8a"]), trim: "#e8e4dc", legs: "#2a2f3a", fur: W.pick(W.FURS), hat: W.chance(0.4) ? "#d8a01a" : null, hatKind: "cap" }),
     secLook: () => ({ coat: "#3a4256", trim: "#ffd04a", legs: "#232838", fur: W.pick(W.FURS), hat: "#ffd04a", hatKind: "cap" }),
   },

@@ -16,6 +16,8 @@ W.PICKUP_R = 2.4;
 /* where the squad gets out: the live ways out once the job is done, and
  * before that the pickup alone, so the way home can be planned */
 W.waysOut = world => world.phase === "exfil" ? (world.exfilPoints || []) : world.pickupAt ? [{ x: world.pickupAt[0], y: world.pickupAt[1] }] : [];
+/* the squares, in tiles, that drivers look round for cars and people (more than a car's reach ahead) */
+W.BUCKET = 8;
 /* a train's carriages, nose to nose */
 W.CARRIAGE = 4.1;
 /* over this, a car that hits someone kills them (town traffic tops out at 4.6) */
@@ -249,6 +251,16 @@ W.World = class {
       }
     }
   }
+  /* things by area, in squares of W.BUCKET tiles, and what is in and round the square of (x, y) */
+  bucket(list) {
+    const g = new Map();
+    for (const o of list) { const k = Math.floor(o.y / W.BUCKET) * 1024 + Math.floor(o.x / W.BUCKET); const b = g.get(k); if (b) b.push(o); else g.set(k, [o]); }
+    return g;
+  }
+  *nearby(g, x, y) {
+    const cx = Math.floor(x / W.BUCKET), cy = Math.floor(y / W.BUCKET);
+    for (let j = cy - 1; j <= cy + 1; j++) for (let i = cx - 1; i <= cx + 1; i++) { const b = g.get(j * 1024 + i); if (b) yield* b; }
+  }
   addCar(lane, s, o = {}) {
     const ax = lane.axis === "x";
     const car = Object.assign({
@@ -304,7 +316,7 @@ W.World = class {
     // whatever is in front: the car ahead in the lane, or anything crossing it
     const front = s + dir * car.len / 2;
     let blocked = false;
-    for (const o of this.cars) {
+    for (const o of this.nearby(this.carGrid, car.x, car.y)) {
       if (o === car || o.dead && !o.boomed) continue;
       if (o.axis === car.axis) {
         const os = ax ? o.x : o.y, ol = ax ? o.y : o.x;
@@ -337,7 +349,7 @@ W.World = class {
     // anyone in front, though now and then one is looking the other way; a
     // runner brakes for nobody. The nose strikes, the sides only bump.
     if (car.distractT > 0) car.distractT -= dt;
-    for (const u of this.units) {
+    for (const u of this.nearby(this.unitGrid, car.x, car.y)) {
       if (!u.alive || u.inCar || (u.z || 0) > 6) continue;
       const us = ax ? u.x : u.y, ul = ax ? u.y : u.x;
       if (Math.abs(ul - lat) > car.wid / 2 + 0.3) continue;
@@ -539,8 +551,30 @@ W.World = class {
     for (const p of c) { const path = m.path(u.x, u.y, p[0], p[1]); if (path) return p; }
     return null;
   }
+  /* Side jobs (W.makeContracts): broken up when everyone in one is down, run off or talked round. */
+  checkContracts() {
+    for (const o of this.objectives) {
+      const c = o.contract;
+      if (!c || c.done || !c.crew.every(u => !u.alive || u.broken || u.faction === "player")) continue;
+      c.done = true; o.state = "done";
+      this.msg(`${this.sweep ? "Done" : "Bonus"}: ${c.text}.`, "#4ade6a");
+      W.audio.play("order");
+    }
+  }
+  /* where a side job's people are now: the middle of those still standing */
+  contractAt(c) {
+    const up = c.crew.filter(u => u.alive && !u.inCar);
+    if (!up.length) return { x: c.x, y: c.y };
+    return { x: up.reduce((t, u) => t + u.x, 0) / up.length, y: up.reduce((t, u) => t + u.y, 0) / up.length };
+  }
   checkMission(dt) {
     if (this.attract || this.status !== "play") return;
+    this.checkContracts();
+    // a sweep: the first of them broken, the way out opens; every one more pays more, until the squad leaves
+    if (this.sweep && this.phase !== "exfil" && this.contracts.some(c => c.done)) {
+      for (const o of this.objectives) if (o.type === "sweep" && o.state === "active") o.state = "done";
+      this.startExfil("They know you're here now.", `Break up more of them for more pay, or get out: to ${this.pickupText}`);
+    }
     if (this.phase === "exfil") {
       const S = this.subjectUnit;
       if (S && S.alive && !S.out && S.follower && (this.atExit(S.x, S.y) || this.agents.some(a => a.out && W.dist(a.x, a.y, S.x, S.y) < 3))) {
@@ -574,6 +608,7 @@ W.World = class {
         if (S) S.out ? this.end("won", `${S.name} is out, and talking.`) : this.end("lost", `The squad got out, and left ${S.name} behind.`);
         else if (this.carrier) this.carrier.out ? this.end("won", "The data is out.") : this.end("lost", "The data never left.");
         else if (this.terminal && this.terminal.safe) this.goodsOut ? this.end("won", "The goods are out.") : this.end("lost", "The goods never left.");
+        else if (this.sweep) { const n = this.contracts.filter(c => c.done).length; this.stats.out ? this.end("won", `${n} of ${this.contracts.length} broken up, and the squad is out.`) : this.end("lost", "Nobody got out."); }
         else if (this.stash || this.siege) this.stats.out ? this.end("won", this.stash ? "The operation is broken, and the squad is out." : `${this.siege.name} is taken, and the squad is out.`) : this.end("lost", "The job was done, but nobody got out.");
         else if (this.stats.out) this.end("won", `${this.names.target} is dead, and the squad is out.`);
         else this.end("lost", `${this.names.target} is dead, but nobody got out.`);
@@ -645,7 +680,7 @@ W.World = class {
       }
     }
     if (!this.agents.some(u => u.alive)) { this.end("lost", "Every Watcher is down."); return; }
-    if (S || D || ST || this.siege) {
+    if (S || D || ST || this.siege || this.sweep) {
       for (const o of this.objectives) {
         if (o.state !== "active") continue;
         if (o.type === "recruit" && this.stats.recruited >= o.n) { o.state = "done"; this.msg(`Bonus: ${o.text}.`, "#4ade6a"); }
@@ -684,6 +719,8 @@ W.World = class {
     W.lightPhase = this.light;
     for (const u of this.units) W.updateUnit(this, u, dt);
     W.separate(this, dt);
+    // a driver only looks at what is a few tiles off: everyone and every car, bucketed by area
+    this.carGrid = this.bucket(this.cars); this.unitGrid = this.bucket(this.units);
     for (const c of this.cars) this.updateCar(c, dt);
     for (const T of this.trains) this.updateTrain(T, dt);
     this.scanTraffic();

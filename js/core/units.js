@@ -15,6 +15,38 @@ W.KINDS = {
   target: { hp: 10, speed: 1.9, acc: 0.6, react: 0.8, sight: 7 },
 };
 
+/* The enemy by level, 0 to 4 (a mission's threat less one), matched to the
+ * Watchers' levels: 0 the squad Casey hands over, 1 to 3 a full suite of MK1,
+ * MK2 or MK3 kit, 4 the top of the tree. Enemies stay weaker one for one (the
+ * Watchers have stims, chassis and reflexes) and make it up in numbers. What
+ * they carry is what they drop: a higher level is more dangerous and pays
+ * better to put down. guns: "type:mark", picked evenly; armed: the share
+ * carrying anything; hp, acc, react: against their kind's numbers. */
+W.FOE = [
+  { guns: ["pistol:1"], armed: 0.3, hp: 1, acc: 1, react: 1 },
+  { guns: ["pistol:1", "pistol:1", "shotgun:1", "uzi:1"], armed: 0.7, hp: 1.1, acc: 1, react: 1 },
+  { guns: ["pistol:2", "shotgun:2", "uzi:2", "uzi:2", "longrange:1"], armed: 1, hp: 1.25, acc: 1.05, react: 0.95 },
+  { guns: ["shotgun:3", "uzi:3", "longrange:2", "minigun:2", "laser:1"], armed: 1, hp: 1.45, acc: 1.1, react: 0.9 },
+  { guns: ["uzi:3", "longrange:3", "minigun:3", "laser:3", "gauss:2"], armed: 1, hp: 1.7, acc: 1.15, react: 0.85 },
+];
+/* the enemy level a mission is fought at: the campaign's (L.mod.level), else
+ * its threat less one, else the district's usual strength (level 2) */
+W.foeLevel = L => W.clamp(L.mod && L.mod.level != null ? L.mod.level : L.mission ? L.mission.threat - 1 : 2, 0, W.FOE.length - 1);
+/* Fit u out as an enemy of a level: body, aim, reflexes, and (if armed) a gun
+ * from the level's racks; a bodyguard (role "guard") a level up, with a
+ * sidearm. R: the seeded random to pick with. */
+W.kitFoe = (u, level, armed, R, role) => {
+  const F = W.FOE[W.clamp(level + (role === "guard" ? 1 : 0), 0, W.FOE.length - 1)];
+  u.maxHp = u.hp = Math.round(u.maxHp * F.hp * 10) / 10;
+  u.acc *= F.acc; u.react *= F.react; u.foeLevel = level;
+  if (armed) {
+    const [type, mk] = F.guns[Math.floor(R() * F.guns.length)].split(":");
+    W.giveWeapon(u, type, undefined, +mk);
+    if (role === "guard" && type !== "pistol") W.giveWeapon(u, "pistol", undefined, Math.min(3, +mk));
+  }
+  return u;
+};
+
 W.LINES = {
   warn: ["Holster that weapon!", "Weapons down. Now!", "Put it away, pal!", "Not in my plaza!"],
   secAngry: ["Officer needs backup!", "Shots fired!", "Take them down!"],

@@ -96,6 +96,7 @@ W.ENCOUNTERS = [
   { id: "roadblock", where: ["street"], weight: 1.2, most: 2, hostile: true },
   { id: "lookouts", where: ["alley", "street", "open"], weight: 1.5, most: 4, hostile: true },
   { id: "mugging", where: ["alley"], weight: 1, most: 2, hostile: true },
+  { id: "mob", where: ["open", "street"], weight: 1, most: 2, hostile: true },
   { id: "accident", where: ["street"], weight: 1, most: 2, police: true },
   { id: "checkpoint", where: ["street"], weight: 1.2, most: 3, police: true },
   { id: "patrol", where: ["open", "street"], weight: 1.2, most: 3, police: true },
@@ -126,20 +127,16 @@ W.populateEncounters = (world, L, d, opts) => {
   const threat = L.mission ? L.mission.threat : 3;
   const sites = W.encounterSites(m).filter(s => W.dist(s.x, s.y, sp.x, sp.y) > 18 && W.dist(s.x, s.y, tg.x, tg.y) > 10 && W.dist(s.x, s.y, car.x, car.y) > 14);
   const hostileScale = mod ? (mod.crew ?? 1) : 1;
-  const armedShare = mod ? (mod.armed ?? 1) : 1;
-  const crewGun = () => mod ? pick(mod.guns) : pick(T.crewGuns || ["pistol", "pistol", "uzi"]);
-  const toughen = u => { if (mod && mod.armour) u.maxHp = u.hp = Math.round(u.maxHp * mod.armour * 10) / 10; return u; };
+  const level = W.foeLevel(L), armedShare = W.FOE[level].armed;
   // plain clothes, by the threat; roamers in the crowd twice as often
   const undercover = W.UNDERCOVER[threat] || 0;
   const plain = (u, k = 1) => { if (R() < undercover * k) W.disguise(u, T.civLook ? T.civLook() : undefined); return u; };
   const reach = W.reachable(m), reached = p => p && reach[m.i(Math.floor(p[0]), Math.floor(p[1]))];
   const spot = (x, y, r) => { for (let k = 0; k < 12; k++) { const a = R() * Math.PI * 2, dd = R() * r; const p = m.nearestWalkable(x + Math.cos(a) * dd, y + Math.sin(a) * dd, 2); if (reached(p)) return p; } const q = m.nearestWalkable(x, y, 4); return reached(q) ? q : null; };
   const facing = (p, x, y) => Math.atan2(y - p[1], x - p[0]);
-  const arm = u => { const g = crewGun(); W.giveWeapon(u, g, g === "uzi" ? 60 : undefined); return u; };
-  const crew = (x, y, r, armed, o = {}) => {
+  const crew = (x, y, r, armed, o = {}, lvl = level) => {
     const p = spot(x, y, r); if (!p) return null;
-    const u = plain(toughen(world.add(W.makeUnit("crew", p[0], p[1], Object.assign({ post: [p[0], p[1], facing(p, x, y)], dir: facing(p, x, y) }, o)))));
-    return armed ? arm(u) : u;
+    return plain(W.kitFoe(world.add(W.makeUnit("crew", p[0], p[1], Object.assign({ post: [p[0], p[1], facing(p, x, y)], dir: facing(p, x, y) }, o))), lvl, armed, R));
   };
   const civ = (x, y, r, crowd) => {
     const p = spot(x, y, r); if (!p) return null;
@@ -190,6 +187,22 @@ W.populateEncounters = (world, L, d, opts) => {
         const u = crew(lead.x, lead.y, 1.5, R() < armedShare, { post: null });
         if (u) { u.pack = lead; u.packAt = [((i % 2) ? 1 : -1) * (0.7 + 0.4 * (i >> 1)), -0.8 * Math.ceil(i / 2)]; }
       }
+      return true;
+    },
+    // a mob: a crowd of the crew's lowest, few of them armed, moving as one. Dangerous by numbers,
+    // and the same at every threat: the bottom of the gang turns out whoever is running it
+    mob(s) {
+      const n = 10 + Math.floor(R() * 7);
+      const stroll = (x, y, g) => W.STROLL.has(g) && reach[m.i(Math.floor(x), Math.floor(y))] && W.dist(x, y, sp.x, sp.y) > 18 && W.dist(x, y, car.x, car.y) > 14;
+      const route = [spot(s.x, s.y, 2)]; if (!route[0]) return false;
+      for (let k = 0; k < 2; k++) { const last = route[route.length - 1]; const b = m.randomCell((x, y, g) => stroll(x, y, g) && W.dist(x, y, last[0], last[1]) > 8 && W.dist(x, y, last[0], last[1]) < 20); if (b) route.push(b); }
+      const lead = crew(route[0][0], route[0][1], 0.5, R() < 0.5, { patrol: route.length > 1 ? route : null, speedMul: 0.7, post: route.length > 1 ? null : [route[0][0], route[0][1], 0] }, 0);
+      if (!lead) return false;
+      for (let i = 1; i < n; i++) {
+        const u = crew(lead.x, lead.y, 2.5, R() < W.FOE[0].armed, { post: null }, 0);
+        if (u) { u.pack = lead; u.packAt = [W.rand(-2.2, 2.2), W.rand(-2.2, 2.2)]; u.mob = true; }
+      }
+      lead.mob = true;
       return true;
     },
     // the crew's own roadblock: their car across the street, and them round it
@@ -265,12 +278,15 @@ W.populateEncounters = (world, L, d, opts) => {
     if (e.id === "gang" && places.some(s => s.hangout) && R() < 0.75) places = places.filter(s => s.hangout);
     else if (R() < W.ON_THE_WAY && places.some(onWay)) places = places.filter(onWay);
     if (!places.length) continue;
-    const s = pick(places);
+    const s = pick(places), before = world.units.length;
     if (make[e.id](s)) {
       used.push(s); tally[e.id] = (tally[e.id] || 0) + 1;
-      (world.encounters || (world.encounters = [])).push({ id: e.id, kind: s.kind, x: s.x, y: s.y, name: s.name, onWay: onWay(s) });
+      // who it is: the crew it put down, for a side job on them
+      const crewOf = world.units.slice(before).filter(u => u.faction === "crew");
+      (world.encounters || (world.encounters = [])).push({ id: e.id, kind: s.kind, x: s.x, y: s.y, name: s.name, onWay: onWay(s), hostile: !!e.hostile, crew: crewOf });
     }
   }
+  W.makeContracts(world, L, R);
   // and some of the crew just walk the streets alone, in among everyone else
   const stroll = (x, y, g) => W.STROLL.has(g) && W.dist(x, y, sp.x, sp.y) > 18 && W.dist(x, y, car.x, car.y) > 12 && reach[m.i(Math.floor(x), Math.floor(y))];
   for (let i = 0, n = count((1 + R() * 3) * hostileScale * Math.max(1, scale)); i < n; i++) {
@@ -278,7 +294,47 @@ W.populateEncounters = (world, L, d, opts) => {
     const route = [a];
     // each next stop 15 to 40 tiles from the last one found (a search can come up empty)
     for (let k = 0; k < 3; k++) { const last = route[route.length - 1]; const b = m.randomCell((x, y, g) => stroll(x, y, g) && W.dist(x, y, last[0], last[1]) < 40 && W.dist(x, y, last[0], last[1]) > 15); if (b) route.push(b); }
-    const u = plain(toughen(world.add(W.makeUnit("crew", a[0], a[1], { patrol: route, roamer: true }))), 2);
-    if (R() < armedShare) arm(u);
+    plain(W.kitFoe(world.add(W.makeUnit("crew", a[0], a[1], { patrol: route, roamer: true })), level, R() < armedShare, R), 2);
+  }
+};
+
+/* Side jobs: some of the trouble on the map is on Casey Benton's list as well,
+ * paid on top of the job if the squad breaks it up (everyone in it down, run
+ * off or talked round) before it leaves. weight: how much it pays, against
+ * the campaign's rate for one (L.mission.pay); a sweep's whole job is these.
+ * Ordinary jobs get two (three from threat 3), picked among the trouble on
+ * the ways in and out, so going for one is a detour, not a trek; a sweep gets
+ * four near the mark, and the crew's own hangout there. */
+W.CONTRACTS = {
+  gang: { weight: 1, text: "Clear out the gang" },
+  roadblock: { weight: 1, text: "Clear the crew's roadblock" },
+  mob: { weight: 1, text: "Break up the mob" },
+  pack: { weight: 0.8, text: "Put down the crew walking the streets" },
+  deal: { weight: 0.8, text: "Break up the deal" },
+  mugging: { weight: 0.5, text: "Stop the mugging" },
+  lookouts: { weight: 0.4, text: "Take out the lookouts" },
+  hangout: { weight: 1.5, text: "Break their hangout" },
+};
+W.makeContracts = (world, L, R) => {
+  const kind = W.jobKind(L), threat = L.mission ? L.mission.threat : 3, mk = world.markAt;
+  const sweep = kind === "sweep", pay = L.mission && L.mission.pay;
+  const near = e => mk ? W.dist(e.x, e.y, mk[0], mk[1]) : 0;
+  let pool = (world.encounters || []).filter(e => e.hostile && W.CONTRACTS[e.id] && e.crew.length && (sweep || near(e) > 12));
+  const want = sweep ? 4 : threat <= 2 ? 2 : 3;
+  if (sweep) pool = pool.sort((a, b) => near(a) - near(b)).slice(0, want + 3);
+  else if (pool.some(e => e.onWay)) pool = pool.filter(e => e.onWay);
+  const picked = [];
+  // different kinds of trouble where the map has them
+  while (picked.length < want && pool.length) {
+    const fresh = pool.filter(e => !picked.some(p => p.id === e.id)), from = fresh.length ? fresh : pool;
+    const e = from[Math.floor(R() * from.length)];
+    picked.push(e); pool.splice(pool.indexOf(e), 1);
+  }
+  const list = picked.map(e => ({ id: e.id, crew: e.crew, x: e.x, y: e.y, name: e.name }));
+  if (sweep) { const op = world.units.filter(u => u.op && u.faction === "crew"); if (op.length) list.unshift({ id: "hangout", crew: op, x: mk[0], y: mk[1], name: L.picks.target.name }); }
+  world.contracts = list.map(c => Object.assign(c, { weight: W.CONTRACTS[c.id].weight, done: false }));
+  for (const c of world.contracts) {
+    const money = pay && pay.money ? ` (${W.money(Math.round(pay.money * c.weight / 1000) * 1000)})` : "";
+    c.text = `${W.CONTRACTS[c.id].text}${c.name ? ` at ${c.name}` : ""}${money}`;
   }
 };

@@ -129,17 +129,18 @@ M.KINDS = {
   job:         { name: "Job", threat: 2, days: [3, 6], what: "a robbery, a shakedown, a delivery: money, enough for a real purchase" },
   crackdown:   { name: "Crackdown", threat: 2, days: [4, 7], what: "break up a gang's operation: control in the zone" },
   assassinate: { name: "Assassination", threat: 3, days: [4, 7], what: "a name on Casey Benton's list: money and control" },
+  sweep:       { name: "Sweep", threat: 2, days: [4, 6], what: "take out the opposition: paid for every one of their operations broken, and control" },
   cal:         { name: "Hit Cal's crew", threat: 3, days: [3, 5], what: "ends Cal's push here, and some control back" },
   siege:       { name: "Siege", threat: 4, days: [6, 8], what: "the enemy dug in: takes the zone back" },
   story:       { name: "Story", threat: 3, days: [5, 8], what: "the next step toward locking the zone down" },
 };
-M.ORDINARY = ["persuade", "intel", "job", "crackdown", "assassinate"];
+M.ORDINARY = ["persuade", "intel", "job", "crackdown", "assassinate", "sweep"];
 // what a zone's level leans toward, over M.ORDINARY: calm streets want talking, rough ones fighting
 M.MIX = {
-  0: [0, 0.1, 0.25, 0.35, 0.3],
-  1: [0.1, 0.2, 0.25, 0.25, 0.2],
-  2: [0.2, 0.3, 0.25, 0.15, 0.1],
-  3: [0.35, 0.35, 0.2, 0.1, 0],
+  0: [0, 0.1, 0.2, 0.3, 0.2, 0.2],
+  1: [0.1, 0.2, 0.2, 0.2, 0.15, 0.15],
+  2: [0.2, 0.3, 0.25, 0.15, 0.05, 0.05],
+  3: [0.35, 0.35, 0.2, 0.1, 0, 0],
 };
 M.OFFERS = { "-1": 0, 0: 3, 1: 2, 2: 2, 3: 1 };
 /* Threat, 1 to 5: the kind's base, harder where control is low (easier at
@@ -160,17 +161,16 @@ M.threatOf = (s, kind, z, step = 0) => {
   return Math.max(1, Math.min(5, t));
 };
 /* The enemy at each threat, for the mission engine (L.mod): how many of
- * them, against the district's usual numbers, and what they carry. At
- * threat 1 most are unarmed: lookouts, minders, people who would rather
- * talk; by 5 it's rifles and heavy weapons. `armed` is the share carrying
- * anything; `guns` what the armed ones carry; `armour` multiplies their
- * hit points. */
+ * them against the district's usual numbers, and their level (0 to 4, the
+ * threat less one), which sets what they carry and how tough they are
+ * (W.FOE in the engine). At threat 1 most are unarmed: lookouts, minders,
+ * people who would rather talk; by 5 it's MK3 rifles, lasers and gauss guns. */
 M.THREAT = {
-  1: { crew: 0.35, guards: 0, sec: 1, armed: 0.3, guns: ["pistol"], armour: 1 },
-  2: { crew: 0.6, guards: 0.5, sec: 1, armed: 0.7, guns: ["pistol", "pistol", "shotgun"], armour: 1 },
-  3: { crew: 1, guards: 1, sec: 1, armed: 1, guns: ["pistol", "shotgun", "uzi"], armour: 1.1 },
-  4: { crew: 1.35, guards: 1.25, sec: 0.8, armed: 1, guns: ["shotgun", "uzi", "uzi", "longrange"], armour: 1.25 },
-  5: { crew: 1.7, guards: 1.5, sec: 0.6, armed: 1, guns: ["uzi", "longrange", "minigun", "laser"], armour: 1.5 },
+  1: { crew: 0.35, guards: 0, sec: 1, level: 0 },
+  2: { crew: 0.6, guards: 0.5, sec: 1, level: 1 },
+  3: { crew: 1, guards: 1, sec: 1, level: 2 },
+  4: { crew: 1.35, guards: 1.25, sec: 0.8, level: 3 },
+  5: { crew: 1.7, guards: 1.5, sec: 0.6, level: 4 },
 };
 /* What the squad can take on: each Watcher's best gun and mods, summed over
  * the four who go out, and a hired crew if one's paid for. Four new Watchers
@@ -526,6 +526,13 @@ M.moneyReward = s => {
   const best = Math.max(...M.CATALOGUE.filter(r => M.isDone(s, r.id)).map(r => r.kind === "weapon" ? M.PRICE.weapon[r.mk] : r.kind === "mod" ? M.PRICE.mod[r.mk] : r.line === "purrsuader" ? M.PRICE.purrsuader[r.mk] : 0), M.PRICE.mod[1]);
   return Math.round(Math.min(Math.max(best, s.roster.length < M.ROSTER_MAX ? M.PRICE.recruit * 0.5 : 0), 90000) / 1000) * 1000;
 };
+/* What one side job pays, at weight 1 (the engine's W.CONTRACTS weighs each
+ * one): money against the purchase a job pays for, and a little control in
+ * the zone. A sweep's are the job, and pay more. */
+M.contractPay = (s, o) => {
+  const sweep = o.kind === "sweep";
+  return { money: Math.round(M.moneyReward(s) * (sweep ? 0.55 : 0.3) / 1000) * 1000, control: sweep ? 0.15 : 0.05 };
+};
 M.reward = (s, o) => {
   const L = Math.max(0, M.level(M.zone(s, o.zone).C));
   switch (o.kind) {
@@ -534,6 +541,7 @@ M.reward = (s, o) => {
     case "job": return { money: M.moneyReward(s) };
     case "assassinate": return { money: Math.round(M.moneyReward(s) * 0.7 / 1000) * 1000, control: [0.5, 0.45, 0.35, 0.25][L] };
     case "crackdown": return { control: [0.9, 0.8, 0.65, 0.5][L], money: Math.round(M.moneyReward(s) * 0.2 / 1000) * 1000 };
+    case "sweep": return { perContract: M.contractPay(s, o) };
     case "cal": return { endPush: true, control: 0.4 };
     case "siege": return { retake: true };
     case "story": return { story: true, control: 0.3 };
@@ -554,6 +562,7 @@ M.describeReward = (s, o) => {
   if (o.kind === "intel") out.push(s.research.running.length ? `${R.rp} RP to ${s.research.running[0].name}` : "research (start a project first, or it's wasted)");
   if (R.reveal) out.push("Cal's next move");
   if (R.money) out.push(W.money(R.money));
+  if (R.perContract) out.push(`${W.money(R.perContract.money)} and +${R.perContract.control} control for each of their operations broken`);
   if (R.control) out.push(`+${R.control} control`);
   if (R.endPush) out.push("ends Cal's push");
   if (R.retake) out.push("the zone back, at level 0");
@@ -717,6 +726,8 @@ M.missionFor = (s, o) => {
   // a hired crew fights beside the squad; in a mind-controlled zone nobody can be talked round: they don't want anything
   L.mission.hired = s.hired ? 4 : 0;
   L.mission.mindControl = z.floor === 2;
+  // what a side job pays, at weight 1: the engine shows it on each one
+  L.mission.pay = M.contractPay(s, o);
   L.offer = o;
   return L;
 };
@@ -783,7 +794,17 @@ M.settle = (s, o, res) => {
       } else lines.push([`${D.name}: story`, `step ${z.story} of ${M.STORY.length} done`]);
     }
     M.note(s, `${M.KINDS[o.kind].name} in ${D.name}: done.`, "good");
-  } else {
+  }
+  // side jobs (a sweep's are the job): paid for each broken up, won or lost, as long as somebody got out
+  const broke = (res.contracts || []).filter(c => c.done);
+  if (broke.length && res.agents.some(a => a.alive)) {
+    const P = M.contractPay(s, o), w = broke.reduce((t, c) => t + c.weight, 0);
+    const money = Math.round(P.money * w / 1000) * 1000;
+    s.cash += money;
+    lines.push([o.kind === "sweep" ? `Operations broken: ${broke.length} of ${res.contracts.length}` : `Side jobs done: ${broke.length}`, W.money(money)]);
+    s.contractControl = (s.contractControl || 0) + P.control * w;   // lands with the rest of the control, after the days away
+  }
+  if (!res.won) {
     lines.push(["Mission failed", "no reward"]);
     if (!z.lost && !z.locked) { z.C = Math.max(0.01, z.C - 0.3); lines.push([`Control in ${D.name}`, "-0.3"]); }
     M.note(s, `${M.KINDS[o.kind].name} in ${D.name}: failed.`, "bad");
@@ -838,6 +859,10 @@ M.settle = (s, o, res) => {
   if (res.won) {
     const R = M.reward(s, o);
     if (R.control && !z.lost && !z.locked) { z.C = Math.min(M.N.CAP, z.C + R.control); lines.push([`Control in ${D.name}`, `+${R.control}, now level ${M.level(z.C)}`]); }
+  }
+  if (s.contractControl) {
+    const g = Math.round(s.contractControl * 100) / 100; s.contractControl = 0;
+    if (!z.lost && !z.locked) { z.C = Math.min(M.N.CAP, z.C + g); lines.push([`Control in ${D.name}, from the side jobs`, `+${g}`]); }
   }
   // the streets remember, won or lost: citizens talked round and still with the squad, and civilians the fight killed
   const talked = res.persuaded || 0, dead = res.civKilled || 0;

@@ -641,6 +641,12 @@ W.Renderer = class {
       const [sx, sy] = this.toScreen(world, world.siege.x, world.siege.y, 0);
       o.fillStyle = "#ff5266"; o.fillText(`${world.siege.left} INSIDE`, sx * k, sy * k - 30 * k);
     }
+    // side jobs still to do: where their people are now
+    for (const c of world.contracts || []) {
+      if (c.done) continue;
+      const p = world.contractAt(c), [sx, sy] = this.toScreen(world, p.x, p.y, 0);
+      o.fillStyle = "rgba(255,176,0,.8)"; o.fillText(world.sweep ? "TARGET" : "BONUS", sx * k, sy * k - 30);
+    }
     for (const p of W.waysOut(world)) {
       const [sx, sy] = this.toScreen(world, p.x, p.y, 0);
       o.fillStyle = world.phase === "exfil" ? "#54f2ff" : "rgba(84,242,255,.55)"; o.fillText(world.phase === "exfil" ? "EXFIL" : "PICKUP", sx * k, sy * k - 14);
@@ -787,6 +793,7 @@ W.Renderer = class {
     if (world.siege && world.siege.left && world.phase !== "exfil" && !target) target = { x: world.siege.x, y: world.siege.y, mark: true };
     if (world.phase === "exfil") for (const p of world.exfilPoints || []) { blip(p.x, p.y, blink ? "#54f2ff" : "#1c6a74", 4); if (!target) target = { x: p.x, y: p.y, exfil: true }; }
     else for (const p of W.waysOut(world)) blip(p.x, p.y, "#1c6a74", 3);
+    for (const c of world.contracts || []) if (!c.done) { const p = world.contractAt(c); blip(p.x, p.y, blink ? "#ffb000" : "#7a5a10", 3); if (!target && world.sweep) target = { x: p.x, y: p.y, mark: true }; }
     // the target off the edge: an arrow on the rim
     if (target && !opts.full) {
       const [px, py] = P(target.x, target.y);

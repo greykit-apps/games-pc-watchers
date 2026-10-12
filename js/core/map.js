@@ -560,6 +560,12 @@ W.Map = class {
     }
     return null;
   }
+  /* does the straight line from a to b cross no priced cell? (for path smoothing) */
+  costFree(ax, ay, bx, by, cost) {
+    const n = Math.ceil(Math.hypot(bx - ax, by - ay) * 2);
+    for (let i = 1; i < n; i++) { const t = i / n; if (cost[this.i(Math.floor(ax + (bx - ax) * t), Math.floor(ay + (by - ay) * t))] > 0) return false; }
+    return true;
+  }
   randomCell(test, tries = 400) {
     for (let t = 0; t < tries; t++) {
       const x = Math.floor(Math.random() * this.w), y = Math.floor(Math.random() * this.h);
@@ -570,8 +576,10 @@ W.Map = class {
   }
 
   /* A* over the cell grid, eight ways, never cutting a corner. Returns a list
-   * of points (cell centres, smoothed), the goal last; null if no way. */
-  path(sx, sy, tx, ty, avoidRoad = false) {
+   * of points (cell centres, smoothed), the goal last; null if no way. cost:
+   * an optional extra price per cell (a danger field, say), added to each step
+   * into it; the smoothing never cuts across a cell that has one. */
+  path(sx, sy, tx, ty, avoidRoad = false, cost = null) {
     const w = this.w, h = this.h;
     const goal = this.nearestWalkable(tx, ty);
     if (!goal) return null;
@@ -626,6 +634,7 @@ W.Map = class {
         if (dx && dy && (!this.walk[y * w + nx] || !this.walk[ny * w + x])) continue;
         let c = dx && dy ? 1.4142 : 1;
         if (avoidRoad && (this.ground[nk] === W.G.ROAD || this.ground[nk] === W.G.RAIL)) c *= 3;
+        if (cost) c += cost[nk];
         const ng = g[k] + c;
         if (seen[nk] !== stamp || ng < g[nk]) {
           seen[nk] = stamp; g[nk] = ng; from[nk] = k;
@@ -644,7 +653,7 @@ W.Map = class {
     let ax = sx, ay = sy, i = 0;
     while (i < cells.length) {
       let j = cells.length - 1;
-      while (j > i && !this.walkLine(ax, ay, cells[j][0], cells[j][1])) j--;
+      while (j > i && !(this.walkLine(ax, ay, cells[j][0], cells[j][1]) && (!cost || this.costFree(ax, ay, cells[j][0], cells[j][1], cost)))) j--;
       out.push(cells[j]);
       ax = cells[j][0]; ay = cells[j][1];
       i = j + 1;

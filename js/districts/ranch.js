@@ -22,7 +22,6 @@ W.district({
     secNote: "The ranch hands guard the place for its owners and do not know who you are. Keep weapons holstered near them.",
     ground: "Hedged fields with gaps you have to find, rows of catnip, open yards. Good cover, short sightlines, very little light.",
     guards: 4, crew: 9, sec: 6, civ: 0.006, civMax: 36,
-    crewGuns: ["pistol", "shotgun", "uzi"],
     civLook: () => ({ coat: W.pick(["#3a5a8a", "#4a6a9a", "#5a4a3a"]), trim: "#c8b88a", legs: "#2a3a5a", fur: W.pick(W.FURS), hat: W.chance(0.5) ? "#8a6a3a" : null }),
     secLook: () => ({ coat: W.pick(["#7a2a2a", "#2a5a3a"]), trim: "#e8e4dc", legs: "#2a3a5a", fur: W.pick(W.FURS), hat: "#6a4a2a" }),
   },

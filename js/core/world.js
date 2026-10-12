@@ -488,6 +488,14 @@ W.World = class {
       lead.speed = 0; T.lastStop = null; T.holdT = W.rand(45, 75);
     }
     T.cars.forEach((c, k) => { const a = ns - dir * k * W.CARRIAGE; if (ax) c.x = a; else c.y = a; c.speed = lead.speed; });
+    // it stops for no car either: one left on the line, or caught there in a jam, is smashed and goes up
+    if (lead.speed > 0.5) for (const c of this.cars) {
+      if (c.train || c.dead || c.getaway) continue;
+      const [cx, cy] = c.axis === "x" ? [c.len / 2, c.wid / 2] : [c.wid / 2, c.len / 2];
+      if (T.cars.some(t => { const [tx, ty] = ax ? [t.len / 2, t.wid / 2] : [t.wid / 2, t.len / 2]; return Math.abs(t.x - c.x) < tx + cx && Math.abs(t.y - c.y) < ty + cy; })) {
+        this.damageCar(c, c.hp + 1, { faction: "none", accident: true, x: c.x, y: c.y });
+      }
+    }
   }
   /* Where a train is and when it can be somewhere: what walkers and drivers
    * look at before they cross its line. */

@@ -955,7 +955,8 @@ W.deckZ = (m, x, y) => {
   return m.deckLo[k] + (m.deckHi[k] - m.deckLo[k]) * f;
 };
 W.updateUnit = (world, u, dt) => {
-  if (!u.alive || u.inCar) return;
+  // out, or a passenger; a Watcher riding in a car of ours still keeps time and heals (below)
+  if (!u.alive || (u.inCar && !u.car)) return;
   // up on a walkway, or down on the ground: eased, so stairs read as stairs
   const zt = W.deckZ(world.map, u.x, u.y);
   u.z = (u.z || 0) + (zt - (u.z || 0)) * Math.min(1, dt * 20);
@@ -969,6 +970,7 @@ W.updateUnit = (world, u, dt) => {
     W.stimTick(u, dt);
     if (u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + (0.12 + 0.15 * W.mod(u, "heart")) * dt);
   }
+  if (u.car) return;
   u.thinkT -= dt;
   if (u.thinkT <= 0) { u.thinkT = 0.18 + Math.random() * 0.1; W.think(world, u, dt); }
   // aim, then fire while there is a target in range

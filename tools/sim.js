@@ -64,6 +64,17 @@ function run(W, seed, attract, quiet, camp, roster, level) {
         }
         continue;
       }
+      // a sweep: guns out, at the nearest of their operations still standing; the first one broken opens the way home
+      if (world.sweep) {
+        const ags = world.agents.filter(a => a.alive), c0 = ags[0], todo = (world.contracts || []).filter(c => !c.done);
+        const c = c0 && todo.map(c => [c, world.contractAt(c)]).sort((p, q) => W.dist(c0.x, c0.y, p[1].x, p[1].y) - W.dist(c0.x, c0.y, q[1].x, q[1].y))[0];
+        if (c) for (const a of ags) {
+          if (!W.armed(a)) W.drawBest(a);
+          a.manual = c[0].crew.filter(u => u.alive && !u.broken && u.faction === "crew").sort((p, q) => W.dist(a.x, a.y, p.x, p.y) - W.dist(a.x, a.y, q.x, q.y))[0] || null;
+          if (!a.path) W.goTo(world, a, c[1].x + (a.slot % 2), c[1].y + (a.slot >> 1));
+        }
+        continue;
+      }
       // a persuade job: whoever has the Purrsuader talks the subject round, the rest stay close
       const S = world.subjectUnit;
       // nobody to do the talking: a player would abort

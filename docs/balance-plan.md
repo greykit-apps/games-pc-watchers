@@ -11,7 +11,7 @@ every time the bot picks a mission (scripts kept out of the repo; step 1 folds
 them into the tool). "Careful" is the bot's default (half the engine bot's
 deaths); "raw" is `--harsh`.
 
-**Caveat:** `ROLL_KIND` was measured before the missions got longer (far drop,
+**Caveat (since resolved, see The campaign below):** `ROLL_KIND` was measured before the missions got longer (far drop,
 getaway car, encounters along the way, local alarms). Every number below uses
 those old fight rates. The few real fights since (`campaign.js --fight`, 3
 seeds of 14) won 33 of 34 at threat 1 and 2, so the bottom of the curve still
@@ -189,6 +189,50 @@ Still open: the top threat costs about one Watcher a mission whichever way
 it's played, which may be right for the hardest jobs in the game; the
 bench's BanHammer bot now and then stalls (2% of fights), which the summary
 counts apart.
+
+## The campaign (done second)
+
+Steps 1 to 5 and the money half of step 6 are in; `docs/meta.md` has the
+rules as they now stand. Measured with `campaign.js --report` (12 seeds):
+
+| Target | Result, careful | Result, raw |
+|---|---|---|
+| Offers on the board before Take Control: 5 to 7, at most 9 | 5.1, at most 8 | the same |
+| Offers taking control: 9 or fewer | 6.6, at most 10 | the same |
+| Boards with a quiet job at threat 2 or less: 100% | 100% | 100% |
+| Boards a fresh squad can win something on: 100% | 100% | 100% |
+| Same kind twice among the ordinary offers: under 10% | 1% | 1% |
+| No kind under 5% of missions | assassination 7%, sweep 6%, job 5%, crackdown 7% | crackdown 2%, Cal's crew 3% |
+| Watchers lost a mission at the squad's tier: 0.15 to 0.3 | 0.08 (0.25 overall) | 0.10 (0.26 overall) |
+| Cash at the end, careful: under $1M | $678,000 | $681,000 |
+| Take Control / won at mission: 55 to 65 / 90 to 110 | 57 / 90 | 57 / 110 |
+| Won, raw: 8 of 12 by about mission 140 | 12 of 12 | 12 of 12 |
+
+Where it departs from the steps below, and why:
+
+- **Tiers** are now the Watchers' levels plus one, matched to the bench's
+  kits (11.5, 18, 25 and 29 power), so a gap in the campaign is a gap on the
+  bench.
+- **Cal's escalation is one step** (18 upgrade points) plus the Take Control
+  step, not two: with both, every fighting job and story step at the end was
+  threat 5, which costs a fully kitted squad about a Watcher a mission, and
+  the bot (rightly) stopped advancing the story.
+- **Assassination's base threat is 2**, not 3: the bench wins it at the
+  squad's level as often as a crackdown, and at 3 it sat one or two steps
+  over every squad that saw it.
+- **Danger money**: fighting pay ×0.6 to ×3 by threat. A Watcher in MK3 mods
+  is $690,000; with a job's flat $90,000, only the risk-free jobs paid for
+  the Watchers a fight costs, and the bot took intel two times in three.
+- **The money glut was the bot's**, mostly: the city made six times what the
+  missions did, and the bot kept half its pips on money with nothing to buy
+  while research gated the purchases. A player turns the split to research;
+  the bot now does, and careful cash stays at $300,000 to $450,000 until the
+  end.
+
+Still open: **waiting pays** (five idle days a mission end with $3M, and win
+in as many missions: Cal doesn't yet make a city left to itself cost
+anything; see step 2); deaths at the squad's own tier are under target
+because the careful bot picks its fights; nothing played by hand yet.
 
 ## The plan, in order
 

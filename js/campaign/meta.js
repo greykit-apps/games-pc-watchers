@@ -130,7 +130,7 @@ M.KINDS = {
   intel:       { name: "Intel", threat: 1, quiet: true, days: [3, 5], what: "get in, get the data, get out: research for the first project running; and where Cal goes next" },
   job:         { name: "Job", threat: 2, days: [3, 6], what: "a robbery, a shakedown, a delivery: money, enough for a real purchase" },
   crackdown:   { name: "Crackdown", threat: 2, days: [4, 7], what: "break up a gang's operation: control in the zone" },
-  assassinate: { name: "Assassination", threat: 3, days: [4, 7], what: "a name on Casey Benton's list: money and control" },
+  assassinate: { name: "Assassination", threat: 2, days: [4, 7], what: "a name on Casey Benton's list: money and control" },
   sweep:       { name: "Sweep", threat: 2, days: [4, 6], what: "take out the opposition: paid for every one of their operations broken, and control" },
   cal:         { name: "Hit Cal's crew", threat: 3, days: [3, 5], what: "ends Cal's push here, and some control back" },
   siege:       { name: "Siege", threat: 4, days: [6, 8], what: "the enemy dug in: takes the zone back" },
@@ -144,7 +144,7 @@ M.ORDINARY = ["persuade", "intel", "job", "crackdown", "assassinate", "sweep"];
 M.MIX = {
   0: [0, 0.1, 0.25, 0.3, 0.2, 0.15],
   1: [0.05, 0.2, 0.25, 0.25, 0.15, 0.1],
-  2: [0.25, 0.3, 0.25, 0.15, 0, 0.05],
+  2: [0.25, 0.3, 0.2, 0.15, 0.05, 0.05],
   3: [0.4, 0.4, 0.2, 0, 0, 0],
   towers: [0.5, 0.5, 0, 0, 0, 0],
 };
@@ -162,12 +162,13 @@ M.BOARD = { peace: 5, war: 4, stories: 3, days: [6, 12] };
 /* Threat, 1 to 5, belongs to the mission: the kind's base, harder where
  * control is low (easier at level 3), and Cal's escalation, which follows the
  * campaign rather than the squad sent: he arms his people a step at 18
- * upgrade points and another at 30 (the order to Take Control comes no sooner), and one more once the city is being taken.
- * Quiet jobs in calm zones (level 2 or 3) take neither: that's the training
- * ground, threat 1 or 2 all campaign long. A story step: 2, 3 and 4 plus the
- * escalation; Cal's last stand, the final lockdown, is 5. Worked out when the
+ * upgrade points, and one more once the city is being taken (a second step
+ * before that put the whole endgame at threat 5). Quiet jobs in calm zones
+ * (level 2 or 3) take neither: that's the training ground, threat 1 or 2 all
+ * campaign long. A story step: 2, 3 and 4 plus the escalation (3, 4 and 5 by
+ * then); Cal's last stand, the final lockdown, is 5. Worked out when the
  * offer turns up, and fixed while it stands. */
-M.N.ESCALATE = [18, 30];
+M.N.ESCALATE = [18];
 M.escalation = s => M.N.ESCALATE.filter(n => s.research.points >= n).length;
 // a quiet job where the streets are calm: no escalation, no Take Control step
 M.calm = (kind, z) => !!M.KINDS[kind].quiet && !z.lost && M.level(z.C) >= 2;
@@ -590,9 +591,14 @@ M.moneyReward = s => {
  * the zone. A sweep's are the job, and pay more. */
 M.contractPay = (s, o) => {
   const sweep = o.kind === "sweep";
-  return { money: Math.round(M.moneyReward(s) * (sweep ? 0.55 : 0.3) / 1000) * 1000, control: sweep ? 0.15 : 0.05 };
+  return { money: Math.round(M.moneyReward(s) * M.hazard(o) * (sweep ? 0.55 : 0.3) / 1000) * 1000, control: sweep ? 0.15 : 0.05 };
 };
 // what a quiet job pays where the streets are calm: a fee, so training a new squad pays its way
+/* Danger money: what a fighting job pays rises with its threat, so that the
+ * hard ones are worth the Watchers they cost (a full suite of MK3 mods is
+ * $690,000 a Watcher). By threat 1 to 5, times the money reward. */
+M.N.HAZARD = [0.6, 1, 1.5, 2.2, 3];
+M.hazard = o => M.N.HAZARD[Math.max(1, Math.min(5, o.threat || 1)) - 1];
 M.fee = s => Math.max(5000, Math.min(10000, Math.round(M.moneyReward(s) * 0.12 / 1000) * 1000));
 M.reward = (s, o) => {
   const z = M.zone(s, o.zone), L = Math.max(0, M.level(z.C)), fee = M.calm(o.kind, z) ? M.fee(s) : 0;
@@ -600,10 +606,10 @@ M.reward = (s, o) => {
     // talking a zone round adds little where it's already settled
     case "persuade": return { control: [0.6, 0.5, 0.4, 0.15][L], reveal: true, money: fee };
     case "intel": return { rp: M.intelPoints(s, o), reveal: true, money: fee };
-    case "job": return { money: M.moneyReward(s) };
+    case "job": return { money: Math.round(M.moneyReward(s) * M.hazard(o) / 1000) * 1000 };
     // the name on Benton's list was running Cal's business here: it goes with them
-    case "assassinate": return { money: M.moneyReward(s), control: [0.7, 0.6, 0.5, 0.4][L], untactic: !!z.tactic };
-    case "crackdown": return { control: [0.9, 0.8, 0.65, 0.5][L], money: Math.round(M.moneyReward(s) * 0.2 / 1000) * 1000 };
+    case "assassinate": return { money: Math.round(M.moneyReward(s) * M.hazard(o) / 1000) * 1000, control: [0.7, 0.6, 0.5, 0.4][L], untactic: !!z.tactic };
+    case "crackdown": return { control: [0.9, 0.8, 0.65, 0.5][L], money: Math.round(M.moneyReward(s) * M.hazard(o) * 0.25 / 1000) * 1000 };
     case "sweep": return { perContract: M.contractPay(s, o) };
     case "cal": return { endPush: true, control: 0.4 };
     case "siege": return { retake: true };

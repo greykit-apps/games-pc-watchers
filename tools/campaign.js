@@ -40,23 +40,25 @@ const engineKind = o => o.kind === "story" ? ["assassinate", "persuade", "siege"
 const ROLL = { "-2": [0.99, 0], "-1": [0.98, 0.03], 0: [0.95, 0.2], 1: [0.88, 1.0], 2: [0.5, 2.4], 3: [0.15, 3.2] };
 const guess = gap => { const [w, l] = ROLL[Math.max(-2, Math.min(3, gap))]; return [w, l, 0.5, 2, 0]; };
 /* The odds for a mission: [chance to win, Watchers lost, side jobs done, side jobs offered, loot].
- * level is the squad's (tier less one). Past the measured cells: a threat two or more under the
- * squad is the cell a step under, at a third of the losses; three or more over, the cell two
- * over, half as likely to win and a third more lost. */
+ * level is the squad's (tier less one). The bench measured each threat for squads one level over
+ * it to two under (gaps -1 to +2); past that, the nearest of those cells at the mission's own
+ * threat (so the loot is that threat's): a squad far over it loses a third as many as the cell
+ * says, one more than two under is half as likely to win and loses a third more. */
 function odds(kind, level, threat, ways, careful) {
-  const gap = threat - level - 1;
-  const g = Math.max(-1, Math.min(2, gap)), t = Math.max(1, Math.min(5, level + 1 + g));
-  let lv = level, cell = FIGHTS.cells[`${kind} L${lv} t${t}`];
-  while (!cell && lv > 0) { lv--; cell = FIGHTS.cells[`${kind} L${lv} t${Math.min(5, lv + 1 + g)}`]; }
+  const t = Math.max(1, Math.min(5, threat)), gap = t - level - 1;
+  let lv = Math.max(0, Math.min(level, t, 4), t - 3), cell = FIGHTS.cells[`${kind} L${lv} t${t}`];
+  while (!cell && lv > 0) { lv--; cell = FIGHTS.cells[`${kind} L${lv} t${t}`]; }
   if (!cell) return guess(gap);
   const rows = Object.entries(cell).filter(([w, r]) => ways.includes(w) && r[0]).map(([, r]) => r.map((x, i) => i ? x / r[0] : x));
   if (!rows.length) return guess(gap);
   // careful: the two best ways in (most won, then fewest lost); raw: every way the squad has
   rows.sort((a, b) => b[1] - a[1] || a[2] - b[2]);
-  const use = careful ? rows.slice(0, 2) : rows, mean = i => use.reduce((s, r) => s + r[i], 0) / use.length;
+  // a strike carried is called down, careful or not: half the time, for the raw player
+  const strike = ways.includes("banhammer") && cell.banhammer && cell.banhammer[0] ? cell.banhammer.map((x, i) => i ? x / cell.banhammer[0] : x) : null;
+  const use = careful ? rows.slice(0, 2) : strike ? rows.concat(Array(rows.length).fill(strike)) : rows, mean = i => use.reduce((s, r) => s + r[i], 0) / use.length;
   let [won, lost, done, offered, loot] = [mean(1), mean(2), mean(3), mean(4), mean(5)];
-  if (gap < -1) lost /= 3;
-  if (gap > 2) { won *= 0.5; lost = Math.min(4, lost * 1.33); }
+  if (level > lv + 0) for (let k = lv; k < level && k < 4; k++) lost /= 3;
+  if (level < lv - 0 || gap > 2) { won *= 0.5; lost = Math.min(4, lost * 1.33); }
   return [won, lost, done, offered, loot];
 }
 
@@ -174,6 +176,7 @@ function play(opt = {}) {
       if (it && !M.canBuy(s, a, it)) M.buy(s, a, it);
     }
     look();
+    if (opt.onBoard) opt.onBoard(s);
     // the mission: the most it's worth a day, for the risk
     const level = () => M.squadTier(s) - 1 + (s.hired ? 0 : 0);
     const ways = o => ["assault", "stealth"].concat(M.hasTalker(s) ? ["mob"] : [], level() >= 1 ? ["snipe"] : [], M.bigGun(o) && M.carriesBanhammer(s) ? ["banhammer"] : []);
@@ -191,7 +194,8 @@ function play(opt = {}) {
       }
       // a zone back; taking control, a lost zone stands between the squad and the end
       if (R.retake) v += 250000 + (s.war ? 900000 : 0);
-      if (R.story) v += 300000 * (o.step + 1);
+      // a story step brings the end closer; Cal's last stand is the end
+      if (R.story) v += M.lastStand(s, z, o.step) ? 3000000 : 500000 * (o.step + 1);
       return v;
     };
     const ev = o => {
@@ -204,6 +208,7 @@ function play(opt = {}) {
       .filter(c => !(M.squad(s).length < M.SQUAD && c.lost > 1))
       .sort((a, b) => (strategy === "mind" && (b.o.kind === "story") - (a.o.kind === "story")) || b.e - a.e);
     const pick = cands[0];
+    if (opt.debug && s.war && i % 5 === 0) console.log(`  [${i}] ` + cands.map(c => `${c.o.kind}${c.o.kind === "story" ? c.o.step : ""}@${c.o.zone} t${c.o.threat} w${c.won.toFixed(2)} l${c.lost.toFixed(2)} e${Math.round(c.e / 1000)}k`).join(" | ") + `  || not runnable: ${s.offers.filter(o => M.canRun(s, o)).map(o => `${o.kind}@${o.zone}: ${M.canRun(s, o)}`).join("; ")}`);
     if (!pick || pick.e <= 0) { M.advanceDay(s); stats.idleDays++; check(); i--; if (stats.idleDays > 2000) fail("stuck waiting"); continue; }
     const offer = pick.o;
     // a stretch: hire guns if there's money for it
@@ -295,9 +300,9 @@ if (require.main === module) {
   if (args.includes("--report")) { report({ seeds: +(val("seeds") || 12), missions: +(val("missions") || 200), harsh, idle, strategy }); return; }
   const N = +(args.find(a => /^\d+$/.test(a)) || 60);
   try {
-    const st = play({ seed, missions: N, fight, strategy, harsh, idle, log: quiet ? null : console.log });
+    const st = play({ seed, missions: N, fight, strategy, harsh, idle, debug: args.includes("--debug"), log: quiet ? null : console.log });
     const s = st.s;
     console.log(`${st.missions} missions, ${st.won} won, day ${st.day}; research ${st.points} points${s.war ? `, taking control since mission ${st.warAt}` : ""}; zones ${s.zones.map(z => `${z.id}:${z.locked ? "locked" : z.lost ? "lost" : W_level(z.C)}`).join(" ")}; fallen ${st.fallen}${st.win ? `; WON at mission ${st.wonAt}` : ""}`);
-  } catch (e) { console.error(`FAIL ${e.message}`); process.exit(1); }
+  } catch (e) { console.error(`FAIL ${e.message}`); if (process.env.STACK) console.error(e.stack); process.exit(1); }
 }
 function W_level(C) { return C <= 0 ? -1 : Math.min(3, Math.floor(C)); }

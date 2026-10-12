@@ -348,7 +348,10 @@ smuggling, the grow fields). The streets:
   Intel also shows where Cal will push next;
 - **money:** enough to make a real purchase that is open to you now: a mark
   of mod for one Watcher, a new weapon, a recruit. Even if nobody needs it
-  today, a new Watcher will need kitting out soon enough. A job pays it all;
+  today, a new Watcher will need kitting out soon enough. Fighting work adds
+  **danger money** by threat (×0.6 at threat 1, ×1 at 2, ×1.5, ×2.2, ×3 at
+  5): a full suite of MK3 mods is $690,000 a Watcher, and the hard jobs have
+  to be worth the Watchers they cost. A job pays it all;
   an assassination too, with control, and the name on the list takes Cal's
   tactic in the zone with them if one is running there; a crackdown a fifth
   of it, with more control. Persuade and intel in a calm zone (level 2 or 3)
@@ -379,11 +382,11 @@ endgame).
 A mission's **threat** (1 to 5) belongs to the mission, not to the squad
 sent: its kind's base, a step harder where the zone's control is low (a step
 easier at level 3), and **Cal's escalation**, which follows the campaign: he
-arms his people a step at 18 upgrade points and another at 30, and one more
-once the city is being taken. Quiet jobs in calm zones (level 2 or 3) take
+arms his people a step at 18 upgrade points, and one more once the city is
+being taken. Quiet jobs in calm zones (level 2 or 3) take
 neither the escalation nor the Take Control step: that's the training ground,
 threat 1 or 2 all campaign long. A story step is 2, 3 and 4 plus the
-escalation; Cal's last stand is 5. It's worked out when the offer turns up,
+escalation (3, 4 and 5 by the time it matters); Cal's last stand is 5. It's worked out when the offer turns up,
 and fixed while it stands, so the same mission is easier for veterans than
 for recruits, and recruits can be sent on easy work.
 
@@ -398,82 +401,50 @@ range). Every
 researched mark of a weapon is on the racks, MK1 included, and a BanHammer
 strike takes none of a Watcher's eight slots.
 
-## Balance, measured (2026-10-11, every mission kind in the field)
+## Balance, measured (2026-10-12)
 
-With every kind fought for real in the engine, the bot's rolled outcomes are
-measured per kind: four kits from the starting squad to tier 4, threat one
-under to two over, six fights a cell (`ROLL_KIND` in `tools/campaign.js`).
-At the squad's tier every fighting kind is won 83 to 100% of the time; a
-step over is a coin flip for most (crackdown 58%, Cal's crew 63%, a job 46%,
-a siege 75%, a hit 92%) and costs about two Watchers; two over is lost. The
-bot also now buys a Watcher the one gun that adds most, not a rack of every
-gun (which left it broke at war with recruits carrying pistols).
+`tools/campaign.js --report`: twelve campaigns of up to 200 missions, the
+bot rolling each fight from `tools/fights.json`, the tactics bench's grid
+(seven kinds, Watcher levels 0 to 4, threat a step under the squad to two
+over, every way in, 4 fights a cell, 1,700 fights). A careful player fights
+as the two best ways in for the cell did; raw (`--harsh`), as the average of
+every way the squad has. The bot spends like a player: mods to MK3 as
+they're researched, the best gun for each Watcher, what's brought home sold,
+the city turned to research when cash piles up; and it takes the mission
+worth most a day for the risk, a Watcher lost counted at what was spent on
+them.
 
-| Strategy | Wins | Won by mission | War at mission | Watchers lost |
-|---|---|---|---|---|
-| 50% to research (the default) | 12 of 12 | 98 | 61 | 25 |
-| War the moment it's ready | 12 of 12 | 98 | 61 | 25 |
-| Mind control everywhere, story first | 12 of 12 | 108 | 57 | 37 |
-| Research-heavy turtle | 12 of 12 | 95 | 44 | 30 |
-| The default, raw death rates | 12 of 12 | 125 | 59 | 86 |
+| | Careful | Raw |
+|---|---|---|
+| Won | 12 of 12, by mission 90 (day 456) | 12 of 12, by mission 110 (day 525) |
+| Take Control at mission | 57 | 57 |
+| Watchers lost a mission | 0.25 | 0.26 |
+| Cash at the end | $678,000 | $681,000 |
+| Offers on the board (before / taking control) | 5.1 / 6.6, at most 8 / 10 | the same |
+| Kinds taken | story 31%, intel 26%, persuade 10%, assassination 7%, crackdown 7%, sweep 6%, Cal's crew 5%, job 5%, siege 4% | intel 31%, story 26%, persuade 20%, assassination 6%, job 5%, sweep, siege 4% |
 
-Most of the dead fall a step over: Cal's crew comes a step over the squad
-more often than not (base threat 3, a step higher in a weak zone), and is
-won about half the time, and that's deliberate: answering Cal's push is a
-stretch, and hired guns and the BanHammer are how a player evens it.
+The other strategies (careful): Take Control as soon as it's open plays the
+same; the research-heavy turtle wins 12 of 12 by mission 100 (Take Control at
+44, 0.58 lost a mission); mind control everywhere 12 of 12 by 106. Every
+board had a training job (a quiet one at threat 2 or less); 1% had a kind
+twice.
 
-Late in a war, when every zone left is lost to Cal, the only offers used to
-be sieges at threat 5, with no lighter work to rebuild a broken squad on;
-the mind-control bot walked into a hundred of them across twelve campaigns.
-Now, when nothing on offer is within the squad's reach and Cal holds all
-that's left, the fallback job (intel, or a job for the money) turns up in
-one of his zones. That brought the mind-control row to 12 of 12 by mission
-108 with 37 Watchers lost, and sieges taken two or more over the squad to 13
-across 36 campaigns.
-
-## Balance, measured (2026-10-11, with weapon marks in the field)
-
-Since the engine fields weapon marks and they count toward tier again, the
-same twelve seeds: every strategy above wins 11 or 12 of 12, by mission 94 to
-142 (the default 12/12 by 102, war 43 missions long, 13 Watchers lost); with
-the raw death rates, 7 of 12 by mission 146, with 87 lost. A careful player
-wins about the 100-mission mark whichever way they play; strategy shows in
-the pace and the losses. The table below is from just before marks counted.
-
-## Balance, measured (2026-10-11, second pass)
-
-`tools/campaign.js` as a bot. Its outcomes are rolled against the gap between
-a mission's threat and the squad's tier, from real fights in the engine,
-halved for a careful player (the engine's test bot walks straight in;
-`--harsh` uses its raw rates). It declares war once the squad is tier 3,
-and puts money first at war. Twelve seeds of 200 missions each:
-
-| Strategy | Wins | Won by mission | War at mission | War lasts | Watchers lost |
-|---|---|---|---|---|---|
-| 50% to research (the default) | 11 of 12 | 97 | 66 | 36 | 12 |
-| 30% / 40% to research | 12 of 12 | 145 / 114 | 111 / 79 | 35 | 11 / 10 |
-| 60% to research | 11 of 12 | 109 | 62 | 55 | 23 |
-| 70% to research | 6 of 12 | 141 | 78 | 64 | 27 |
-| War the moment it's ready | 11 of 12 | 97 | 60 | 36 | 11 |
-| Mind control everywhere, story first | 11 of 12 | 105 | 58 | 48 | 17 |
-| Research-heavy turtle | 7 of 12 | 129 | 71 | 60 | 31 |
-
-With the engine bot's raw death rates (a player who walks straight in), 2 of
-12 win, by mission 177, with 81 Watchers lost: skill in the field matters.
-Fifteen real fights in the engine: 14 won, none lost. Stacking every project
-and running intel every four days brings war in 168 to 224 days (it was 66).
-A prepared player banks millions by the end: the late money sink is still
-thin.
+What changed to get there, beyond the rules above: assassination's base
+threat came down to 2 (the bench wins it at the squad's level as often as a
+crackdown); Cal's escalation is one step (18 upgrade points) plus the Take
+Control step, since two steps put the whole endgame at threat 5; and danger
+money (fighting pay ×0.6 to ×3 by threat), without which only the risk-free
+jobs paid for the Watchers a fight costs.
 
 ## Open questions
 
-1. **How long is the war?** Measured at 35 to 64 missions from the order to
-   the last lockdown, against a floor of 24 story steps.
-2. **The late money sink is thin.** A prepared player ends with millions
-   once the squad is kitted out. Hired guns and BanHammer strikes help;
-   something for a rich city to buy at war (Casey's favours, the Vault) is
-   still to find.
-3. **The simulation plays badly.** Its policy is crude (it climbs everything
-   to level 3 and holds it), so it can't show what overseers are worth, for
-   instance. The numbers here are a starting point for playtesting, not a
-   result.
+1. **Waiting still pays.** Five idle days after every mission end the
+   campaign with $3M instead of $700,000, and win in as many missions. Cal
+   is meant to keep a pacified city from being left to run itself; today he
+   doesn't. Levers: his tactics cost money as well as control, his pushes
+   bite harder the longer the city is left, or the city's money stops
+   growing past a level.
+2. **Deaths at the squad's own tier are low** (0.08 a mission against a
+   target of 0.15 to 0.3): the careful bot picks its fights. Overall, 0.25.
+3. **The simulation plays a bot, not a person.** The fights are measured;
+   the choices between them are a reasonable bot's. Playtesting decides.

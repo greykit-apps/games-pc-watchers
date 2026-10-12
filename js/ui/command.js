@@ -1054,7 +1054,8 @@ W.Command = class {
     if (k >= "1" && k <= String(W.Command.SCREENS.length)) { this.go(W.Command.SCREENS[+k - 1]); return true; }
     if (k === "w") { this.wait(1); return true; }
     if (k === "?") { this.toggleHelp(); return true; }
-    if (k === "b" && this.screen === "city") {
+    // B is also the Konami code's second-last key: mid-code, it waits for the A
+    if (k === "b" && this.screen === "city" && this.konami !== KONAMI.length - 1) {
       const o = this.briefTarget(), why = o ? W.M.canRun(this.s, o) : "no mission to brief here";
       if (why) { W.audio.play("deny"); this.toast(why[0].toUpperCase() + why.slice(1) + "."); } else this.game.toBriefing(o.id);
       return true;

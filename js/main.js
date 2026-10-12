@@ -89,6 +89,7 @@ const Game = W.game = {
         <tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>select a Watcher; <kbd>Shift</kbd> adds or drops one</td></tr>
         <tr><td><kbd>\`</kbd> or <kbd>0</kbd></td><td>select the whole squad; tap twice to look at them</td></tr>
         <tr><td>Left click</td><td>move there (or select a Watcher); drag a box to select several</td></tr>
+        <tr><td><kbd>Alt</kbd> + left click</td><td>move there the quiet way: round the armed crew the scanner shows, through the warrens if need be</td></tr>
         <tr><td>Right click</td><td>fire at someone or a car; at the ground, fire at that spot. With the Purrsuader out, right click someone to talk them round</td></tr>
         <tr><td><kbd>E</kbd></td><td>go: every stim to full, guns out, and the crew shot on sight</td></tr>
         <tr><td><kbd>C</kbd></td><td>calm: stims to nothing, guns away, nobody shoots first. Lets the dependency wear off</td></tr>
@@ -281,7 +282,7 @@ const Game = W.game = {
   hint(show) {
     const h = document.getElementById("hint");
     h.hidden = !show;
-    h.innerHTML = "<b>Left</b> move · <b>Right</b> fire / persuade · <b>` 1–4</b> select · <b>E</b> go · <b>C</b> calm · <b>R</b> guns · <b>F</b> first aid · <b>Q</b> Purrsuader · <b>X</b> BanHammer · <b>Z</b> hold · <b>V</b> scanner · <b>Space</b> pause";
+    h.innerHTML = "<b>Left</b> move (<b>Alt</b>: the quiet way) · <b>Right</b> fire / persuade · <b>` 1–4</b> select · <b>E</b> go · <b>C</b> calm · <b>R</b> guns · <b>F</b> first aid · <b>Q</b> Purrsuader · <b>X</b> BanHammer · <b>Z</b> hold · <b>V</b> scanner · <b>Space</b> pause";
     clearTimeout(this.hintT);
     if (show) this.hintT = setTimeout(() => { h.hidden = true; }, 15000);
   },
@@ -468,9 +469,11 @@ const Game = W.game = {
   centerOn(a) { this.renderer.centerOn(this.world, a.x, a.y); },
   centerAt(x, y) { this.renderer.centerOn(this.world, x, y); },
   centerOnSelection() { const s = this.selectedAgents(); if (s.length) this.centerAt(s.reduce((a, b) => a + b.x, 0) / s.length, s.reduce((a, b) => a + b.y, 0) / s.length); },
-  orderMove(x, y) {
+  /* quiet: the way round the crew the scanner shows (Alt-click), not the shortest */
+  orderMove(x, y, quiet = false) {
     const w = this.world, sel = this.selectedAgents();
     if (!sel.length) return;
+    const field = quiet ? W.dangerField(w) : null;
     const offs = [[0, 0], [0.9, 0], [0, 0.9], [0.9, 0.9]];
     sel.forEach((a, i) => {
       const o = sel.length === 1 ? [0, 0] : offs[i];
@@ -478,7 +481,7 @@ const Game = W.game = {
       let tx = x + o[0] - cx, ty = y + o[1] - cx;
       if (!w.map.walkable(tx, ty)) { const p = w.map.nearestWalkable(tx, ty, 3); if (p) { tx = p[0]; ty = p[1]; } }
       a.manual = null;
-      W.goTo(w, a, tx, ty);
+      if (quiet) W.sneakTo(w, a, tx, ty, field); else W.goTo(w, a, tx, ty);
     });
     w.ping(x, y);
     W.audio.play("order");
@@ -666,7 +669,7 @@ const Game = W.game = {
           this.world.callStrike(ui.aim.agent, x, y); ui.aim = null; this.hud.update(true); return;
         }
       }
-      if (ev.button === 0) { ui.drag = { x0: ui.x, y0: ui.y, x1: ui.x, y1: ui.y, box: false, shift: ev.shiftKey || ev.ctrlKey }; return; }
+      if (ev.button === 0) { ui.drag = { x0: ui.x, y0: ui.y, x1: ui.x, y1: ui.y, box: false, shift: ev.shiftKey || ev.ctrlKey, quiet: ev.altKey }; return; }
       if (ev.button === 2) {
         const u = this.unitAt(ui.x, ui.y);
         if (u && !u.isAgent && u.faction !== "player") { this.orderAttack(u); return; }
@@ -694,7 +697,7 @@ const Game = W.game = {
       const u = this.unitAt(d.x0, d.y0);
       if (u && u.isAgent) { this.selectAgent(u, d.shift); return; }
       const [x, y] = this.renderer.toWorld(w, d.x0, d.y0);
-      this.orderMove(x, y);
+      this.orderMove(x, y, d.quiet);
     });
 
     window.addEventListener("keydown", ev => {

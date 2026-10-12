@@ -227,6 +227,7 @@ its best Purrsuader (6, 10 or 16); a persuade job's subject never counts.
 |---|---|
 | `` ` `` `1`–`4` | select the whole squad / a Watcher (`Shift` adds; double-tap centres the view) |
 | Left click / drag | move there / box-select |
+| `Alt` + left click | move there the quiet way: round the armed crew the scanner shows |
 | Right click | fire at a person or car, or at a spot on the ground (hold to keep firing); with the Purrsuader out, persuade |
 | `E` | go: every stim to full, guns out, the crew shot on sight |
 | `C` | calm: stims to nothing, guns away, nobody shoots first |

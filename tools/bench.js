@@ -64,25 +64,11 @@ function fight(W, L, level, tactic, maxT = 900, greedy = false, dt = 1 / 30) {
   let t = 0, orderT = 0;
   const live = () => world.agents.filter(a => a.alive && !a.out);
   const fail = msg => { throw new Error(`${L.id} ${tactic} t=${t.toFixed(1)}: ${msg}`); };
-  // what the scanner shows: armed crew who haven't turned or broken; priced so the stealthy go round them
-  const danger = new Float32Array(m.w * m.h);
-  const buildDanger = () => {
-    danger.fill(0);
-    for (const u of world.units) {
-      if (!u.alive || u.inCar || u.faction !== "crew" || u.follower || u.broken || !W.hasGun(u)) continue;
-      const cx = Math.floor(u.x), cy = Math.floor(u.y), r = 8;
-      for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) {
-        if (!m.inb(x, y)) continue;
-        const d = Math.hypot(x - cx, y - cy);
-        if (d <= r) danger[m.i(x, y)] += d <= 4.5 ? 12 : 4;
-      }
-    }
-  };
+  // the quiet way, as a player gets it with Alt-click: round what the scanner shows (W.dangerField)
+  let danger = null;
+  const buildDanger = () => { danger = W.dangerField(world); };
   const sneak = tactic !== "assault";
-  const go = (a, x, y) => {
-    if (sneak) { const p = m.path(a.x, a.y, x, y, false, danger); a.path = p && p.length ? p : null; a.dest = a.path ? a.path[a.path.length - 1] : null; a.stuckT = 0; }
-    else W.goTo(world, a, x, y);
-  };
+  const go = (a, x, y) => sneak ? W.sneakTo(world, a, x, y, danger) : W.goTo(world, a, x, y);
   const loud = a => { for (const s of W.STIMS) a.ipa[s.id].lvl = 1; a.aggressive = true; if (!W.armed(a) || W.curDef(a).persuade) W.drawBest(a); };
   const holster = a => { a.aggressive = false; if (W.armed(a)) { a.cur = -1; a.weaponOut = false; a.target = null; a.manual = null; } };
   const trouble = (a, r = 10) => world.units.some(u => u.alive && !u.inCar && (u.faction === "crew" && u.hostile && !u.follower || u.faction === "sec" && u.angryAt.player) && W.dist(a.x, a.y, u.x, u.y) < r);
@@ -145,6 +131,26 @@ function fight(W, L, level, tactic, maxT = 900, greedy = false, dt = 1 / 30) {
     const dM = W.dist(lead.x, lead.y, M.x, M.y);
     // trouble on the way: whoever is in it fights
     if (!st.loud) for (const a of ags) { if (trouble(a, 8)) loud(a); else if (!(tactic === "mob" && a === talker())) holster(a); }
+    // the mob, armed: with a following but few guns in it, hit something small on the way (lookouts, a
+    // mugging, a deal) and let them pick up what drops; twice at most
+    if (tactic === "mob" && !st.loud) {
+      const fol = world.units.filter(u => u.alive && u.follower && !u.isAgent && !u.subject);
+      const armedF = fol.filter(u => W.hasGun(u)).length;
+      if (st.raid && st.raid.crew.every(u => !u.alive || u.broken || u.faction === "player")) { st.raid = null; st.raids = (st.raids || 0) + 1; }
+      if (!st.raid && (st.raids || 0) < 2 && fol.length >= 3 && armedF < fol.length / 2) {
+        const c0 = ags[0];
+        st.raid = (world.encounters || []).filter(e => e.hostile && e.crew.some(u => u.alive && !u.broken && u.faction === "crew") && e.crew.filter(u => u.alive).length <= 3 && W.dist(c0.x, c0.y, e.x, e.y) < 45 && (!world.markAt || W.dist(e.x, e.y, world.markAt[0], world.markAt[1]) > W.ALARM_REACH + 5))
+          .sort((p, q) => W.dist(c0.x, c0.y, p.x, p.y) - W.dist(c0.x, c0.y, q.x, q.y))[0] || null;
+        if (!st.raid) st.raids = 2;
+      }
+      if (st.raid) {
+        const foe = st.raid.crew.filter(u => u.alive && !u.broken && u.faction === "crew")[0];
+        if (foe) {
+          for (const a of ags) { if (W.dist(a.x, a.y, foe.x, foe.y) < 9) { loud(a); a.manual = foe; } if (!a.path || Math.random() < 0.3) go(a, foe.x, foe.y); }
+          continue;
+        }
+      }
+    }
     // the mob: talk round whoever is near (a short detour), until the following is full
     if (tactic === "mob" && !st.loud) {
       const tk = talker();

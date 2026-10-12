@@ -812,6 +812,36 @@ W.scanCal = (world, u) => {
   return world.agents.some(a => a.alive && !a.out && W.dist(a.x, a.y, u.x, u.y) <= W.SCAN[3].armed);
 };
 /* does the squad's scanner mark u as armed? */
+/* The quiet way (Alt-click): a price on every cell near the crew the squad
+ * can know about, for the pathfinder to go round. Only what the scanner shows:
+ * nobody under a roof without MK3, no plain clothes it hasn't marked, and,
+ * where MK2 or better tells armed from unarmed, only the armed. */
+W.dangerField = world => {
+  const m = world.map, f = world.danger || (world.danger = new Float32Array(m.w * m.h));
+  f.fill(0);
+  const mk = W.scanMk(world), walls = (W.SCAN[mk] || {}).walls, reach = (W.SCAN[mk] || W.SCAN[1]).armed;
+  const ags = world.agents.filter(a => a.alive && !a.out);
+  for (const u of world.units) {
+    if (!u.alive || u.inCar || u.faction !== "crew" || u.follower || u.broken) continue;
+    if (u.undercover && !u.revealed && !W.scanArmed(world, u)) continue;
+    const cx = Math.floor(u.x), cy = Math.floor(u.y);
+    if (!walls && m.inb(cx, cy) && m.roofOf[m.i(cx, cy)] >= 0) continue;
+    if (reach && !W.hasGun(u) && ags.some(a => W.dist(a.x, a.y, u.x, u.y) <= reach)) continue;
+    for (let y = cy - 8; y <= cy + 8; y++) for (let x = cx - 8; x <= cx + 8; x++) {
+      if (!m.inb(x, y)) continue;
+      const d = Math.hypot(x - cx, y - cy);
+      if (d <= 8) f[m.i(x, y)] += d <= 4.5 ? 12 : 4;
+    }
+  }
+  return f;
+};
+/* go to (x, y) the quiet way: round the danger, if there's a way at all */
+W.sneakTo = (world, u, x, y, field) => {
+  const p = world.map.path(u.x, u.y, x, y, false, field || W.dangerField(world));
+  if (!p) return W.goTo(world, u, x, y);
+  u.path = p.length ? p : null; u.dest = u.path ? u.path[u.path.length - 1] : null; u.stuckT = 0;
+  return !!u.path;
+};
 W.scanArmed = (world, u) => {
   const r = (W.SCAN[W.scanMk(world)] || W.SCAN[1]).armed;
   if (!r || !u.alive || !W.hasGun(u)) return false;

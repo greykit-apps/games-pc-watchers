@@ -17,20 +17,28 @@ L.mission = {
   cal: true|false,   // the crew are Cal's own: his push, a siege, or a zone he holds
   hired: 0|4,        // a hired mercenary crew to field beside the squad (followers with guns)
   mindControl: bool, // the zone is under mind control: nobody there can be persuaded
+  counter: null | "spread" | "watch" | "dig" | "enforcers",   // Cal's answer to the squad's habits (W.CAL_COUNTERS, js/districts/encounters.js)
+  pay: { money, control },  // what a side job pays at weight 1, shown on each
 };
 L.mod = {            // the enemy at this threat, against the district's usual numbers
   crew: 0.35..1.7,   // multiplies theme.crew
   guards: 0..1.5,    // multiplies theme.guards
   sec: 0.6..1,       // multiplies theme.sec (local security)
-  armed: 0.3..1,     // share of crew and guards carrying anything at all
-  guns: [...],       // what the armed ones carry, picked from
-  armour: 1..1.5,    // multiplies their hit points
+  level: 0..4,       // the enemy's level (the threat less one): W.FOE in js/core/units.js
 };
 ```
 
 The squad arrives as now (`opts.roster`), each weapon with an `mk` (1 to 3). The squad's scanner mark (0 to 3) is on the level as `L.scannerMk`.
 The campaign reads the result as the debrief does today: won or lost, and for
-each Watcher alive or dead, kills, and the items they carried home. It would
+each Watcher alive or dead, kills, and the items they carried home; and how it
+was done, for Cal to hear about: BanHammer strikes called (`stats.strikes`),
+whether the alarm ever went up near the mark (`stats.quiet`), people talked
+round (`stats.persuaded`, `stats.turned`).
+
+The level also carries `L.options`: up to three drop points and three pickups
+(`W.planOptions`), the seed's own first. The briefing sets `L.picks.spawn` and
+`L.picks.pickup` from them and builds the world again; the briefing's text
+follows the picks. It would
 help if the items came home with their `mk` (today the engine drops it; the
 campaign works round that).
 
@@ -39,13 +47,26 @@ one it has, find and kill the target, at the district's usual strength.
 
 ## The enemy by threat
 
-| Threat | Who's there | Armed |
-|---|---|---|
-| 1 | a few lookouts and minders; no bodyguards | about a third, pistols only |
-| 2 | a small crew, a bodyguard or two | most, pistols and the odd shotgun |
-| 3 | the district's usual crew and guards | all: pistols, shotguns, uzis |
-| 4 | more of them, tougher | uzis, shotguns, a rifle |
-| 5 | an army | uzis, rifles, miniguns, lasers; armoured |
+The enemy comes in levels 0 to 4, the threat less one, matched to the
+Watchers' own levels: 0 is the squad Casey hands over, 1 to 3 a full suite of
+MK1, MK2 or MK3 kit (guns, mods, scanner, Purrsuader), 4 the top of the tree.
+One for one the enemy stays weaker (the Watchers have stims, a better
+chassis and faster reflexes); it makes that up in numbers. What they carry is
+what they drop, so a harder fight pays better in loot. `W.FOE` holds it:
+
+| Threat | Level | How many (crew, guards) | Armed | What they carry | Hit points |
+|---|---|---|---|---|---|
+| 1 | 0 | 0.35, none | a third | MK1 pistols | as their kind |
+| 2 | 1 | 0.6, 0.5 | most | MK1 pistols, shotguns, uzis | +10% |
+| 3 | 2 | 1, 1 | all | MK2 pistols, shotguns, uzis; MK1 rifles | +25% |
+| 4 | 3 | 1.25, 1.15 | all | MK3 shotguns, uzis; MK2 rifles, miniguns; MK1 lasers | +45% |
+| 5 | 4 | 1.3, 1.2 | all | MK3 uzis, rifles, miniguns; MK2 lasers; MK1 gauss guns | +50% |
+
+Bodyguards are a level up and carry a sidearm. A quiet job (persuade,
+intel, the safe) is watched, not held: 60% of the operation's crew and half
+its guards round the mark. Aim and reflexes rise a
+little with the level too. The mob (an encounter) is always level 0: the
+bottom of the gang, dangerous by numbers.
 
 An unarmed enemy should behave as one: raise the alarm, run for help, fight
 hand to hand at most. A new squad of four with pistols is tier 1 and should
@@ -67,6 +88,23 @@ the target spooked) and should cost something in the result.
 | **Hit Cal's crew** | a crackdown on Cal's people where he is pushing | as crackdown | as crackdown |
 | **Siege** | the enemy dug in, in a building, behind cover; the BanHammer's job | every defender down | the squad is wiped out |
 | **Story** | the zone's chain: find a lieutenant (step 1), turn their network (step 2, quiet), lock it down (step 3, a siege-like assault) | per step | per step |
+
+**Side jobs.** Every job has two or three pieces of hostile trouble on the
+ways in and out marked as side jobs (a gang, a deal, a roadblock, a pack of
+the crew, a mob, a mugging, lookouts), each paid if it's broken up (everyone
+in it down, run off or talked round) before the squad leaves, won or lost, as
+long as somebody gets out. `L.mission.pay` is what one pays at weight 1 (the
+engine's `W.CONTRACTS` weighs each kind); the engine hands back
+`res.contracts`, each `{ id, weight, done }`.
+
+**The sweep** is a job made of them: the crew's hangout at the mark and four
+pieces of trouble round it. Breaking the first opens the way out; each one
+more pays, until the squad leaves.
+
+"The exit" is the same for every kind: the getaway car at the pickup, one
+spot near the district's edge picked with the mission, far from the mark.
+Nowhere else counts. The threat also sets how busy the district is on the
+way there and back (`W.ENCOUNTER_DENSITY` in `js/districts/encounters.js`).
 
 A kill target (assassination, Cal's lieutenants, a story step's mark) can
 never be persuaded, at any Purrsuader mark: Casey wants them dead. The one a

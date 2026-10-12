@@ -5,7 +5,7 @@
  *                where it's heading, its missions) or, with no zone picked,
  *                Cal and the zones to watch; the day's dispatch; the missions,
  *                the ones that can't wait first.
- *   The Lab      research as a tree of marks, and the war meter.
+ *   The Lab      research as a tree of marks, and the meter toward Take Control.
  *   The Clinic   the roster, and a Watcher's body and its mods.
  *   The Armoury  the squad's kit: every Watcher's loadout, the racks (what the
  *                squad owns, bought or brought home from the field), the
@@ -56,7 +56,8 @@ W.Command = class {
       // what must survive a redraw: the toast, the banner, and the region that announces each day
       this.layer = document.createElement("div");
       this.layer.className = "cx-layer";
-      this.layer.innerHTML = `<div class="cx-toast" role="status"></div><div class="cx-banner" hidden></div><div class="sr" aria-live="polite" data-live></div>`;
+      this.layer.innerHTML = `<div class="cx-toast" role="status"></div><div class="cx-banner" hidden></div><div class="sr" aria-live="polite" data-live></div>
+        <div class="cx-ticker" role="region" aria-label="PVN news"><b class="tk-tag">PVN</b><div class="tk-run"><div class="tk-text" data-ticker></div></div></div>`;
       this.layer.addEventListener("click", ev => { if (ev.target.closest(".cx-banner")) this.hideBanner(); });
       document.body.appendChild(this.layer);
       this.mapCv = document.createElement("canvas");
@@ -92,7 +93,6 @@ W.Command = class {
   draw() {
     const s = this.s, M = W.M;
     if (!this.agentId || !M.agentById(s, this.agentId)) this.agentId = s.roster[0] && s.roster[0].id;
-    M.liveThreats(s);
     const fk = this.focusTo || (document.activeElement && this.el.contains(document.activeElement) ? document.activeElement.dataset.fk : null);
     const hadFocus = !!fk;
     this.focusTo = null;
@@ -119,6 +119,21 @@ W.Command = class {
       if (back) back.focus({ preventScroll: true });
     }
     if (this.banners.length && !this.bannerOn) this.nextBanner();
+    this.drawTicker();
+  }
+  /* PVN along the bottom (M.ticker): it lives in the layer, so a redraw doesn't
+   * start it over; the text changes only when the news does. Twice over, so
+   * the loop has no seam; the second copy is for eyes only. */
+  drawTicker() {
+    const el = this.layer && this.layer.querySelector("[data-ticker]");
+    if (!el) return;
+    const items = W.M.ticker(this.s), key = items.join("|");
+    if (el.dataset.key === key) return;
+    el.dataset.key = key;
+    const run = items.map(t => `<span>${W.esc(t)}</span>`).join("");
+    el.innerHTML = `<span class="tk-copy">${run}</span><span class="tk-copy" aria-hidden="true">${run}</span>`;
+    // about 70 pixels a second, whatever the length
+    requestAnimationFrame(() => { const w = el.firstChild ? el.firstChild.offsetWidth : 0; el.style.animationDuration = `${Math.max(20, w / 70)}s`; });
   }
 
   px(text, cls = "", k = 2) { return W.pix.html(text, cls, k); }
@@ -139,8 +154,8 @@ W.Command = class {
         <div class="lcd"><small>Day</small>${this.px(String(s.day).padStart(3, "0"), "lcd-t", 2)}</div>
         <div class="lcd"><small>Cash</small>${this.px(W.money(s.cash), "lcd-t", 2)}</div>
         <div class="lcd take" title="What the city makes a day: money, and research points (RP)"><small>A day<span class="sr">, money and research points (RP)</span></small><span class="v">${this.takeLCD(take)}</span></div>
-        <div class="warm ${s.war ? "at" : s.warReady ? "ready" : ""}"><small>${s.war ? "At war" : s.warReady ? "War: ready, your order" : "War footing"}</small>
-          ${s.war ? this.px("AT WAR", "war-t", 2) : `<span class="cells" role="meter" aria-label="Upgrade points toward war" aria-valuemin="0" aria-valuemax="${war}" aria-valuenow="${Math.min(pts, war)}">${cells}</span><b>${pts}/${war}</b>`}</div>
+        <div class="warm ${s.war ? "at" : s.warReady ? "ready" : ""}"><small>${s.war ? "Taking control" : s.warReady ? "Take Control: your order" : "Take Control"}</small>
+          ${s.war ? this.px(`${s.zones.filter(z => z.locked).length}/${s.zones.length} LOCKED`, "war-t", 2) : `<span class="cells" role="meter" aria-label="Upgrade points toward Take Control" aria-valuemin="0" aria-valuemax="${war}" aria-valuenow="${Math.min(pts, war)}">${cells}</span><b>${pts}/${war}</b>`}</div>
       </div>
       <div class="cx-split">
         <label for="cx-bal" title="What the zones don't spend on control, split between research and money">City split</label>
@@ -181,7 +196,7 @@ W.Command = class {
     const idle = !s.research.running.length;
     const tabs = [
       ["city", "CITY", "1", "Map, zones, missions", s.offers.length ? `<i class="n">${s.offers.length}</i>` : ""],
-      ["lab", "LAB", "2", "Research and war", idle ? `<i class="n warn">IDLE</i>` : ""],
+      ["lab", "LAB", "2", "Research and Take Control", idle ? `<i class="n warn">IDLE</i>` : ""],
       ["clinic", "CLINIC", "3", "The roster, and mods", `<i class="n soft">${M.squad(s).length}/${M.SQUAD}</i>`],
       ["office", "OFFICE", "4", "What the Boss can buy", ""],
       ["armoury", "ARMOURY", "5", "The squad's kit, the racks, the dealer", Object.keys(s.armoury).length ? `<i class="n soft">${Object.values(s.armoury).reduce((t, n) => t + n, 0)}</i>` : ""],
@@ -250,6 +265,9 @@ W.Command = class {
       z.floor ? `<li class="dark"><b>${z.floor === 2 ? "Mind control" : "Propaganda"}</b>: it settles back to level ${z.floor} by itself.</li>` : "",
       z.martial > 0 ? `<li><b>Martial law</b>: control can't fall for ${z.martial} more day${z.martial === 1 ? "" : "s"}.</li>` : z.martial < 0 ? `<li class="warn"><b>After martial law</b>: decay at double for ${-z.martial} day${z.martial === -1 ? "" : "s"}.</li>` : "",
       z.festival > 0 ? `<li class="good"><b>A festival</b>: control rising for ${z.festival} more day${z.festival === 1 ? "" : "s"}.</li>` : "",
+      // the next story step, when it isn't on the board: what it waits for
+      s.war && z.story < M.STORY.length && !s.offers.some(o => o.kind === "story" && o.zone === z.id)
+        ? `<li><b>${W.esc(M.STORY[z.story].name)}</b> (story step ${z.story + 1} of ${M.STORY.length}): ${M.storyReady(z) ? `on the board when there's room: ${M.BOARD.stories} story steps at most at once` : `needs the zone at ${Number.isInteger(M.STORY[z.story].needs) ? `level ${M.STORY[z.story].needs}` : `control ${M.STORY[z.story].needs}`}`}.</li>` : "",
     ].join("");
     const ticks = Array.from({ length: p + 1 }, (_, i) => `<i style="left:${p ? (100 * i / p) : 0}%"></i>`).join("");
     return `<article class="panel dossier">${head}
@@ -289,7 +307,10 @@ W.Command = class {
     const watch = s.zones.filter(z => !z.locked).map(z => ({ z, f: M.forecast(s, z) }))
       .filter(({ z, f }) => z.lost || (f && (f.lost || (f.to != null && f.to < M.level(z.C)))))
       .sort((a, b) => (b.z.lost - a.z.lost) || ((a.f && a.f.days) || 0) - ((b.f && b.f.days) || 0));
-    return `<article class="panel cal ${c.zone ? "on" : ""}">${this.hx("CAL", "cal-t", 2)}${cal}</article>
+    // what he has made of the Watchers (M.noteHabits)
+    const A = c.reads && M.CAL_ANSWER[c.reads];
+    const reads = A ? `<p class="reads"><b class="warn">He has heard about ${W.esc(A.heard)}.</b> His answer: ${W.esc(A.answer)}. Work another way and he loses the thread.</p>` : "";
+    return `<article class="panel cal ${c.zone ? "on" : ""}">${this.hx("CAL", "cal-t", 2)}${cal}${reads}</article>
       <article class="panel watch"><h3 class="sub">Zones slipping <span>${watch.length || "none"}</span></h3>
         ${watch.length ? `<ul>${watch.map(({ z, f }) => `<li><button data-a="zone" data-z="${z.id}" data-fk="w-${z.id}"><b>${W.esc(M.zoneDef(z.id).name)}</b><span class="${z.lost ? "bad" : "down"}">${z.lost ? "Lost: siege to retake" : this.fcText(f)}</span></button></li>`).join("")}</ul>`
           : `<p class="quiet">Every zone is holding or climbing. Pick one on the map to set what it spends on control.</p>`}
@@ -332,7 +353,7 @@ W.Command = class {
     return `<header class="ops-head">${this.hx("MISSIONS", "sub-t", 2)}
         <p class="squadline"><span title="Missions above the squad's tier cost Watchers. Quiet ones can be done without a shot fired.">Squad tier <b>${tier}</b><span class="sr">: missions above it cost Watchers; quiet ones can be done without a shot fired</span></span> <span class="dots t-ok" aria-hidden="true">${this.dots(tier, tier)}</span> · ${squad.map(a => W.esc(a.name)).join(", ")}
           <button class="link" data-a="screen" data-screen="clinic" data-fk="to-clinic">Clinic</button></p>
-        ${M.threatStep(s) ? `<p class="hint">Cal arms his people to match: missions +${M.threatStep(s)} threat for this squad.</p>` : ""}</header>
+        ${M.escalation(s) ? `<p class="hint">Cal is arming his people as the city turns: fighting jobs +${M.escalation(s)} threat. Quiet jobs in calm zones stay easy.</p>` : ""}</header>
       ${urgent.length ? `<section class="urgent"><h3 class="sub">Can't wait <span>${urgent.length}</span></h3>${urgent.map(o => this.offerHTML(o, true)).join("")}</section>` : ""}
       ${this.zoneId && !this.allOffers ? `<button class="link" data-a="alloffers" data-fk="alloffers">Show missions in every zone (${s.offers.length - urgent.length})</button>` : this.zoneId ? `<button class="link" data-a="alloffers" data-fk="alloffers">Only ${W.esc(M.zoneDef(this.zoneId).name)}</button>` : ""}
       ${order.map(id => { const z = M.zone(s, id), L = M.level(z.C);
@@ -377,7 +398,7 @@ W.Command = class {
       const open = r.needs.every(n => M.isDone(s, n));
       if (!open) return `<span class="node locked"><b>MK${r.mk || 1}</b><small>needs ${W.esc(r.needs.filter(n => !M.isDone(s, n)).map(n => M.item(n).name).join(", "))}</small></span>`;
       const why = M.canStart(s, r);
-      return `<span class="node open"><button data-a="start" data-r="${r.id}" data-fk="start-${r.id}" ${why ? "disabled" : ""} title="${W.esc(this.what(r))}"><b>MK${r.mk || 1}</b><small>Start · ${W.money(r.cost[0])} · ${r.cost[1]} RP${r.points === 2 ? " · counts 2 to war" : ""}</small></button>${why ? `<small class="why">${W.esc(why)}</small>` : ""}</span>`;
+      return `<span class="node open"><button data-a="start" data-r="${r.id}" data-fk="start-${r.id}" ${why ? "disabled" : ""} title="${W.esc(this.what(r))}"><b>MK${r.mk || 1}</b><small>Start · ${W.money(r.cost[0])} · ${r.cost[1]} RP${r.points === 2 ? " · counts 2" : ""}</small></button>${why ? `<small class="why">${W.esc(why)}</small>` : ""}</span>`;
     };
     const lineRow = (lineId, name, what) => {
       const marks = [1, 2, 3].map(k => M.item(`${lineId}:${k}`));
@@ -391,9 +412,9 @@ W.Command = class {
     const counters = avail.filter(r => r.kind === "counter");
     const runCounters = run.filter(p => p.id.startsWith("counter:"));
     return `<section class="panel lab-war">
-        <div>${this.hx(s.war ? "AT WAR" : "WAR FOOTING", "sub-t", 2)}<p>${s.war ? "Cal has committed. Decay runs faster everywhere, and he pushes harder. Finish each zone's story and lock it down; the last is his last stand." : pts >= war ? "Casey Benton is ready when you are. War is yours to declare: decay runs faster, Cal commits, and every zone's story opens. Take your time; there's no clock." : `${pts} of ${war} upgrade points. An MK3, or the BanHammer, counts 2. At ${war}, war is yours to declare.`}</p>
-          ${!s.war && pts >= war ? `<button class="${this.armed === "war" ? "armed" : "go"}" data-a="declare" data-fk="declare">${this.armed === "war" ? "Confirm: go to war with Cal" : "Declare war"}</button>` : ""}</div>
-        ${s.war ? "" : `<span class="cells big" role="meter" aria-label="Upgrade points toward war" aria-valuemin="0" aria-valuemax="${war}" aria-valuenow="${Math.min(pts, war)}">${cells}</span>`}
+        <div>${this.hx(s.war ? "TAKING CONTROL" : "TAKE CONTROL", "sub-t", 2)}<p>${s.war ? "Casey Benton has given the order, and Cal has committed. Decay runs faster everywhere, and he pushes harder. Finish each zone's story and lock it down; the last is his last stand." : pts >= war ? "Casey Benton is ready when you are. The order is yours to give: lock the city down, zone by zone. Decay runs faster, Cal commits, and every zone's story opens. Take your time; there's no clock." : `${pts} of ${war} upgrade points. An MK3, or the BanHammer, counts 2. At ${war}, Casey Benton will take control of the city on your order.`}</p>
+          ${!s.war && pts >= war ? `<button class="${this.armed === "war" ? "armed" : "go"}" data-a="declare" data-fk="declare">${this.armed === "war" ? "Confirm: lock the city down" : "Take Control"}</button>` : ""}</div>
+        ${s.war ? "" : `<span class="cells big" role="meter" aria-label="Upgrade points toward Take Control" aria-valuemin="0" aria-valuemax="${war}" aria-valuenow="${Math.min(pts, war)}">${cells}</span>`}
       </section>
       <section class="panel lab-run">
         <header>${this.hx("RUNNING", "sub-t", 2)}<small>${rate.toFixed(1)} research points a day${run.length > 1 ? `, ${(rate / run.length).toFixed(1)} to each` : ""} · points can't be banked</small></header>
@@ -432,7 +453,7 @@ W.Command = class {
       <p class="hint">${s.roster.length} of ${M.ROSTER_MAX} Watchers. ${M.SQUAD} go out; the rest wait in reserve.</p>
       <ul>${s.roster.map(x => `<li class="${x.id === this.agentId ? "sel" : ""} ${x.deployed ? "on" : ""}">
           <button class="who" data-a="agent" data-id="${x.id}" data-fk="agent-${x.id}" aria-pressed="${x.id === this.agentId}"><canvas width="44" height="44" data-port="${x.id}"></canvas>
-            <span><b>${W.esc(x.name)}</b><small>${x.missions} mission${x.missions === 1 ? "" : "s"} · ${x.kills} down</small><small>worth ${W.money(M.worth(x))}</small></span>
+            <span><b>${W.esc(x.name)}</b><small>${W.RANK.names[M.rank(x)]} · ${x.missions} mission${x.missions === 1 ? "" : "s"} · ${x.kills} down</small><small>worth ${W.money(M.worth(x))}</small></span>
             <span class="st ${x.deployed ? "in" : ""}">${x.deployed ? "Squad" : "Reserve"}</span></button>
           <button class="mini" data-a="deploytoggle" data-id="${x.id}" data-fk="dt-${x.id}">${x.deployed ? "Send to reserve" : "Put in the squad"}</button></li>`).join("")}</ul>
       <button data-a="hire" data-fk="hire" ${why ? "disabled" : ""}>Recruit · ${W.money(M.PRICE.recruit)}</button>${why ? `<small class="why">${W.esc(why)}</small>` : ""}
@@ -447,7 +468,7 @@ W.Command = class {
     };
     const left = ["brain", "eyes", "arms"], right = ["heart", "chest", "legs"];
     const body = `<section class="panel body">
-      <header>${this.hx(a.name, "sub-t", 3)}<small>${a.deployed ? "In the squad" : "In reserve"} · ${a.missions} mission${a.missions === 1 ? "" : "s"}</small>
+      <header>${this.hx(a.name, "sub-t", 3)}<small>${a.deployed ? "In the squad" : "In reserve"} · ${W.RANK.names[M.rank(a)]} · ${a.missions} mission${a.missions === 1 ? "" : "s"}${M.rank(a) < M.RANKS.length ? `, ${M.RANKS[M.rank(a)] - a.missions} more to ${W.RANK.names[M.rank(a) + 1]}` : ""}</small>
         <button class="link" data-a="screen" data-screen="armoury" data-fk="to-armoury">Kit in the Armoury</button></header>
       <div class="figure"><div class="slots">${left.map(id => slot(W.MODS.find(m => m.id === id))).join("")}</div>
         <canvas data-figure="${a.id}"></canvas>
@@ -717,7 +738,7 @@ W.Command = class {
       case "alloffers": this.allOffers = !this.allOffers; return this.draw();
       case "log": this.showLog = !this.showLog; return this.draw();
       case "office": this.officeZone = d.z; return this.go("office");
-      case "declare": if (!M.declareWar(s)) return W.audio.play("deny"); this.banners.push({ tone: "red", big: "WAR", sub: "Casey Benton gives the order. Cal commits. Lock the city down, zone by zone.", sound: "alarm" }); break;
+      case "declare": if (!M.declareWar(s)) return W.audio.play("deny"); this.banners.push({ tone: "red", big: "TAKE CONTROL", sub: "Casey Benton gives the order. Cal commits. Lock the city down, zone by zone.", sound: "alarm" }); break;
       case "works": if (!M.placeWorks(s, M.zone(s, d.z))) return W.audio.play("deny"); W.audio.play("heal"); break;
       case "deploy": return this.game.toBriefing(d.o);
       case "start": { const r = M.available(s).find(x => x.id === d.r); if (!r || !M.start(s, r)) return W.audio.play("deny"); W.audio.play("select"); this.focusTo = `cancel-${r.id}`; break; }
@@ -862,7 +883,7 @@ W.Command = class {
     // the banners: what nobody should miss
     for (const z of s.zones) if (z.lost && !before.zones[z.id].lost) this.banners.push({ tone: "red", big: "ZONE LOST", sub: `${M.zoneDef(z.id).name} has fallen to Cal. A siege takes it back.`, sound: "lose" });
     if (s.cal.zone && s.cal.zone !== before.cal) this.banners.push({ tone: "red", big: "CAL MOVES", sub: `He's pushing ${M.zoneDef(s.cal.zone).name}. A mission against his crew ends it.`, sound: "alarm" });
-    if (s.war && !before.war) this.banners.push({ tone: "red", big: "WAR FOOTING", sub: "Cal has committed. Decay runs faster everywhere.", sound: "alarm" });
+    if (s.war && !before.war) this.banners.push({ tone: "red", big: "TAKE CONTROL", sub: "Cal has committed. Decay runs faster everywhere.", sound: "alarm" });
     if (s.won && !before.won) this.banners.push({ tone: "gold", big: "PUMACITY IS HERS", sub: "Every zone is locked down. You win.", sound: "win" });
     W.audio.play("order");
     W.M.save(s);

@@ -6,9 +6,9 @@ You run the Watchers, the Boss's covert enforcers, holding her city zone by
 zone against Cal and the gangs he sets on it.
 
 Status: the engine; the meta-game (eight zones, daily production, Cal, research,
-war and lockdowns: see `docs/meta.md`), its missions played for now as the one
-mission type the engine has; five districts, each one large map with generated
-missions.
+Take Control and lockdowns: see `docs/meta.md`), with persuade, intel, job,
+crackdown, sweep, assassination, Cal's crew, siege and story missions; five
+districts, each one large map with generated missions.
 
 ## Play
 
@@ -27,20 +27,30 @@ The rules, and the numbers behind them, are in [docs/meta.md](docs/meta.md);
   zone's pips are worth more. At zero the zone is lost until a **siege**.
 - **Cal** pushes one zone at a time, harder the better you're doing, and can
   leave **tactics** behind that need researching away. Intel shows where he
-  goes next.
+  goes next. He learns how the Watchers work: lean on one way (the BanHammer,
+  stealth, guns, talk) and his people are set out against it until you vary it.
+- **The briefing** offers a choice of drop-offs and getaway car spots, and
+  counts the armed trouble along each way.
+- **PVN** runs the news along the bottom of the command screen: your work, as
+  Casey Benton would have it told.
 - **Research** costs money to start and research points to finish; points
   can't be banked and split between the projects running. Weapons, mods, the
   scanner and the Purrsuader come in three marks; the BanHammer, overseers,
   zone works and requisitions besides.
-- **Missions** are offered in zones (more where control is low), take 3 to 8
-  days during which the pips stand as set, and pay research (half of what is
-  left on every project running), money (enough for a real purchase) or
-  control. The mission itself is, for now, the engine's one type: find and
-  kill the target.
+- **Missions** arrive in zones over time, a short board of four to seven:
+  one or two ordinary offers a zone, five at most city-wide, no kind twice,
+  each up for 6 to 12 days; Cal's crew, sieges and story steps on top; and
+  always a quiet training job at threat 2 or less. What turns up fits the
+  zone (talk where it's calm, fighting where it isn't). A mission's threat is
+  its own, fixed when it turns up: the kind, the zone, and Cal's escalation
+  as the campaign goes on. Missions take 3 to 8 days during which the pips
+  stand as set, and pay research (half of what is left on the first project
+  running), money (enough for a real purchase) or control.
 - **The squad**: up to 8 Watchers, 4 deploy. Weapons are bought per Watcher,
   mods fitted at the Clinic; the dead are gone with everything spent on them.
-- **War** comes after 30 upgrade points: decay rises by half, and each zone
-  gets a story chain whose last step locks it down. Lock every zone down to win.
+- **Take Control**, Casey Benton's order once there are 30 upgrade points:
+  decay rises by 30%, Cal commits, and each zone gets a story chain whose last
+  step locks it down. Lock every zone down to win.
 - **Skirmish** on the title plays any district with the standard kit and saves
   nothing.
 
@@ -52,9 +62,12 @@ Each district of PumaCity is **one map**, far bigger than any one mission
 needs, and every mission is played on all of it: the squad can walk from
 the market to the cathedral to the station if it wants to. What a mission
 chooses is where things are: a target spot (in a named landmark, or
-anywhere), a drop point 24 to 60 tiles away, and the way out the target
-runs for, away from the squad. A seed picks all three, so one map gives a
-great many missions.
+anywhere), a drop point a long walk from it (a third to three quarters of
+the district's width), the way out the target runs for, away from the
+squad, and the **pickup**: a getaway car parked on the sidewalk or a verge
+near a road leaving the district, far from the target and, where it can be,
+from the drop point too, so the way out is a second long walk. A seed picks
+them all, so one map gives a great many missions.
 
 | District | Size | Landmarks |
 |---|---|---|
@@ -85,16 +98,42 @@ What makes them play:
   parks have a loop road, aisles and gates; every driveway runs through the
   sidewalk to a road.
 - **Encounters.** The district goes on without you. Each mission puts
-  something at a handful of its places of interest (inside buildings, open
-  spaces, big back alleys, two-way streets): a gang drinking in a bar or a
-  club, a deal going down, the police round a body in the road with their
-  cars across both lanes (traffic turns round), a patrol, a crowd. A few of
-  the crew walk the streets among everyone else. The hostile ones scale with
-  the threat, none are near the drop point, and nobody has to die: going
-  round is often the answer.
+  something at its places of interest (inside buildings, open spaces, big
+  back alleys, two-way streets): a gang drinking in a bar or a club, a deal
+  going down, a mugging, lookouts on a corner, a pack of the crew walking
+  the streets together, a mob of the crew's lowest (a dozen or more, few of
+  them armed, moving as one), the crew's car across a street with them round it,
+  the police round a body in the road or stopping a street at a checkpoint
+  (their cars across both lanes; traffic turns round), a patrol, a rally
+  with the police watching, a crowd. Crew also walk the streets alone,
+  among everyone else. How much is going on follows the district's size and
+  the threat (about 14 places on Downtown at threat 1, 30 at threat 5), and
+  so does the hostile share of it; the police turn out in force only at the
+  higher threats. More than half of it lies across the ways from the drop
+  point to the mark and from the mark to the getaway car, so the way out
+  runs through it; none of it is on top of the drop point, the mark or the
+  car. Nobody has to die: going round is often the answer.
+- **Alarms are local.** Crew within 20 tiles of where an alarm goes up turn
+  on the squad; within 32 they know a Watcher on sight from then on; the
+  target, or a persuade job's subject, hears of it only from their own
+  people or within 40 tiles. The rest of the district carries on as it was,
+  so a fight on the far side of town does not spook the mark, but each
+  fight on the way leaves its block awake for the way back.
+- **Silenced guns.** The pistol and the Longwhisker are heard only within 3
+  tiles of the shooter or of where the round lands. Whoever a silenced round
+  kills raises no alarm; one it only wounds turns on the shooter, but their
+  shout reaches no further than those 3 tiles. So a lone lookout can be
+  picked off from range without waking the block; two together, and the
+  second calls it in. (The crew's own pistols are silenced too.)
+- **Surprise.** A Watcher's Longwhisker kills with one shot while nobody
+  within 12 tiles of the one hit (them included) is on guard: crew alerted
+  or fighting, police called in, civilians panicking. Shoot one of a crowd
+  and the rest panic, and the next shot is just a rifle again. A miss lands
+  close enough to be heard, and spends the surprise too.
 - **Cars and people.** Drivers brake for pedestrians, now and then too late:
   a knockdown and some damage. A speeding car (a getaway, or a driver
-  panicking away from gunfire) kills whoever it hits. Walking into a car's
+  panicking away from gunfire) kills whoever it hits, but a Watcher's
+  chassis takes it: badly hurt and knocked flat. Walking into a car's
   side knocks you back, dazed. Only the fight's deaths count against the
   squad: gunfire and blasts, the getaway car, panicked drivers. Other traffic
   deaths are accidents, and the debrief lists them apart.
@@ -159,32 +198,49 @@ the map.
 - Bonuses: recruit 5 followers, and lose no more than 4 civilians. The
   debrief grades the run from S to D.
 - **Then get out.** With the target dead the job is not over: every Watcher
-  still standing has to reach the pickup at the drop point, or walk off any
-  edge of the map. Some of the crew lose heart and run when their boss goes
-  down (most of a small outfit, few of an army); the rest keep coming. On the
-  way out, pick over the dead: they drop every gun they had, and sometimes a
-  medikit, and a Watcher carries up to eight things home, guns you have not
-  researched included. Lost if nobody makes it out.
+  still standing has to reach the pickup (the getaway car, marked from the
+  start, and the only way out). Some of the crew lose heart and run when
+  their boss goes down (most of a small outfit, few of an army); the rest
+  keep coming. On the way out, pick over the dead: they drop every gun they
+  had, and sometimes a medikit, and a Watcher carries up to eight things
+  home, guns you have not researched included. Lost if nobody makes it out.
 
 ### The jobs
 
 The campaign says what kind of job it is (`L.mission.kind`), and the
 briefing, the opening radio and the title card follow it. Every job ends the
-same way: get out, to the pickup at the drop point or off any edge of the map.
+same way: get out, to the getaway car at the pickup. Walking off the map
+anywhere else does not count.
 
 | Job | At the mark | Done when | Lost when |
 |---|---|---|---|
 | **Assassination** | the target, with bodyguards | the target dies | the target gets away |
-| **Persuade** (quiet) | someone to talk round, minders watching from further out | they are walked out | they die, or run off once the alarm is up |
+| **Persuade** (quiet) | someone to talk round, minders watching from further out | they are walked out | they die, or run off once an alarm near them is up |
 | **Intel** (quiet) | a terminal: stand at it 6 seconds | the data's carrier is out | the carrier dies |
 | **Job** | a safe: stand at it 3 seconds | the goods are out | nobody gets them out (a fallen carrier drops them) |
+| **Sweep** | the crew's hangout and four pieces of trouble round it | at least one is broken up and the squad is out (each one more pays) | nobody gets out |
 | **Crackdown** (and a hit on Cal's crew) | the operation's stash, among its crew | the stash is burned and most of the crew are down or run off | the squad is wiped out |
 | **Siege** | the crew dug in, in the building nearest the mark, holding their posts | every defender is down | the squad is wiped out |
 | **Story** | step 1 a hit, step 2 a persuade, step 3 a siege | as those | as those |
 
+**Side jobs.** Every job also marks two or three pieces of trouble on the
+ways in and out (BONUS on the map, amber on the scanner): break one up
+before leaving (everyone in it down, run off or talked round) and it pays
+money and a little control on top, even if the job itself went wrong, as
+long as somebody gets out.
+
+**Veterancy.** A Watcher who comes home from 3 missions is a Regular, from
+8 a Veteran, from 15 Elite: each rank a little more aim and a little quicker
+to take it (stars on the card), and a little more squad power.
+
+**The enemy's level** is the threat less one, matched to the Watchers' own:
+at threat 1 a third of them carry an MK1 pistol; by threat 5 they carry MK3
+rifles, miniguns and lasers and take half as much again to kill, and there
+are nearly four times as many. What they carry is what they drop (see `docs/missions.md`).
+
 An empty-handed Watcher close to the crew is only suspicious at first ("Hey.
-Who are you?"); linger about two seconds and they work it out. A gun, or the
-alarm, gives you away at once. The following the squad can hold is set by
+Who are you?"); linger about two seconds and they work it out. A gun, or an
+alarm near them, gives you away at once. The following the squad can hold is set by
 its best Purrsuader (6, 10 or 16); a persuade job's subject never counts.
 
 ### Controls
@@ -193,6 +249,7 @@ its best Purrsuader (6, 10 or 16); a persuade job's subject never counts.
 |---|---|
 | `` ` `` `1`–`4` | select the whole squad / a Watcher (`Shift` adds; double-tap centres the view) |
 | Left click / drag | move there / box-select |
+| `Alt` + left click | move there the quiet way: round the armed crew the scanner shows |
 | Right click | fire at a person or car, or at a spot on the ground (hold to keep firing); with the Purrsuader out, persuade |
 | `E` | go: every stim to full, guns out, the crew shot on sight |
 | `C` | calm: stims to nothing, guns away, nobody shoots first |
@@ -230,7 +287,9 @@ js/ui/command.js      Watchers command: the board, missions, research, squad, ev
 js/ui/maproom.js      the Map Room: districts, sections, missions, fly-overs
 js/main.js            screens, input, loop
 tools/sim.js          headless bot runs of the mission
-tools/campaign.js     a bot plays the campaign headless; checks its invariants
+tools/bench.js        the tactics bench: a mission by level, threat and tactic
+tools/campaign.js     a bot plays the campaign headless; checks its invariants; --report
+tools/fights.json     the fight table it rolls from, measured with tools/bench.js
 tools/metasim.js      the meta-game's numbers, run and tuned headless
 tools/maps.js         every district: points walkable and connected
 tools/serve.py        a dev server that never lets the browser cache
@@ -266,8 +325,12 @@ node tools/sim.js 10           # bot goes in loud
 node tools/sim.js 10 --campaign  # with a new campaign's kit (no Uzis)
 node tools/sim.js 2 --attract  # the title screen's backdrop sim
 node tools/campaign.js 100     # a bot plays 100 missions (outcomes rolled); --fight plays them out
+node tools/campaign.js --report  # a dozen campaigns against the balance targets (docs/balance-plan.md)
 node tools/maps.js             # every district and section is sound
 node tools/sim.js 6 --quiet --district=downtown   # generated missions
+node tools/bench.js --kind=sweep --threat=2 --level=1 --tactic=stealth   # one cell of the tactics bench
+node tools/bench.js --grid --kinds=assassinate --jobs=4   # every level, threat and tactic, in parallel
+node tools/bench.js --table=grid.jsonl > tools/fights.json   # a grid as the campaign bot's fight table
 ```
 
 The sim fails on a crash, a NaN position, a unit standing inside a wall, or a

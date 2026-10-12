@@ -108,6 +108,30 @@ something behind in the zone (a new drug on the streets, a corrupted
 official, an informer network), and control pips there buy a quarter less
 until it is countered by research (see Research).
 
+**He learns how the Watchers work.** The street talks: every mission tells
+him how it was done: a BanHammer strike; in and out through the back
+streets without a fight away from the mark; taking on whoever was in the
+way; a crowd talked round. He keeps a fading tally (each mission counts 1,
+every older one 0.7 as much as the one after it), and once one habit is
+clearly ahead (four missions running or so, and well clear of the next: a
+squad that alternates two ways is never read) he answers it, on every
+mission, until the squad works another way for about three:
+
+| He has heard about | His answer |
+|---|---|
+| the orbital strikes | nobody bunches up: bodyguards stand two and a half times as far out, the crew further off, and every other siege defender holds the streets round the building |
+| Watchers slipping through the back streets | more lookouts across the ways in and out and a ring of them round the mark, sharp-eyed; everyone round the mark sees 1.5 tiles further |
+| Watchers shooting their way through | a third more bodyguards round the mark, a quarter tougher |
+| his people being talked round | packs of enforcers on the streets; a citizen wants one more in the crowd before they listen, and the following is two smaller |
+
+It shows on Cal's panel, in the briefing and on the news. Whatever works
+keeps working, a little less well; the answer is to vary it. On the bench
+(24 fights each side): strikes on sieges against his spread, 100% won and
+0.14 Watchers lost a mission become 91% and 0.48; assaults against his
+bodyguards, 0.87 lost become 1.13; stealth against his lookouts keeps the
+streets quiet 58 to 67% of the time instead of 75%, for a little more lost;
+his enforcers cut a talked-round following from 3.8 to 2.2.
+
 **Intel tells you where he is going next.** Intel missions pay research
 points, and they also reveal Cal's plans: which zone he will push next, and
 when. Forewarned, you
@@ -178,7 +202,7 @@ production can't give:
 | Bribes at City Hall | halves Cal's next push | $60,000 |
 | Martial law | a zone's control can't fall for 3 days, Cal or no Cal | $60,000 |
 | Hired guns | a mercenary crew fights beside the squad on its next mission (+4 squad power) | $50,000 |
-| An amnesty | a lost zone comes back at level 0 without a siege; not on war footing | $150,000 |
+| An amnesty | a lost zone comes back at level 0 without a siege; not once the city is being taken | $150,000 |
 
 ## Research
 
@@ -209,9 +233,9 @@ improve it, and each needs the one before.
 ### What it costs
 
 Sized for a campaign of about **100 missions**: weapons, mods and gear cost
-little enough in research points that the war (which comes after 30 upgrade
-points; see The endgame) arrives around mission 60, leaving 30 to 40 missions
-for the war and its lockdowns. Upgrades come about every 2 missions, intel
+little enough in research points that Take Control (open after 30 upgrade
+points; see The endgame) comes around mission 60, leaving 30 to 40 missions
+for the lockdowns. Upgrades come about every 2 missions, intel
 missions included. Production and the overseers stay dear: they are the long
 game.
 
@@ -233,47 +257,53 @@ play is to run it alongside one other project, half the points each, the
 production upgrade grinding away underneath while weapons, mods and
 countermeasures come and go above it.
 
-## The endgame: war footing
+## The endgame: Take Control
 
-War is the player's to declare, once the squad has earned it: at 30
+Cal can't be beaten while the city is only held: he is the chaos in it, not
+an opponent across a table, and he keeps it from settling however well it's
+run. The answer comes at the end, when Casey Benton gives the order to **Take
+Control**: lock the city down, zone by zone, and corner him for good. (The
+code and older notes call this "war".)
+
+The order is the player's to give, once the squad has earned it: at 30
 **upgrade points**, whatever they were spent on, Casey Benton is ready when
 the player is, and the order is given from the Lab. An MK1 or MK2 is a
 point; an MK3, or the BanHammer, is two. Production, the overseers and
 countermeasures don't count. Thirty is enough to unlock every weapon, mod and
-piece of gear and take them all to MK2. Nothing forces it: a player who goes
-to war with a squad that isn't ready, or a city that can't pay for one, has
-chosen to, and one who never does can hold the city as it is.
+piece of gear and take them all to MK2. Nothing forces it: a player who gives
+the order with a squad that isn't ready, or a city that can't pay for one,
+has chosen to, and one who never does can hold the city as it is.
 
-At that point the game changes from a research balancer to a war of
+At that point the game changes from a research balancer to a fight of
 attrition. Cal stops probing and commits: **decay everywhere goes up by
 30%**, he rests 2 to 4 days between pushes instead of 3 to 6, pushes for 5
 days instead of 4, and harder (a base of 0.6 a day, not 0.4); and each zone
 locked down corners him a little more (+0.1), so his push doesn't fade as
 the city closes on him.
 
-On war footing a zone at level 2 takes nearly everything it makes to hold:
+Taking control, a zone at level 2 takes nearly everything it makes to hold:
 a base-2 zone holds control 2.0 on all four pips, a base-3 zone 2.0 to 2.5 on
-four or five of five, and nothing holds under a push. So the war is fought
-on thin money, and a city that goes to war already spent finds it hard.
+four or five of five, and nothing holds under a push. So the endgame is fought
+on thin money, and a city that starts it already spent finds it hard.
 
-**Propaganda and mind control** change the war: a zone under them can't
+**Propaganda and mind control** change the endgame: a zone under them can't
 slip below level 1 (or 2) by decay alone; only Cal's pushes and failed
-missions take it lower. It is a way to win the war, and it costs the city
-money while it lasts.
+missions take it lower. It is a way to win the endgame, and it costs the
+city money while it lasts.
 
 **There is no clock.** City research (overseers, zone works, requisitions,
-propaganda, mind control) doesn't count toward the war's 30 points, mission
-threat scales with the squad in the field, not with days, and war waits for
-the order. A player who never gives it can hold the city as it is for as long
+propaganda, mind control) doesn't count toward the 30 points, Cal's
+escalation follows upgrade points, not days, and Take Control waits for the
+order. A player who never gives it can hold the city as it is for as long
 as they like. That is deliberate.
 
 **Story missions** make that pushing worth doing, and they are how the game
-is won. Once the city is on war footing, every zone has a chain of three
+is won. Once the order is given, every zone has a chain of three
 story missions: **find the lieutenant** (any level, threat 2), **turn the
 network** (level 2, threat 3, and like any persuade job it needs a
 Purrsuader in the squad), and **lock it down** (control 2.5, threat 4),
-each a step harder for every step Cal arms to match the squad (see Threat
-and the squad). The lockdown of the last zone Cal holds is **his last
+each a step harder for every step of Cal's escalation (see Threat and the
+squad). The lockdown of the last zone Cal holds is **his last
 stand**: threat 5, his own people, and where a BanHammer strike counts most.
 The last **locks the zone down**: Cal's network there is broken for good, its
 control no longer decays, and it drops out of Cal's reckoning, so each
@@ -287,22 +317,50 @@ The chains are tied to the zone, and some steps can only be done at a
 particular level: an informant who will only talk once the zone is
 pacified; a meeting that only happens where the streets are calm; a crime
 lord who can only be reached once his zone is in open war. So pacifying a
-zone opens missions that can't be run there otherwise, and the war is fought
-zone by zone. Each lockdown frees the pips that zone was spending to hold
-itself, which makes the next one easier: the end of the war gathers pace.
+zone opens missions that can't be run there otherwise, and the endgame is
+fought zone by zone. Each lockdown frees the pips that zone was spending to
+hold itself, which makes the next one easier: the end gathers pace.
 
 ## Missions
 
-Missions spawn in zones; the lower a zone's control, the more of them. What
-kind depends on the level:
+**The board is short, and it changes.** Offers arrive over time rather than
+being topped up: a zone holds one ordinary offer (two at level 0), and a zone
+short of that gets one on a daily roll by its level (50% at level 0, 35% at
+1, 25% at 2, 15% at 3). There are at most five ordinary offers across the
+city (four once the order to Take Control is given, when the story steps need
+the room), no kind twice while the board is three or more, and each stands 6
+to 12 days. On top of them come the ones that can't wait: Cal's crew while he
+pushes, a siege for each lost zone, and, once the city is being taken, up to
+three story steps, where a zone is ready for its next one (the closest to
+done first; the rest show in the zone's dossier, with what they wait for).
 
-| Level | Missions lean toward | The streets |
+**Two guarantees.** There is always a training job: if no quiet job at
+threat 2 or less is up, one turns up in the calmest zone (the Towers, while
+they hold; one of Cal's zones when he holds all that's left). And when the
+cash won't run to a recruit and a basic kit, a small job (threat 2 at most)
+turns up for the money. Both come on top of the five.
+
+What kind turns up depends on the zone:
+
+| Zone | Leans toward | Never |
 |---|---|---|
-| 3 | persuading people, intel, small pockets of violence; civilians must not be hurt | calm, policed |
-| 2 | intel, arrests, breaking up a gang's operation | wary |
-| 1 | assaulting targets, interceptions in public | tense; some civilians armed |
-| 0 | street warfare | most of the city hostile, if weakly armed |
-| lost | a siege: the enemy entrenched | hostile |
+| Level 3 | persuade, intel; now and then a job | crackdown, assassination, sweep |
+| Level 2 | intel, persuade, job, crackdown | assassination |
+| Level 1 | job, crackdown, intel, assassination, sweep | |
+| Level 0 | crackdown, job, assassination, sweep, intel | persuade |
+| Lost | a siege | |
+| The Towers | persuade and intel only: Benton's seat, the training ground | anything loud |
+
+The Starport and the Ranch lean further to jobs and crackdowns (the
+smuggling, the grow fields). The streets:
+
+| Level | The streets |
+|---|---|
+| 3 | calm, policed; civilians must not be hurt |
+| 2 | wary |
+| 1 | tense; some civilians armed |
+| 0 | most of the city hostile, if weakly armed |
+| lost | the enemy entrenched |
 
 **Rewards are research, money or control**, or a mix of them:
 
@@ -314,7 +372,15 @@ kind depends on the level:
   Intel also shows where Cal will push next;
 - **money:** enough to make a real purchase that is open to you now: a mark
   of mod for one Watcher, a new weapon, a recruit. Even if nobody needs it
-  today, a new Watcher will need kitting out soon enough;
+  today, a new Watcher will need kitting out soon enough. Fighting work adds
+  **danger money** by threat (×0.6 at threat 1, ×1 at 2, ×1.5, ×2.2, ×3 at
+  5): a full suite of MK3 mods is $690,000 a Watcher, and the hard jobs have
+  to be worth the Watchers they cost. A job pays it all;
+  an assassination too, with control, and the name on the list takes Cal's
+  tactic in the zone with them if one is running there; a crackdown a fifth
+  of it, with more control. Persuade and intel in a calm zone (level 2 or 3)
+  pay a small fee ($5,000 to $10,000), so training a new squad pays its way;
+  persuade's control is small where the zone is already settled;
 - **control:** in the zone the mission was run in, landing as the squad
   comes home, after the mission's days away;
 - **going after Cal's gang** in the zone he is pushing ends the push;
@@ -322,109 +388,99 @@ kind depends on the level:
   of control, or the opposite if they go badly.
 
 Won or lost, the streets remember how it was done: each citizen talked round
-and still with the squad at the end adds **0.02 control** to the zone, and
-each civilian the fight killed takes **0.03** off (traffic accidents don't
-count). Both show on the debrief.
+and still with the squad at the end adds **0.025 control** to the zone, each
+of the crew or the police turned **0.05**, up to **0.4** a mission (talk only
+goes so far); each civilian the fight killed takes **0.03** off (traffic
+accidents don't count). Both show on the debrief.
 
 Each mission type is a template with ranges: its board area, its target, how
 many guards and crew, their weapons, where you start and where they run, how
 many days it takes, what it pays. Each mission that spawns is rolled within
 those ranges, so no two are quite the same.
 
-**Story missions** arrive with war footing (see The endgame).
+**Story missions** arrive once the order to Take Control is given (see The
+endgame).
+
+**The plan.** The briefing offers two or three drop-offs and two or three
+spots for the getaway car, the seed's first: a short walk in that leaves a
+long one out, a car on the far side of the trouble, a drop by the target's
+way out. Each choice builds the mission again on the same seed, and the
+briefing counts the armed groups near the way in and the way out.
+
+**The news.** PVN, Casey Benton's own station, runs along the bottom of the
+command screen: the squad's missions as Benton would have them told ("Power
+cut at PumaCorp blamed on squirrels"), Cal's pushes, zones lost and taken
+back, Cal's answers to the Watchers, and when there's little to report, how
+the calm and the rough zones are doing.
 
 ## Threat and the squad
 
-A mission's **threat** (1 to 5) is its kind's base, a step harder where the
-zone's control is low (a step easier at level 3), a step harder at war, and a
-step harder at squad power 18 and again at 27: Cal arms his people to match
-the squad he sees in the field, not the research done. It is worked out for
-the squad deployed now, every time it's shown and when the squad goes, not
-frozen when the offer turned up. The **squad's tier** is its power (each of
-the four's best gun, a fifth of a point per mod mark, a hired crew, a
-BanHammer on a siege or lockdown) against 9, 13, 19 and 25 for tiers 2 to 5;
-the hired crew and the BanHammer don't count toward Cal's step. A weapon mark
+A mission's **threat** (1 to 5) belongs to the mission, not to the squad
+sent: its kind's base, a step harder where the zone's control is low (a step
+easier at level 3), and **Cal's escalation**, which follows the campaign: he
+arms his people a step at 18 upgrade points, and one more once the city is
+being taken. Quiet jobs in calm zones (level 2 or 3) take
+neither the escalation nor the Take Control step: that's the training ground,
+threat 1 or 2 all campaign long. A story step is 2, 3 and 4 plus the
+escalation (3, 4 and 5 by the time it matters); Cal's last stand is 5. It's worked out when the offer turns up,
+and fixed while it stands, so the same mission is easier for veterans than
+for recruits, and recruits can be sent on easy work.
+
+The **squad's tier** is its power (each of the four's best gun, a fifth of a
+point per mod mark, a quarter per rank, a hired crew, a BanHammer on a siege
+or lockdown) against 11.5, 18, 25 and 29 for tiers 2 to 5. The tiers are the
+Watchers' levels plus one, matched to the enemy's (W.FOE: the threat less
+one): the squad Casey hands over is tier 1, a full suite of MK1 mods and guns
+tier 2, MK2 tier 3, MK3 tier 4, the top of the tree tier 5. A weapon mark
 counts a quarter more gun, as it does in the field (+25% damage, +15%
 range). Every
 researched mark of a weapon is on the racks, MK1 included, and a BanHammer
 strike takes none of a Watcher's eight slots.
 
-## Balance, measured (2026-10-11, every mission kind in the field)
+## Balance, measured (2026-10-12)
 
-With every kind fought for real in the engine, the bot's rolled outcomes are
-measured per kind: four kits from the starting squad to tier 4, threat one
-under to two over, six fights a cell (`ROLL_KIND` in `tools/campaign.js`).
-At the squad's tier every fighting kind is won 83 to 100% of the time; a
-step over is a coin flip for most (crackdown 58%, Cal's crew 63%, a job 46%,
-a siege 75%, a hit 92%) and costs about two Watchers; two over is lost. The
-bot also now buys a Watcher the one gun that adds most, not a rack of every
-gun (which left it broke at war with recruits carrying pistols).
+`tools/campaign.js --report`: twelve campaigns of up to 200 missions, the
+bot rolling each fight from `tools/fights.json`, the tactics bench's grid
+(seven kinds, Watcher levels 0 to 4, threat a step under the squad to two
+over, every way in, 4 fights a cell, 1,700 fights). A careful player fights
+as the two best ways in for the cell did; raw (`--harsh`), as the average of
+every way the squad has. The bot spends like a player: mods to MK3 as
+they're researched, the best gun for each Watcher, what's brought home sold,
+the city turned to research when cash piles up; and it takes the mission
+worth most a day for the risk, a Watcher lost counted at what was spent on
+them.
 
-| Strategy | Wins | Won by mission | War at mission | Watchers lost |
-|---|---|---|---|---|
-| 50% to research (the default) | 12 of 12 | 98 | 61 | 25 |
-| War the moment it's ready | 12 of 12 | 98 | 61 | 25 |
-| Mind control everywhere, story first | 12 of 12 | 108 | 57 | 37 |
-| Research-heavy turtle | 12 of 12 | 95 | 44 | 30 |
-| The default, raw death rates | 12 of 12 | 125 | 59 | 86 |
+| | Careful | Raw |
+|---|---|---|
+| Won | 12 of 12, by mission 90 (day 456) | 12 of 12, by mission 110 (day 525) |
+| Take Control at mission | 57 | 57 |
+| Watchers lost a mission | 0.25 | 0.26 |
+| Cash at the end | $678,000 | $681,000 |
+| Offers on the board (before / taking control) | 5.1 / 6.6, at most 8 / 10 | the same |
+| Kinds taken | story 31%, intel 26%, persuade 10%, assassination 7%, crackdown 7%, sweep 6%, Cal's crew 5%, job 5%, siege 4% | intel 31%, story 26%, persuade 20%, assassination 6%, job 5%, sweep, siege 4% |
 
-Most of the dead fall a step over: Cal's crew comes a step over the squad
-more often than not (base threat 3, a step higher in a weak zone), and is
-won about half the time, and that's deliberate: answering Cal's push is a
-stretch, and hired guns and the BanHammer are how a player evens it.
+The other strategies (careful): Take Control as soon as it's open plays the
+same; the research-heavy turtle wins 12 of 12 by mission 100 (Take Control at
+44, 0.58 lost a mission); mind control everywhere 12 of 12 by 106. Every
+board had a training job (a quiet one at threat 2 or less); 1% had a kind
+twice.
 
-Late in a war, when every zone left is lost to Cal, the only offers used to
-be sieges at threat 5, with no lighter work to rebuild a broken squad on;
-the mind-control bot walked into a hundred of them across twelve campaigns.
-Now, when nothing on offer is within the squad's reach and Cal holds all
-that's left, the fallback job (intel, or a job for the money) turns up in
-one of his zones. That brought the mind-control row to 12 of 12 by mission
-108 with 37 Watchers lost, and sieges taken two or more over the squad to 13
-across 36 campaigns.
+What changed to get there, beyond the rules above: assassination's base
+threat came down to 2 (the bench wins it at the squad's level as often as a
+crackdown); Cal's escalation is one step (18 upgrade points) plus the Take
+Control step, since two steps put the whole endgame at threat 5; and danger
+money (fighting pay ×0.6 to ×3 by threat), without which only the risk-free
+jobs paid for the Watchers a fight costs.
 
-## Balance, measured (2026-10-11, with weapon marks in the field)
+## Decided
 
-Since the engine fields weapon marks and they count toward tier again, the
-same twelve seeds: every strategy above wins 11 or 12 of 12, by mission 94 to
-142 (the default 12/12 by 102, war 43 missions long, 13 Watchers lost); with
-the raw death rates, 7 of 12 by mission 146, with 87 lost. A careful player
-wins about the 100-mission mark whichever way they play; strategy shows in
-the pace and the losses. The table below is from just before marks counted.
-
-## Balance, measured (2026-10-11, second pass)
-
-`tools/campaign.js` as a bot. Its outcomes are rolled against the gap between
-a mission's threat and the squad's tier, from real fights in the engine,
-halved for a careful player (the engine's test bot walks straight in;
-`--harsh` uses its raw rates). It declares war once the squad is tier 3,
-and puts money first at war. Twelve seeds of 200 missions each:
-
-| Strategy | Wins | Won by mission | War at mission | War lasts | Watchers lost |
-|---|---|---|---|---|---|
-| 50% to research (the default) | 11 of 12 | 97 | 66 | 36 | 12 |
-| 30% / 40% to research | 12 of 12 | 145 / 114 | 111 / 79 | 35 | 11 / 10 |
-| 60% to research | 11 of 12 | 109 | 62 | 55 | 23 |
-| 70% to research | 6 of 12 | 141 | 78 | 64 | 27 |
-| War the moment it's ready | 11 of 12 | 97 | 60 | 36 | 11 |
-| Mind control everywhere, story first | 11 of 12 | 105 | 58 | 48 | 17 |
-| Research-heavy turtle | 7 of 12 | 129 | 71 | 60 | 31 |
-
-With the engine bot's raw death rates (a player who walks straight in), 2 of
-12 win, by mission 177, with 81 Watchers lost: skill in the field matters.
-Fifteen real fights in the engine: 14 won, none lost. Stacking every project
-and running intel every four days brings war in 168 to 224 days (it was 66).
-A prepared player banks millions by the end: the late money sink is still
-thin.
+1. **Waiting pays.** Idle days bank money and research, and that's a fair
+   way to play: Cal erodes what isn't watched, and there's no clock.
+2. **Picking fights the squad can win is good play.** The careful bot loses
+   fewer Watchers at its own tier than a straight fight would; that's not a
+   target to push up.
 
 ## Open questions
 
-1. **How long is the war?** Measured at 35 to 64 missions from the order to
-   the last lockdown, against a floor of 24 story steps.
-2. **The late money sink is thin.** A prepared player ends with millions
-   once the squad is kitted out. Hired guns and BanHammer strikes help;
-   something for a rich city to buy at war (Casey's favours, the Vault) is
-   still to find.
-3. **The simulation plays badly.** Its policy is crude (it climbs everything
-   to level 3 and holds it), so it can't show what overseers are worth, for
-   instance. The numbers here are a starting point for playtesting, not a
-   result.
+1. **The simulation plays a bot, not a person.** The fights are measured;
+   the choices between them are a reasonable bot's. Playtesting decides.

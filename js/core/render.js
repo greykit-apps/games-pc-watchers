@@ -380,10 +380,10 @@ W.Renderer = class {
         if (D.t > 0) { c.strokeStyle = "#7dffb0"; c.lineWidth = 2; c.beginPath(); c.ellipse(Math.round(sx + ox), Math.round(sy + oy), 1.4 * W.HTW, 1.4 * W.HTH, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, D.t / D.need)); c.stroke(); }
       }
     }
-    // the ways out, once the job is done: a pulsing cyan pad
-    if (world.phase === "exfil") for (const p of world.exfilPoints || []) {
-      const [sx, sy] = W.proj(p.x, p.y), k = 0.5 + 0.5 * Math.sin(t * 4);
-      for (const [r, a] of [[1.6, 0.9], [1.1 + 0.4 * k, 0.5]]) {
+    // the ways out: a faint ring round the getaway car from the start, a pulsing cyan pad once the job is done
+    for (const p of W.waysOut(world)) {
+      const [sx, sy] = W.proj(p.x, p.y), k = 0.5 + 0.5 * Math.sin(t * 4), live = world.phase === "exfil";
+      for (const [r, a] of live ? [[W.PICKUP_R, 0.9], [1.4 + 0.6 * k, 0.5]] : [[W.PICKUP_R, 0.3]]) {
         c.strokeStyle = W.rgba("#54f2ff", a); c.lineWidth = 1;
         c.beginPath(); c.ellipse(Math.round(sx + ox), Math.round(sy + oy), r * W.HTW, r * W.HTH, 0, 0, Math.PI * 2); c.stroke();
       }
@@ -641,9 +641,15 @@ W.Renderer = class {
       const [sx, sy] = this.toScreen(world, world.siege.x, world.siege.y, 0);
       o.fillStyle = "#ff5266"; o.fillText(`${world.siege.left} INSIDE`, sx * k, sy * k - 30 * k);
     }
-    if (world.phase === "exfil") for (const p of world.exfilPoints || []) {
+    // side jobs still to do: where their people are now
+    for (const c of world.contracts || []) {
+      if (c.done) continue;
+      const p = world.contractAt(c), [sx, sy] = this.toScreen(world, p.x, p.y, 0);
+      o.fillStyle = "rgba(255,176,0,.8)"; o.fillText(world.sweep ? "TARGET" : "BONUS", sx * k, sy * k - 30);
+    }
+    for (const p of W.waysOut(world)) {
       const [sx, sy] = this.toScreen(world, p.x, p.y, 0);
-      o.fillStyle = "#54f2ff"; o.fillText("EXFIL", sx * k, sy * k - 14);
+      o.fillStyle = world.phase === "exfil" ? "#54f2ff" : "rgba(84,242,255,.55)"; o.fillText(world.phase === "exfil" ? "EXFIL" : "PICKUP", sx * k, sy * k - 14);
     }
     for (const u of world.units) {
       if (!u.alive || u.out) continue;
@@ -663,27 +669,28 @@ W.Renderer = class {
         }
         if (R && R[0] === u && u.car.spotted) { o.fillStyle = Math.sin(world.time * 6) > 0 ? "#ff5266" : "#8a2a36"; o.fillText("SEEN", Xu, Y - 30 * k); }
       }
+      const top = W.unitTop(u) * k;
       // the scanner's mark on a gun under plain clothes
       if (u.undercover && !u.revealed && (W.scanArmed(world, u) || W.scanCal(world, u))) {
         const cal = W.scanCal(world, u), on = Math.sin(world.time * 8) > 0;
         o.fillStyle = cal ? (on ? "#ff5266" : "#8a2a36") : on ? "#ff8a3c" : "#a8541c";
-        o.beginPath(); o.moveTo(X, Y - 25 * k); o.lineTo(X + 4, Y - 25 * k - 6); o.lineTo(X, Y - 25 * k - 12); o.lineTo(X - 4, Y - 25 * k - 6); o.closePath(); o.fill();
+        o.beginPath(); o.moveTo(X, Y - top); o.lineTo(X + 4, Y - top - 6); o.lineTo(X, Y - top - 12); o.lineTo(X - 4, Y - top - 6); o.closePath(); o.fill();
       }
       if (u.subject && !u.follower) {
         o.fillStyle = Math.sin(world.time * 6) > 0 ? "#7dffb0" : "#3aa070";
-        o.beginPath(); o.moveTo(X, Y - 25 * k); o.lineTo(X + 6, Y - 25 * k - 8); o.lineTo(X - 6, Y - 25 * k - 8); o.closePath(); o.fill();
+        o.beginPath(); o.moveTo(X, Y - top); o.lineTo(X + 6, Y - top - 8); o.lineTo(X - 6, Y - top - 8); o.closePath(); o.fill();
       }
-      if (u.carries === "data" && !u.out) { o.fillStyle = "#7dffb0"; o.fillText("DATA", X, Y - 36 * k); }
-      if (u.isAgent && !u.out && u.weapons.some(w => w.type === "goods")) { o.fillStyle = "#7dffb0"; o.fillText("GOODS", X, Y - 36 * k); }
+      if (u.carries === "data" && !u.out) { o.fillStyle = "#7dffb0"; o.fillText("DATA", X, Y - top - 11 * k); }
+      if (u.isAgent && !u.out && u.weapons.some(w => w.type === "goods")) { o.fillStyle = "#7dffb0"; o.fillText("GOODS", X, Y - top - 11 * k); }
       if (u.kind === "target") {
         const b = Math.sin(world.time * 6) > 0;
         o.fillStyle = b ? "#ffb000" : "#a87400";
-        o.beginPath(); o.moveTo(X, Y - 25 * k); o.lineTo(X + 6, Y - 25 * k - 8); o.lineTo(X - 6, Y - 25 * k - 8); o.closePath(); o.fill();
+        o.beginPath(); o.moveTo(X, Y - top); o.lineTo(X + 6, Y - top - 8); o.lineTo(X - 6, Y - top - 8); o.closePath(); o.fill();
       }
       if (u.say && u.say.t > 0) {
         const txt = u.say.text;
         const w = o.measureText(txt).width + 12;
-        const by = Y - 30 * k;
+        const by = Y - top - 5 * k;
         o.fillStyle = "rgba(5,7,15,.88)"; o.fillRect(X - w / 2, by - 18, w, 17);
         o.strokeStyle = u.say.color || "#94a0c4"; o.lineWidth = 1; o.strokeRect(X - w / 2 + 0.5, by - 17.5, w - 1, 16);
         o.fillStyle = u.say.color || "#dbe4fb"; o.fillText(txt, X, by - 4);
@@ -789,6 +796,8 @@ W.Renderer = class {
     if (world.stash && !world.stash.dead) { blip(world.stash.x, world.stash.y, blink ? "#7dffb0" : "#2a6a4a", 4); if (!target) target = { x: world.stash.x, y: world.stash.y, mark: true }; }
     if (world.siege && world.siege.left && world.phase !== "exfil" && !target) target = { x: world.siege.x, y: world.siege.y, mark: true };
     if (world.phase === "exfil") for (const p of world.exfilPoints || []) { blip(p.x, p.y, blink ? "#54f2ff" : "#1c6a74", 4); if (!target) target = { x: p.x, y: p.y, exfil: true }; }
+    else for (const p of W.waysOut(world)) blip(p.x, p.y, "#1c6a74", 3);
+    for (const c of world.contracts || []) if (!c.done) { const p = world.contractAt(c); blip(p.x, p.y, blink ? "#ffb000" : "#7a5a10", 3); if (!target && world.sweep) target = { x: p.x, y: p.y, mark: true }; }
     // the target off the edge: an arrow on the rim
     if (target && !opts.full) {
       const [px, py] = P(target.x, target.y);

@@ -22,7 +22,6 @@ W.district({
     secNote: "Event Security work the doors, the halls and the plaza. They have no idea who you are, and a crowd this size makes them jumpy. Keep weapons holstered near them.",
     ground: "A huge building to fight through room by room, garages full of cars that burn, and a nightlife strip that never closes.",
     guards: 4, crew: 10, sec: 10, civ: 0.004, civMax: 110,
-    crewGuns: ["pistol", "pistol", "uzi", "shotgun"],
     civLook: () => { const coat = W.pick(["#c83a6a", "#3a8ac8", "#d8a01a", "#6a3ac8", "#3ac88a", "#e8e4dc", "#c86a1a"]); return { coat, trim: W.shade(coat, 1.4), legs: W.pick(["#22252e", "#3a3a48"]), fur: W.pick(W.FURS), patch: W.chance(0.3) ? W.pick(W.FURS) : null }; },
     secLook: () => ({ coat: "#1a1a20", trim: "#ffd04a", legs: "#14141a", fur: W.pick(W.FURS), hat: "#1a1a20", hatKind: "cap" }),
   },

@@ -15,6 +15,38 @@ W.KINDS = {
   target: { hp: 10, speed: 1.9, acc: 0.6, react: 0.8, sight: 7 },
 };
 
+/* The enemy by level, 0 to 4 (a mission's threat less one), matched to the
+ * Watchers' levels: 0 the squad Casey hands over, 1 to 3 a full suite of MK1,
+ * MK2 or MK3 kit, 4 the top of the tree. Enemies stay weaker one for one (the
+ * Watchers have stims, chassis and reflexes) and make it up in numbers. What
+ * they carry is what they drop: a higher level is more dangerous and pays
+ * better to put down. guns: "type:mark", picked evenly; armed: the share
+ * carrying anything; hp, acc, react: against their kind's numbers. */
+W.FOE = [
+  { guns: ["pistol:1"], armed: 0.3, hp: 1, acc: 1, react: 1 },
+  { guns: ["pistol:1", "pistol:1", "shotgun:1", "uzi:1"], armed: 0.7, hp: 1.1, acc: 1, react: 1 },
+  { guns: ["pistol:2", "shotgun:2", "uzi:2", "uzi:2", "longrange:1"], armed: 1, hp: 1.25, acc: 1.05, react: 0.95 },
+  { guns: ["shotgun:3", "uzi:3", "longrange:2", "minigun:2", "laser:1"], armed: 1, hp: 1.45, acc: 1.1, react: 0.9 },
+  { guns: ["uzi:3", "longrange:3", "minigun:3", "laser:2", "minigun:3", "longrange:3", "gauss:1"], armed: 1, hp: 1.5, acc: 1.1, react: 0.85 },
+];
+/* the enemy level a mission is fought at: the campaign's (L.mod.level), else
+ * its threat less one, else the district's usual strength (level 2) */
+W.foeLevel = L => W.clamp(L.mod && L.mod.level != null ? L.mod.level : L.mission ? L.mission.threat - 1 : 2, 0, W.FOE.length - 1);
+/* Fit u out as an enemy of a level: body, aim, reflexes, and (if armed) a gun
+ * from the level's racks; a bodyguard (role "guard") a level up, with a
+ * sidearm. R: the seeded random to pick with. */
+W.kitFoe = (u, level, armed, R, role) => {
+  const F = W.FOE[W.clamp(level + (role === "guard" ? 1 : 0), 0, W.FOE.length - 1)];
+  u.maxHp = u.hp = Math.round(u.maxHp * F.hp * 10) / 10;
+  u.acc *= F.acc; u.react *= F.react; u.foeLevel = level;
+  if (armed) {
+    const [type, mk] = F.guns[Math.floor(R() * F.guns.length)].split(":");
+    W.giveWeapon(u, type, undefined, +mk);
+    if (role === "guard" && type !== "pistol") W.giveWeapon(u, "pistol", undefined, Math.min(3, +mk));
+  }
+  return u;
+};
+
 W.LINES = {
   warn: ["Holster that weapon!", "Weapons down. Now!", "Put it away, pal!", "Not in my plaza!"],
   secAngry: ["Officer needs backup!", "Shots fired!", "Take them down!"],
@@ -43,7 +75,36 @@ W.makeUnit = (kind, x, y, o = {}) => {
     react: K.react, sight: K.sight, baseSpeed: K.speed * (o.speedMul || 1), acc: K.acc, armor: K.armor || 1,
   }, o);
   if (!u.look) u.look = W.lookFor(kind);
+  if (!u.look.species) u.look = W.withSpecies(u.look, W.speciesFor(kind));
   return u;
+};
+
+/* Who the city is: cat-folk mostly, with wolves and horses among them. The
+ * Watchers and the named targets are cats. Looks only: a species changes the
+ * drawing, never the numbers. */
+W.SPECIES_MIX = {
+  civ:   { cat: 0.5, wolf: 0.3, horse: 0.2 },
+  sec:   { cat: 0.4, wolf: 0.35, horse: 0.25 },
+  crew:  { cat: 0.45, wolf: 0.35, horse: 0.2 },
+  guard: { cat: 0.2, wolf: 0.35, horse: 0.45 },
+};
+W.WOLF_FURS = ["#7c7c84", "#9a948a", "#5a5a60", "#b8b2a6", "#3a3a3e", "#8a7a64", "#d9d3c7", "#6a5a4a"];
+// a horse's coat and the mane and tail that go with it: bay, chestnut, black, grey, palomino, dun, white
+W.HORSE_COATS = [["#6a3a22", "#1a1414"], ["#4a2c1e", "#141010"], ["#8a4a2a", "#5a2a16"], ["#2a2422", "#141010"],
+  ["#9a9a9a", "#4a4a4e"], ["#d8b46a", "#f0ead8"], ["#b08a5a", "#2a2018"], ["#e2ddd2", "#b8b2a6"]];
+W.speciesFor = kind => {
+  const mix = W.SPECIES_MIX[kind];
+  if (!mix) return "cat";
+  let r = Math.random();
+  for (const s in mix) if ((r -= mix[s]) < 0) return s;
+  return "cat";
+};
+/* A look with a species' body on it: fur (and a horse's mane) to suit; clothes stay. */
+W.withSpecies = (look, species) => {
+  const L = Object.assign({}, look, { species });
+  if (species === "wolf") L.fur = W.pick(W.WOLF_FURS);
+  else if (species === "horse") { const [fur, mane] = W.pick(W.HORSE_COATS); L.fur = fur; L.mane = mane; }
+  return L;
 };
 
 W.lookFor = kind => {
@@ -126,12 +187,13 @@ W.hostileTo = (world, a, b) => {
     case "player":
       // a Watcher sent in with E (aggressive) shoots the crew on sight, made or not; plain
       // clothes fool them, unless the scanner has marked the gun or the crew member shows their hand
-      if (b.faction === "crew") return b.hostile || (a.aggressive && !b.broken && (!b.undercover || b.revealed || W.scanArmed(world, b))) || (b.kind === "target" && world.alarm);
+      if (b.faction === "crew") return b.hostile || (a.aggressive && !b.broken && (!b.undercover || b.revealed || W.scanArmed(world, b))) || (b.kind === "target" && world.markAlarm);
       if (b.faction === "sec") return b.angryAt.player;
       return false;
     // (a persuade job's subject, gone over to us, they want back alive: they go for the Watchers instead)
     case "crew": return (b.faction === "player" && a.hostile && !b.subject) || (b.faction === "sec" && a.angryAt.sec);
-    case "sec": return (b.faction === "player" && a.angryAt.player) || (b.faction === "crew" && a.angryAt.crew);
+    // (nor do the police shoot at a persuade job's subject: to them it's a citizen caught up in it)
+    case "sec": return (b.faction === "player" && a.angryAt.player && !b.subject) || (b.faction === "crew" && a.angryAt.crew);
   }
   return false;
 };
@@ -233,27 +295,46 @@ W.mustWait = (world, u, nx, ny) => {
 /* Bodies push each other apart a little, never into walls. */
 W.separate = (world, dt) => {
   const us = world.units, m = world.map;
+  // only neighbours can touch: bucket everyone by tile, then each looks at the 3x3 round them
+  const grid = new Map(), key = (x, y) => y * 4096 + x;
   for (let i = 0; i < us.length; i++) {
     const a = us[i];
     if (!a.alive || a.inCar) continue;
-    for (let j = i + 1; j < us.length; j++) {
-      const b = us[j];
-      if (!b.alive || b.inCar) continue;
-      const dx = b.x - a.x, dy = b.y - a.y;
-      if (Math.abs(dx) > 0.45 || Math.abs(dy) > 0.45) continue;
-      const d = Math.hypot(dx, dy) || 0.01;
-      if (d >= 0.42) continue;
-      const push = (0.42 - d) * 0.5, ux = dx / d * push, uy = dy / d * push;
-      // the one standing still gives way more
-      const wa = a.moving && !b.moving ? 0.3 : !a.moving && b.moving ? 0.7 : 0.5;
-      const ax = a.x - ux * wa * 2, ay = a.y - uy * wa * 2, bx = b.x + ux * (1 - wa) * 2, by = b.y + uy * (1 - wa) * 2;
-      if (m.walkable(ax, ay)) { a.x = ax; a.y = ay; }
-      if (m.walkable(bx, by)) { b.x = bx; b.y = by; }
+    const k = key(Math.floor(a.x), Math.floor(a.y));
+    const cell = grid.get(k); if (cell) cell.push(i); else grid.set(k, [i]);
+  }
+  for (let i = 0; i < us.length; i++) {
+    const a = us[i];
+    if (!a.alive || a.inCar) continue;
+    const cx = Math.floor(a.x), cy = Math.floor(a.y);
+    for (let gy = cy - 1; gy <= cy + 1; gy++) for (let gx = cx - 1; gx <= cx + 1; gx++) {
+      const cell = grid.get(key(gx, gy)); if (!cell) continue;
+      for (const j of cell) {
+        if (j <= i) continue;
+        const b = us[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        if (Math.abs(dx) > 0.45 || Math.abs(dy) > 0.45) continue;
+        const d = Math.hypot(dx, dy) || 0.01;
+        if (d >= 0.42) continue;
+        const push = (0.42 - d) * 0.5, ux = dx / d * push, uy = dy / d * push;
+        // the one standing still gives way more
+        const wa = a.moving && !b.moving ? 0.3 : !a.moving && b.moving ? 0.7 : 0.5;
+        const ax = a.x - ux * wa * 2, ay = a.y - uy * wa * 2, bx = b.x + ux * (1 - wa) * 2, by = b.y + uy * (1 - wa) * 2;
+        if (m.walkable(ax, ay)) { a.x = ax; a.y = ay; }
+        if (m.walkable(bx, by)) { b.x = bx; b.y = by; }
+      }
     }
   }
 };
 
 /* ---- firing ---- */
+// on guard: someone who'd see a rifle coming. Crew alerted or fighting or running, police called in, civilians panicking
+W.onGuard = u => u.kind === "civ" ? u.state === "panic" || u.state === "flee"
+  : u.kind === "sec" ? !!(u.angryAt && (u.angryAt.player || u.angryAt.crew))
+  : !!(u.alert || u.hostile || u.state === "flee" || u.state === "alerted");
+// the element of surprise (W.WEAPONS[..].surprise): nobody round the one hit, them included, on guard
+W.surprised = (world, t) => !world.units.some(o => o.alive && !o.isAgent && !o.follower && !o.inCar && W.dist(o.x, o.y, t.x, t.y) < W.SURPRISE_R && W.onGuard(o));
+
 W.tryFire = (world, u, tx, ty, victim) => {
   const w = W.curWeapon(u), def = W.curDef(u);
   if (!def || !def.gun || u.cd > 0) return false;
@@ -314,11 +395,15 @@ W.tryFire = (world, u, tx, ty, victim) => {
     world.tracer(u.x + Math.cos(ang) * 0.3, u.y + Math.sin(ang) * 0.3, mz, ex, ey, ez, def.tracer, def.beam ? 2 : 1, def.beam ? 0.25 : 0.07);
     if (hit) {
       if (hit.isCar) world.damageCar(hit, dmg, u);
-      else world.damage(hit, dmg, u);
+      // a Watcher's rifle on someone who doesn't see it coming: one shot (not the crew's on a Watcher)
+      else if (def.surprise && u.isAgent && !hit.isAgent && W.surprised(world, hit)) world.damage(hit, hit.hp + 1, u, def.silenced);
+      else world.damage(hit, dmg, u, def.silenced);
     }
     if (def.blast) world.explode(ex, ey, def.blast.r, def.blast.dmg * blastMul, u);
+    // a silenced round is heard where it lands, close by, and nowhere else
+    if (def.silenced) world.noise(ex, ey, W.SILENT_R, u);
   }
-  world.noise(u.x, u.y, 9, u);
+  world.noise(u.x, u.y, def.silenced ? W.SILENT_R : 9, u);
   return true;
 };
 
@@ -336,7 +421,9 @@ W.followingCap = world => {
     const d = W.WEAPONS[w.type];
     if (d && d.persuade) mk = Math.max(mk, Math.max(d.persuade, w.mk || 1));
   }
-  return mk ? W.FOLLOWING[Math.min(3, mk)] : 0;
+  // Cal's enforcers on the streets: fewer will follow
+  const CC = W.CAL_COUNTERS[world.level.mission && world.level.mission.counter];
+  return mk ? Math.max(1, W.FOLLOWING[Math.min(3, mk)] + (CC && CC.following || 0)) : 0;
 };
 /* how many followers it takes to talk t round (before the brain mods count) */
 W.persuadeNeed = (world, agent, t) => {
@@ -345,6 +432,9 @@ W.persuadeNeed = (world, agent, t) => {
   // the Purrsuader II needs no crowd for anyone not already fighting us, and half the crowd for those who are
   const def = W.curDef(agent);
   if (def && def.persuade > 1) need = W.hostileTo(world, agent, t) ? Math.ceil(need / 2) : 0;
+  // Cal's enforcers: a citizen wants one more in the crowd before they listen
+  const CC = W.CAL_COUNTERS[world.level.mission && world.level.mission.counter];
+  if (CC && CC.need && t.kind === "civ") need += CC.need;
   return need;
 };
 W.canPersuade = (world, agent, t) => {
@@ -485,7 +575,7 @@ W.thinkAgent = (world, u) => {
   const range = W.rangeOf(u) + W.eff(u, "dot") * 1.5 + 0.6 * W.mod(u, "eyes");
   const foe = W.nearestFoe(world, u, range);
   if (foe) {
-    if (u.target !== foe) { u.target = foe; u.aimT = Math.max(0.1, (0.95 - 0.65 * vine - 0.2 * W.eff(u, "dot")) * (1 - 0.18 * W.mod(u, "brain"))); }
+    if (u.target !== foe) { u.target = foe; u.aimT = Math.max(0.1, (0.95 - 0.65 * vine - 0.2 * W.eff(u, "dot")) * (1 - 0.18 * W.mod(u, "brain")) * (1 - W.RANK.react * (u.rank || 0))); }
   } else u.target = null;
 };
 
@@ -519,7 +609,7 @@ W.thinkFollower = (world, u) => {
 /* A persuade job's subject: they keep to their spot until the alarm goes up
  * (or someone hurts them), then run for the way out. Making it ends the job. */
 W.thinkSubject = (world, u) => {
-  if (world.alarm || u.hp < u.maxHp) {
+  if (world.markAlarm || u.hp < u.maxHp) {
     u.state = "flee";
     if (!u.fled) { u.fled = true; W.say(u, "I'm out of here!", "#7dffb0", 2.2); world.msg(`${u.name} is running!`, "#ffb000"); }
     const ex = world.escapePoint;
@@ -640,11 +730,11 @@ W.thinkCrew = (world, u) => {
   if (!u.hostile) {
     // who can they see? An armed Watcher at range, at once. Someone of ours with
     // empty hands up close only makes them wonder: linger about two seconds and
-    // they work it out. With the alarm up, they know anyone on sight.
+    // they work it out. Once an alarm near them has gone up, they know anyone on sight.
     let close = false;
     for (const o of world.units) {
       if (!o.alive || o.faction !== "player" || o.inCar) continue;
-      const loud = world.alarm || W.armed(o), r = world.alarm ? u.sight + 2 : W.armed(o) ? u.sight : 3.2;
+      const loud = u.alert || W.armed(o), r = u.alert ? u.sight + 2 : W.armed(o) ? u.sight : 3.2;
       if (!W.canSee(world, u, o, r)) continue;
       if (!loud) { close = true; if ((u.sus || 0) < W.SUSPICION) continue; }
       u.hostile = true; W.drawBest(u);
@@ -658,6 +748,17 @@ W.thinkCrew = (world, u) => {
       if (close && was === 0) W.say(u, W.pick(["Hey. Who are you?", "You lost?", "Don't I know you?"]), "#ffb000", 1.6);
     }
     if (!u.hostile) {
+      // one of a crew walking the streets together: keep up with whoever leads
+      if (u.pack) {
+        const P = u.pack;
+        if (P.alive && !P.hostile && !P.broken) {
+          const tx = P.x + u.packAt[0], ty = P.y + u.packAt[1];
+          if (W.dist(u.x, u.y, tx, ty) > 1.4 && (!u.path || u.chaseT <= 0)) { const q = world.map.nearestWalkable(tx, ty, 2); if (q) W.goTo(world, u, q[0], q[1]); u.chaseT = 0.9; }
+          else if (!u.path) u.dir = P.dir;
+          return;
+        }
+        u.pack = null;
+      }
       if (u.patrol && !u.path && u.stateT <= 0) {
         u.patrolI = ((u.patrolI ?? -1) + 1) % u.patrol.length;
         W.goTo(world, u, u.patrol[u.patrolI][0], u.patrol[u.patrolI][1]);
@@ -686,7 +787,7 @@ W.thinkCrew = (world, u) => {
     return;
   }
   // hunt: the last place they saw one of us, or where the alarm came from
-  const spot = u.seen || world.alarmAt;
+  const spot = u.seen || (world.alarmAt && W.dist(u.x, u.y, world.alarmAt[0], world.alarmAt[1]) < W.ALERT_R ? world.alarmAt : null);
   if (spot && (!u.path || u.chaseT <= 0) && W.dist(u.x, u.y, spot[0], spot[1]) > 1.5) {
     W.goTo(world, u, spot[0] + W.rand(-1.5, 1.5), spot[1] + W.rand(-1.5, 1.5)); u.chaseT = 2.5;
   } else if (spot && W.dist(u.x, u.y, spot[0], spot[1]) <= 1.5) { u.seen = null; }
@@ -714,8 +815,8 @@ W.thinkUnarmed = (world, u) => {
   let it = null, id = 8;
   for (const i of world.items) { if (!W.WEAPONS[i.type].gun) continue; const d = W.dist(u.x, u.y, i.x, i.y); if (d < id) { id = d; it = i; } }
   if (it) { if (!u.path || u.chaseT <= 0) { W.goTo(world, u, it.x, it.y); u.chaseT = 1; } return; }
-  // help: the nearest armed friend
-  let pal = null, pd = Infinity;
+  // help: the nearest armed friend, if there is one near enough to run to
+  let pal = null, pd = W.ALERT_R;
   for (const b of world.units) {
     if (!b.alive || b.inCar || b.follower || b.faction !== "crew" || b === u || !W.hasGun(b)) continue;
     const d = W.dist(u.x, u.y, b.x, b.y);
@@ -745,7 +846,13 @@ W.thinkUnarmed = (world, u) => {
 W.SUSPICION = 2;
 W.UNDERCOVER = { 1: 0, 2: 0, 3: 0.15, 4: 0.3, 5: 0.45 };
 W.SCAN = { 1: { armed: 0 }, 2: { armed: 12 }, 3: { armed: 22, walls: true } };
-W.disguise = (u, look) => { u.undercover = true; u.look = look || W.lookFor("civ"); return u; };
+// plain clothes over the same body: species, fur and mane stay
+W.disguise = (u, look) => {
+  const b = u.look || {};
+  u.undercover = true;
+  u.look = Object.assign({}, look || W.lookFor("civ"), { species: b.species, fur: b.fur || (look && look.fur), mane: b.mane, patch: b.patch });
+  return u;
+};
 W.reveal = u => { u.revealed = true; u.look = Object.assign({}, u.look, { trim: "#ff5266" }); };
 W.scanMk = world => {
   let mk = world.level.scannerMk || 1;
@@ -761,6 +868,36 @@ W.scanCal = (world, u) => {
   return world.agents.some(a => a.alive && !a.out && W.dist(a.x, a.y, u.x, u.y) <= W.SCAN[3].armed);
 };
 /* does the squad's scanner mark u as armed? */
+/* The quiet way (Alt-click): a price on every cell near the crew the squad
+ * can know about, for the pathfinder to go round. Only what the scanner shows:
+ * nobody under a roof without MK3, no plain clothes it hasn't marked, and,
+ * where MK2 or better tells armed from unarmed, only the armed. */
+W.dangerField = world => {
+  const m = world.map, f = world.danger || (world.danger = new Float32Array(m.w * m.h));
+  f.fill(0);
+  const mk = W.scanMk(world), walls = (W.SCAN[mk] || {}).walls, reach = (W.SCAN[mk] || W.SCAN[1]).armed;
+  const ags = world.agents.filter(a => a.alive && !a.out);
+  for (const u of world.units) {
+    if (!u.alive || u.inCar || u.faction !== "crew" || u.follower || u.broken) continue;
+    if (u.undercover && !u.revealed && !W.scanArmed(world, u)) continue;
+    const cx = Math.floor(u.x), cy = Math.floor(u.y);
+    if (!walls && m.inb(cx, cy) && m.roofOf[m.i(cx, cy)] >= 0) continue;
+    if (reach && !W.hasGun(u) && ags.some(a => W.dist(a.x, a.y, u.x, u.y) <= reach)) continue;
+    for (let y = cy - 8; y <= cy + 8; y++) for (let x = cx - 8; x <= cx + 8; x++) {
+      if (!m.inb(x, y)) continue;
+      const d = Math.hypot(x - cx, y - cy);
+      if (d <= 8) f[m.i(x, y)] += d <= 4.5 ? 12 : 4;
+    }
+  }
+  return f;
+};
+/* go to (x, y) the quiet way: round the danger, if there's a way at all */
+W.sneakTo = (world, u, x, y, field) => {
+  const p = world.map.path(u.x, u.y, x, y, false, field || W.dangerField(world));
+  if (!p) return W.goTo(world, u, x, y);
+  u.path = p.length ? p : null; u.dest = u.path ? u.path[u.path.length - 1] : null; u.stuckT = 0;
+  return !!u.path;
+};
 W.scanArmed = (world, u) => {
   const r = (W.SCAN[W.scanMk(world)] || W.SCAN[1]).armed;
   if (!r || !u.alive || !W.hasGun(u)) return false;
@@ -797,7 +934,7 @@ W.thinkTarget = (world, u) => {
     }
     return;
   }
-  if (world.alarm || u.hp < u.maxHp) {
+  if (world.markAlarm || u.hp < u.maxHp) {
     u.state = "alerted"; u.hostile = true; u.stateT = u.hp < u.maxHp ? 0.6 : 2.2;
     W.say(u, "What was that?", "#ffb000", 1.8);
     return;
@@ -905,12 +1042,17 @@ W.spawnHired = (world, n) => {
     W.giveWeapon(u, i % 2 ? "shotgun" : "uzi", i % 2 ? 24 : 80); W.giveWeapon(u, "pistol"); W.drawBest(u);
   }
 };
+/* Veterancy: a Watcher who has come home from enough missions is quicker and
+ * steadier. Ranks 0 to 3 (the campaign counts them: M.RANKS); each a little
+ * more aim and a little less time to take it. */
+W.RANK = { acc: 0.05, react: 0.07, names: ["Recruit", "Regular", "Veteran", "Elite"] };
 W.agentLook = a => ({ coat: "#1b2130", trim: "#54f2ff", legs: "#10131c", fur: a.fur, patch: a.patch || null, visor: "#54f2ff", long: true });
 W.spawnSquad = (world, roster, spots) => {
   world.dropAt = spots[0];   // where the squad came in: where the pickup waits when the job is done
   roster.slice(0, spots.length).forEach((a, i) => {
     const mods = Object.assign({}, a.mods || {});
-    const u = world.add(W.makeUnit("agent", spots[i][0], spots[i][1], { name: a.name, slot: i, rosterId: a.id, look: W.agentLook(a), dir: -Math.PI / 2, mods, kills: 0, scannerMk: a.scannerMk || 0 }));
+    const u = world.add(W.makeUnit("agent", spots[i][0], spots[i][1], { name: a.name, slot: i, rosterId: a.id, look: W.agentLook(a), dir: -Math.PI / 2, mods, kills: 0, scannerMk: a.scannerMk || 0, rank: a.rank || 0 }));
+    u.acc *= 1 + W.RANK.acc * u.rank;
     // a chest mod: more to hit, and harder to hurt
     u.maxHp = u.hp = 24 + 6 * (mods.chest || 0);
     u.armor = 0.75 * (1 - 0.1 * (mods.chest || 0));

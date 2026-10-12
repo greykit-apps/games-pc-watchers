@@ -34,8 +34,10 @@ function run(W, seed, attract, quiet, camp, roster, level) {
   const world = new W.World(level || W.LEVELS.plaza, { attract, roster: roster || (camp ? W.M.missionRoster(W.M.fresh()) : undefined) });
   const m = world.map, dt = 1 / 60;
   let t = 0, orderT = 0;
+  // alarms are local: the bot draws for trouble within a few tiles of a Watcher, not for a fight across town
+  const trouble = a => world.units.some(u => u.alive && !u.inCar && (u.faction === "crew" && u.hostile || u.faction === "sec" && u.angryAt.player) && W.dist(a.x, a.y, u.x, u.y) < 12);
   const fail = msg => { throw new Error(`run ${seed} t=${t.toFixed(1)}: ${msg}`); };
-  while (t < 300) {
+  while (t < 900) {
     world.update(dt); t += dt;
     for (const u of world.units) {
       if (!u.alive || u.inCar) continue;
@@ -49,14 +51,27 @@ function run(W, seed, attract, quiet, camp, roster, level) {
     if (orderT <= 0) {
       orderT = 2;
       // the job done: everyone out by the nearest way
-      // (guns out, returning fire as they go; on a quiet job, only once the alarm is up)
+      // (guns out, returning fire as they go; on a quiet job, only with trouble close by,
+      // holstered again once it is behind them, so the police on the way are left alone)
       if (world.phase === "exfil") {
         const quiet = world.subjectUnit || world.terminal;
         for (const a of world.agents) {
           if (!a.alive || a.out) continue;
-          if (!W.armed(a) && (!quiet || world.alarm)) W.drawBest(a);
+          if (!W.armed(a) && (!quiet || trouble(a))) W.drawBest(a);
+          else if (quiet && !trouble(a) && W.armed(a)) { a.cur = -1; a.weaponOut = false; }
           a.manual = null;
           if (!a.path) { const p = world.exitFor(a); if (p) W.goTo(world, a, p[0], p[1]); }
+        }
+        continue;
+      }
+      // a sweep: guns out, at the nearest of their operations still standing; the first one broken opens the way home
+      if (world.sweep) {
+        const ags = world.agents.filter(a => a.alive), c0 = ags[0], todo = (world.contracts || []).filter(c => !c.done);
+        const c = c0 && todo.map(c => [c, world.contractAt(c)]).sort((p, q) => W.dist(c0.x, c0.y, p[1].x, p[1].y) - W.dist(c0.x, c0.y, q[1].x, q[1].y))[0];
+        if (c) for (const a of ags) {
+          if (!W.armed(a)) W.drawBest(a);
+          a.manual = c[0].crew.filter(u => u.alive && !u.broken && u.faction === "crew").sort((p, q) => W.dist(a.x, a.y, p.x, p.y) - W.dist(a.x, a.y, q.x, q.y))[0] || null;
+          if (!a.path) W.goTo(world, a, c[1].x + (a.slot % 2), c[1].y + (a.slot >> 1));
         }
         continue;
       }
@@ -76,7 +91,7 @@ function run(W, seed, attract, quiet, camp, roster, level) {
             a.manual = mark; if (!a.path || a.chaseT <= 0) W.goTo(world, a, mark.x, mark.y);
           }
           // the rest hang back, out of the minders' way, until the subject is with us
-          else { if (world.alarm && !W.armed(a)) W.drawBest(a); if (!a.path && talker && W.dist(a.x, a.y, S.x, S.y) < 8) { const ang = Math.atan2(a.y - S.y, a.x - S.x); const p = world.map.nearestWalkable(S.x + Math.cos(ang) * 10, S.y + Math.sin(ang) * 10, 4); if (p) W.goTo(world, a, p[0], p[1]); } }
+          else { if (trouble(a) && !W.armed(a)) W.drawBest(a); if (!a.path && talker && W.dist(a.x, a.y, S.x, S.y) < 8) { const ang = Math.atan2(a.y - S.y, a.x - S.x); const p = world.map.nearestWalkable(S.x + Math.cos(ang) * 10, S.y + Math.sin(ang) * 10, 4); if (p) W.goTo(world, a, p[0], p[1]); } }
         }
         continue;
       }
@@ -99,7 +114,7 @@ function run(W, seed, attract, quiet, camp, roster, level) {
       if (world.terminal) {
         for (const a of world.agents) {
           if (!a.alive) continue;
-          if (world.alarm && !W.armed(a)) W.drawBest(a);
+          if (trouble(a) && !W.armed(a)) W.drawBest(a);
           if (!a.path && W.dist(a.x, a.y, world.terminal.x, world.terminal.y) > 1) W.goTo(world, a, world.terminal.x + (a.slot % 2) * 0.4, world.terminal.y + (a.slot >> 1) * 0.4);
         }
         continue;
@@ -111,7 +126,7 @@ function run(W, seed, attract, quiet, camp, roster, level) {
       const near = stop ? world.agents.some(a => a.alive && W.dist(a.x, a.y, stop[0], stop[1]) < 2.5) : world.agents.some(a => a.alive && W.dist(a.x, a.y, T.x, T.y) < 8);
       for (const a of world.agents) {
         if (!a.alive) continue;
-        if (quiet && !near && !world.alarm) { if (!a.path) W.goTo(world, a, (stop ? stop[0] : T.x) + (a.slot % 2) * 0.8, (stop ? stop[1] : T.y) + (a.slot >> 1) * 0.8); continue; }
+        if (quiet && !near && !trouble(a)) { if (!a.path) W.goTo(world, a, (stop ? stop[0] : T.x) + (a.slot % 2) * 0.8, (stop ? stop[1] : T.y) + (a.slot >> 1) * 0.8); continue; }
         if (!W.armed(a)) W.drawBest(a);
         a.manual = goal.alive || goal.isCar ? goal : null;
         if (!a.path) W.goTo(world, a, goal.x + (a.slot % 2), goal.y + (a.slot >> 1));

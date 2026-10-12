@@ -49,6 +49,8 @@ W.audio = (() => {
   }
 
   const SFX = {
+    // a silenced round: a short, soft thup and the click of the slide
+    silenced(t, v) { noiseBurst(t, { dur: 0.06, f: 2600, q: 0.8, vol: 0.22 * v }); tone(t, { f: 320, fEnd: 120, dur: 0.05, type: "triangle", vol: 0.16 * v }); },
     pistol(t, v) { noiseBurst(t, { dur: 0.12, f: 1800, q: 0.6, vol: 0.55 * v }); tone(t, { f: 180, fEnd: 50, dur: 0.09, type: "triangle", vol: 0.35 * v }); },
     uzi(t, v) { noiseBurst(t, { dur: 0.06, f: 2400, q: 0.7, vol: 0.4 * v }); tone(t, { f: 220, fEnd: 80, dur: 0.05, type: "triangle", vol: 0.2 * v }); },
     shotgun(t, v) { noiseBurst(t, { dur: 0.32, f: 900, q: 0.5, vol: 0.8 * v, type: "lowpass", fEnd: 200 }); tone(t, { f: 120, fEnd: 35, dur: 0.22, type: "sine", vol: 0.5 * v }); },
@@ -92,7 +94,7 @@ W.audio = (() => {
     lose(t, v) { [392, 330, 262, 196].forEach((f, i) => tone(t + i * 0.22, { f, dur: 0.5, type: "sawtooth", vol: 0.1 * v })); },
     engine(t, v) { tone(t, { f: 60, fEnd: 140, dur: 0.8, type: "sawtooth", vol: 0.12 * v }); },
   };
-  const GAP = { uzi: 0.045, hit: 0.03, ric: 0.05, pistol: 0.03, persuaded: 0.1 };
+  const GAP = { uzi: 0.045, hit: 0.03, ric: 0.05, pistol: 0.03, silenced: 0.03, persuaded: 0.1 };
 
   function play(name, vol = 1) {
     if (!ac || W.prefs.muted || !SFX[name]) return;

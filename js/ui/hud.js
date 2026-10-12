@@ -47,7 +47,7 @@ W.HUD = class {
       el.className = "card";
       el.dataset.slot = a.slot;
       el.innerHTML = `<canvas class="port" width="48" height="48"></canvas>
-        <div class="card-r"><div class="card-name"><kbd>${a.slot + 1}</kbd>${W.esc(a.name)}</div>
+        <div class="card-r"><div class="card-name"><kbd>${a.slot + 1}</kbd>${W.esc(a.name)}${a.rank ? ` <small class="rank" title="${W.RANK.names[a.rank]}">${"★".repeat(a.rank)}</small>` : ""}</div>
         <div class="hp"><i></i></div>
         ${W.STIMS.map(s => `<div class="stim" data-stim="${s.id}" title="${s.name}: ${s.what}. Click or drag to dose; it wears off, and leaves a dependency."><span>${s.short}</span><b><i class="dep"></i><i class="eff"></i><i class="lvl"></i></b></div>`).join("")}
         </div>`;

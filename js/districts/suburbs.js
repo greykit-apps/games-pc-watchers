@@ -25,7 +25,6 @@ W.district({
     secNote: "The neighbourhood watch patrol in pairs, armed and nervous. They do not know who you are. Keep weapons holstered near them.",
     ground: "Wide boulevards with long sightlines: cross them fast. Backyards, fences and alleys are the quiet way round.",
     guards: 4, crew: 10, sec: 8, civ: 0.0025, civMax: 90,
-    crewGuns: ["pistol", "shotgun", "uzi", "longrange"],
     civLook: () => { const coat = W.pick(["#5a6a8a", "#8a5a6a", "#4a7a6a", "#7a6a4a", "#9a8a6a", "#c8b088"]); return { coat, trim: W.shade(coat, 1.3), legs: W.pick(["#3a4a6a", "#4a3a30"]), fur: W.pick(W.FURS), patch: W.chance(0.3) ? W.pick(W.FURS) : null }; },
     secLook: () => ({ coat: "#c86a1a", trim: "#ffd04a", legs: "#3a4a6a", fur: W.pick(W.FURS), hat: "#3a4a6a", hatKind: "cap" }),
   },

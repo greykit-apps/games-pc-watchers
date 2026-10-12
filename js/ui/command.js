@@ -166,7 +166,7 @@ W.Command = class {
           <span class="c-m">Money <b>${bal.rest - bal.r}</b></span></div>
       </div>
       <div class="cx-wait">
-        <button class="go" data-a="wait" data-fk="wait"><kbd>W</kbd>Wait a day</button>
+        <button class="go" data-a="wait" data-fk="wait" aria-keyshortcuts="W"><kbd aria-hidden="true">W</kbd>Wait a day</button>
         <div class="until">
           <button data-a="until" data-fk="until" aria-expanded="${!!this.untilOpen}" aria-haspopup="true">Until…</button>
           ${this.untilOpen ? `<div class="until-menu" role="menu" aria-label="Wait until"><small class="mh">Wait until</small>
@@ -197,16 +197,16 @@ W.Command = class {
     const s = this.s, M = W.M;
     const idle = !s.research.running.length;
     const tabs = [
-      ["city", "CITY", "1", "Map, zones, missions", s.offers.length ? `<i class="n">${s.offers.length}</i>` : ""],
-      ["lab", "LAB", "2", "Research and Take Control", idle ? `<i class="n warn">IDLE</i>` : ""],
-      ["clinic", "CLINIC", "3", "The roster, and mods", `<i class="n soft">${M.squad(s).length}/${M.SQUAD}</i>`],
-      ["office", "OFFICE", "4", "What the Boss can buy", ""],
-      ["armoury", "ARMOURY", "5", "The squad's kit, the racks, the dealer", Object.keys(s.armoury).length ? `<i class="n soft">${Object.values(s.armoury).reduce((t, n) => t + n, 0)}</i>` : ""],
+      ["city", "CITY", "1", "Map, zones, missions", s.offers.length ? `<i class="n">${s.offers.length}</i>` : "", s.offers.length ? `${s.offers.length} mission${s.offers.length > 1 ? "s" : ""}` : ""],
+      ["lab", "LAB", "2", "Research and Take Control", idle ? `<i class="n warn">IDLE</i>` : "", idle ? "nothing running" : ""],
+      ["clinic", "CLINIC", "3", "The roster, and mods", `<i class="n soft">${M.squad(s).length}/${M.SQUAD}</i>`, `${M.squad(s).length} of ${M.SQUAD} in the squad`],
+      ["office", "OFFICE", "4", "What the Boss can buy", "", ""],
+      ["armoury", "ARMOURY", "5", "The squad's kit, the racks, the dealer", Object.keys(s.armoury).length ? `<i class="n soft">${Object.values(s.armoury).reduce((t, n) => t + n, 0)}</i>` : "", Object.keys(s.armoury).length ? `${Object.values(s.armoury).reduce((t, n) => t + n, 0)} on the racks` : ""],
     ];
-    return `<div class="cx-bar"><nav class="cx-tabs" role="tablist" aria-label="Screens">${tabs.map(([id, label, key, sub, badge]) =>
-      `<button role="tab" id="tab-${id}" title="${sub}" tabindex="${this.screen === id ? 0 : -1}" data-a="screen" data-screen="${id}" data-fk="screen-${id}" aria-selected="${this.screen === id}" aria-controls="cx-screen">
-        <canvas data-bar="${id}" aria-hidden="true"></canvas><span class="bl">${this.px(label, "bar-t", 2)}<span class="sr">: ${sub}</span></span>${badge}<kbd>${key}</kbd></button>`).join("")}</nav>
-      <button class="help-b" data-a="help" data-fk="help" aria-expanded="${!!this.helpOpen}" aria-controls="cx-help" title="How it works">${this.px("HELP", "bar-t", 2)}<kbd>?</kbd></button></div>`;
+    return `<div class="cx-bar"><nav class="cx-tabs" role="tablist" aria-label="Screens">${tabs.map(([id, label, key, sub, badge, say]) =>
+      `<button role="tab" id="tab-${id}" title="${sub}" aria-label="${label[0] + label.slice(1).toLowerCase()}: ${sub[0].toLowerCase() + sub.slice(1)}${say ? `. ${say}` : ""}" aria-keyshortcuts="${key}" tabindex="${this.screen === id ? 0 : -1}" data-a="screen" data-screen="${id}" data-fk="screen-${id}" aria-selected="${this.screen === id}" aria-controls="cx-screen">
+        <canvas data-bar="${id}" aria-hidden="true"></canvas><span class="bl">${this.px(label, "bar-t", 2)}</span>${badge}<kbd aria-hidden="true">${key}</kbd></button>`).join("")}</nav>
+      <button class="help-b" data-a="help" data-fk="help" aria-expanded="${!!this.helpOpen}" aria-controls="cx-help" title="How it works" aria-label="Help: how it works" aria-keyshortcuts="?">${this.px("HELP", "bar-t", 2)}<kbd aria-hidden="true">?</kbd></button></div>`;
   }
 
   /* ---------------- the City ---------------- */
@@ -334,7 +334,7 @@ W.Command = class {
   fcLine(z, f, net) { return `<b>${this.px(f && !f.steady ? (f.lost || f.to < W.M.level(z.C) ? "▼" : "▲") : "■", "glyph", 2)} ${this.fcText(f)}</b> <span>${net >= 0 ? "+" : ""}${net.toFixed(2)} control a day</span>`; }
   dialHead(z, P, p, hold, y) {
     const d = P.c - hold, cost = P.c * y * W.M.N.PIP_MONEY;
-    return `${W.money(cost)} a day · ${d > 0 ? `investing: ${d} pip${d > 1 ? "s" : ""} over what holds it` : d < 0 ? `milking: ${-d} pip${-d > 1 ? "s" : ""} under what holds it` : "holding it steady"}`;
+    return `${W.money(cost)} a day · ${d > 0 ? `investing: ${d} pip${d > 1 ? "s" : ""} over what holds it` : d < 0 ? `milking: ${-d} pip${-d > 1 ? "s" : ""} under what holds it` : "at HOLD: it won't fall"}`;
   }
   dialOut(z, P, y) { return `To the city: <span class="c-m">${W.money(P.m * W.M.moneyYield(z) * W.M.N.PIP_MONEY)}</span> and <span class="c-r">${(P.r * y).toFixed(1)} RP</span> a day`; }
 
@@ -438,7 +438,7 @@ W.Command = class {
         ${M.bigGun(o) ? `<p class="o-gun">${M.carriesBanhammer(s) ? "A BanHammer strike goes with the squad: it counts here. X calls it down; a strike not fired comes home." : "A BanHammer strike would count here, if the squad carried one."}</p>` : ""}
         ${why ? `<p class="why">${W.esc(why)}</p>` : ""}
       </div>
-      <button class="${this.rec === o.id || (fkp && risk === "ok") ? "go" : ""}" data-a="deploy" data-o="${o.id}" data-fk="${fkp}deploy-${o.id}" ${why ? "disabled" : ""}>Brief</button>
+      <button class="${this.rec === o.id || (fkp && risk === "ok") ? "go" : ""}" data-a="deploy" data-o="${o.id}" aria-label="Brief: ${W.esc(title)}, ${W.esc(K.name)}${title !== D.name ? ` in ${W.esc(D.name)}` : ""}" data-fk="${fkp}deploy-${o.id}" ${why ? "disabled" : ""}>Brief</button>
     </div>`;
   }
 
@@ -455,7 +455,7 @@ W.Command = class {
       const open = r.needs.every(n => M.isDone(s, n));
       if (!open) return `<span class="node locked"><b>MK${r.mk || 1}</b><small>needs ${W.esc(r.needs.filter(n => !M.isDone(s, n)).map(n => M.item(n).name).join(", "))}</small></span>`;
       const why = M.canStart(s, r);
-      return `<span class="node open"><button data-a="start" data-r="${r.id}" data-fk="start-${r.id}" ${why ? "disabled" : ""} title="${W.esc(this.what(r))}"><b>MK${r.mk || 1}</b><small>Start · ${W.money(r.cost[0])} · ${r.cost[1]} RP${r.points === 2 ? " · counts 2" : ""}</small></button>${why ? `<small class="why">${W.esc(why)}</small>` : ""}</span>`;
+      return `<span class="node open"><button data-a="start" data-r="${r.id}" data-fk="start-${r.id}" ${why ? "disabled" : ""} title="${W.esc(this.what(r))}"><b>MK${r.mk || 1}</b><small>Start: ${W.money(r.cost[0])}</small><small>then ${r.cost[1]} RP${r.points === 2 ? " · counts 2" : ""}</small></button>${why ? `<small class="why">${W.esc(why)}</small>` : ""}</span>`;
     };
     const lineRow = (lineId, name, what) => {
       const marks = [1, 2, 3].map(k => M.item(`${lineId}:${k}`));
@@ -465,7 +465,7 @@ W.Command = class {
     const single = r => { const a = avail.find(x => x.id === r.id) || r; return `<li><span class="ln"><b>${W.esc(r.name)}</b><small>${W.esc(this.what(r))}</small></span>${node(a)}</li>`; };
     const repeat = id => { const a = avail.find(x => x.id === id), p = run.find(x => x.id === id);
       const name = id === "works" ? "Zone works" : "Requisition", n = s.research[id];
-      return `<li><span class="ln"><b>${name}${n ? ` <small>×${n} done</small>` : ""}</b><small>${W.esc(this.what({ id }))}</small></span>${p ? node({ id, mk: n + 1, needs: [] }) : a ? `<span class="node open"><button data-a="start" data-r="${id}" data-fk="start-${id}" ${M.canStart(s, a) ? "disabled" : ""}><b>#${n + 1}</b><small>Start · ${W.money(a.cost[0])} · ${a.cost[1]} RP</small></button>${M.canStart(s, a) ? `<small class="why">${W.esc(M.canStart(s, a))}</small>` : ""}</span>` : ""}</li>`; };
+      return `<li><span class="ln"><b>${name}${n ? ` <small>×${n} done</small>` : ""}</b><small>${W.esc(this.what({ id }))}</small></span>${p ? node({ id, mk: n + 1, needs: [] }) : a ? `<span class="node open"><button data-a="start" data-r="${id}" data-fk="start-${id}" ${M.canStart(s, a) ? "disabled" : ""}><b>#${n + 1}</b><small>Start: ${W.money(a.cost[0])}</small><small>then ${a.cost[1]} RP</small></button>${M.canStart(s, a) ? `<small class="why">${W.esc(M.canStart(s, a))}</small>` : ""}</span>` : ""}</li>`; };
     const counters = avail.filter(r => r.kind === "counter");
     const runCounters = run.filter(p => p.id.startsWith("counter:"));
     return `<section class="panel lab-war">
@@ -475,7 +475,7 @@ W.Command = class {
       </section>
       <section class="panel lab-run">
         <header>${this.hx("RUNNING", "sub-t", 2)}<small>${rate.toFixed(1)} research points a day${run.length > 1 ? `, ${(rate / run.length).toFixed(1)} to each` : ""} · points can't be banked</small></header>
-        ${run.length ? `<ul>${run.map(p => { const pc = Math.round(100 * (1 - p.left / p.total)); return `<li><b>${W.esc(p.name)}</b><span class="bar"><i style="width:${pc}%"></i></span><small>${Math.ceil(p.left)} of ${p.total} RP${rate ? ` · ${Math.ceil(p.left / (rate / run.length))} days` : ""}</small>
+        ${run.length ? `<ul>${run.map(p => { const pc = Math.round(100 * (1 - p.left / p.total)); return `<li><b>${W.esc(p.name)}</b><span class="bar"><i style="width:${pc}%"></i></span><small>${Math.floor(p.total - p.left)} of ${p.total} RP done${rate ? ` · ${Math.ceil(p.left / (rate / run.length))} days` : ""}</small>
           <button data-a="cancel" data-r="${p.id}" data-fk="cancel-${p.id}" class="${this.armed === "cancel-" + p.id ? "armed" : ""}">${this.armed === "cancel-" + p.id ? "Confirm: stop, and lose what was paid" : "Stop"}</button></li>`; }).join("")}</ul>`
           : `<p class="bad idle">Nothing running. Today's research points are wasted. Start something below.</p>`}
       </section>
@@ -941,7 +941,7 @@ W.Command = class {
     s.dispatch = { from: before.day, to: s.day, days, lines };
     // the banners: what nobody should miss
     for (const z of s.zones) if (z.lost && !before.zones[z.id].lost) this.banners.push({ tone: "red", big: "ZONE LOST", sub: `${M.zoneDef(z.id).name} has fallen to Cal. A siege takes it back.`, sound: "lose" });
-    if (s.cal.zone && s.cal.zone !== before.cal) this.banners.push({ tone: "red", big: "CAL MOVES", sub: `He's pushing ${M.zoneDef(s.cal.zone).name}. A mission against his crew ends it.`, sound: "alarm" });
+    if (s.cal.zone && s.cal.zone !== before.cal) this.banners.push({ tone: "red", big: "CAL MOVES", sub: `He's pushing ${M.zoneDef(s.cal.zone).name}${M.zone(s, s.cal.zone).lost ? ", which he already holds" : ""}. A mission against his crew ends it.`, sound: "alarm" });
     if (s.war && !before.war) this.banners.push({ tone: "red", big: "TAKE CONTROL", sub: "Cal has committed. Decay runs faster everywhere.", sound: "alarm" });
     if (s.won && !before.won) this.banners.push({ tone: "gold", big: "PUMACITY IS HERS", sub: "Every zone is locked down. You win.", sound: "win" });
     W.audio.play("order");

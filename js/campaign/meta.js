@@ -858,7 +858,6 @@ M.missionFor = (s, o) => {
 
 /* ---------------- events ---------------- */
 M.canEvent = (s, e, z) => {
-  if (s.cash < e.price) return M.short(s, e.price);
   if (e.zone && !z) return "choose a zone above";
   if (e.lost && !(z && z.lost)) return "only for a zone lost to Cal";
   if (e.id === "amnesty" && s.war) return "not once the city is being taken: a siege takes it back";
@@ -867,6 +866,7 @@ M.canEvent = (s, e, z) => {
   if (e.id === "hired" && s.hired) return "already hired for the next mission";
   if (e.needs && !M.isDone(s, e.needs)) return `research ${M.item(e.needs).name} in the Lab first`;
   if (e.floor && z && (z.floor || 0) >= e.floor) return "already running there";
+  if (s.cash < e.price) return M.short(s, e.price);   // last: no point saving up for what can't be bought here
   return "";
 };
 M.event = (s, e, z) => {

@@ -143,7 +143,7 @@ W.World = class {
     }
     // a fight in the street: drivers nearby floor it, and stop for nobody
     if (src && (src.faction === "player" || src.faction === "crew" || src.faction === "sec") && !this.attract) {
-      for (const c of this.cars) if (!c.parked && !c.train && !c.escape && !c.dead && W.dist(x, y, c.x, c.y) < r) c.panicT = W.rand(6, 10);
+      for (const c of this.cars) if (!c.parked && !c.train && !c.escape && !c.player && !c.dead && W.dist(x, y, c.x, c.y) < r) c.panicT = W.rand(6, 10);
     }
   }
   raiseAlarm(by, seen) {
@@ -255,6 +255,7 @@ W.World = class {
         p.inCar = false; p.x = car.x; p.y = car.y;
         this.kill(p, src);
       }
+      if (car.player) W.carLost(this, car, src);
       this.explode(car.x, car.y, 2.4, 14, src);
     }
   }
@@ -280,7 +281,8 @@ W.World = class {
     const reckless = car.escape || car.panicT > 0;
     const ax = car.axis === "x", dir = car.dir;
     const s = ax ? car.x : car.y, lat = ax ? car.y : car.x;
-    let want = car.escape ? 5.5 : reckless ? Math.max(5.5, car.maxSpeed * 1.4) : car.maxSpeed;
+    let want = car.player ? W.routeWant(this, car) : car.escape ? 5.5 : reckless ? Math.max(5.5, car.maxSpeed * 1.4) : car.maxSpeed;
+    if (car.hailT > 0) { car.hailT -= dt; want = 0; }
     // whatever is in front: the car ahead in the lane, or anything crossing it
     const front = s + dir * car.len / 2;
     let blocked = false;
@@ -292,7 +294,7 @@ W.World = class {
         const ahead = (os - s) * dir;
         if (ahead <= 0) continue;
         const gap = ahead - (car.len + o.len) / 2;
-        if (gap < 2.4) { want = Math.min(want, Math.max(0, gap - 0.5) * 2.2); if (o.parked || o.dead) blocked = true; }
+        if (gap < 2.4) { want = Math.min(want, Math.max(0, gap - 0.5) * 2.2); if (o.parked || o.dead || (o.player && !o.riders.length)) blocked = true; }
       } else {
         // crossing traffic: is its body inside the next stretch of our lane?
         const os = ax ? o.x : o.y, ol = ax ? o.y : o.x;
@@ -325,7 +327,7 @@ W.World = class {
       if (d > -0.6 && d < 0.3) { if (car.speed > 1.5 && !u.hitBy) this.strike(car, u); }
       else if (d <= -0.6 && d > -car.len - 0.2) { if (car.speed > 0.5 && !u.hitBy) this.bump(car, u); }
       if (!reckless && d > -car.len / 2 && d < 1.3) {
-        if (u.seenBy !== car.id) { u.seenBy = car.id; if (Math.random() < 0.06) car.distractT = 0.8; }
+        if (u.seenBy !== car.id) { u.seenBy = car.id; if (!car.player && Math.random() < 0.06) car.distractT = 0.8; }
         if (!(car.distractT > 0)) want = 0;
       }
     }
@@ -339,8 +341,14 @@ W.World = class {
         if (ahead >= -0.05 && ahead < 2.2 && !this.light[car.axis]) want = Math.min(want, Math.max(0, ahead - 0.6) * 2.5);
       }
     }
-    // stuck behind something that will not move (a squad car, a wreck): turn round, when the other lane is clear
-    if (blocked && car.speed < 0.1 && !car.escape) {
+    // stuck behind something that will not move (a squad car, a wreck): turn round, when the other lane is clear;
+    // a car of ours finds another way round, from where it stands
+    if (car.player) {
+      if (blocked && car.speed < 0.1 && car.route) {
+        car.blockedT = (car.blockedT || 0) + dt;
+        if (car.blockedT > 1.5) { car.blockedT = 0; W.reroute(this, car); }
+      } else car.blockedT = 0;
+    } else if (blocked && car.speed < 0.1 && !car.escape) {
       car.blockedT = (car.blockedT || 0) + dt;
       if (car.blockedT > 1.5) {
         const O = this.map.lanes.find(o => !o.train && o.axis === car.axis && o.dir === -dir && Math.abs(o.at - lat) <= 2.5 && s > o.from && s < o.to);
@@ -355,6 +363,7 @@ W.World = class {
     if (car.speed < 0.02) car.speed = 0;
     const ns = s + dir * car.speed * dt;
     if (ax) car.x = ns; else car.y = ns;
+    if (car.player) { W.afterDrive(this, car); return; }
     if ((dir > 0 && ns > L.to) || (dir < 0 && ns < L.from)) {
       if (car.escape) { car.gone = true; return; }
       // round again from the start of the lane, if it is clear

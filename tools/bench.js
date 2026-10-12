@@ -112,6 +112,12 @@ function fight(W, L, level, tactic, maxT = 900, greedy = false, dt = 1 / 30) {
     if (sneak) buildDanger();
     const ags = live();
     if (!ags.length) continue;
+    // a Watcher who hasn't moved in ten seconds with somewhere to go: a fresh way there, the plain one
+    for (const a of ags) {
+      if (!a.lastPos || W.dist(a.x, a.y, a.lastPos[0], a.lastPos[1]) > 0.5) { a.lastPos = [a.x, a.y]; a.stillT = 0; continue; }
+      a.stillT = (a.stillT || 0) + 1;
+      if (a.stillT >= 10 && a.dest && !a.target) { const d = a.dest; a.path = null; W.goTo(world, a, d[0], d[1]); a.stillT = 0; }
+    }
     // side jobs: greedy (and a sweep, always) goes after them before heading home, while the squad's in shape
     const todo = (world.contracts || []).filter(c => !c.done);
     const fit = ags.length >= 2 && ags.reduce((t, a) => t + a.hp / a.maxHp, 0) / ags.length > 0.45;
@@ -135,6 +141,7 @@ function fight(W, L, level, tactic, maxT = 900, greedy = false, dt = 1 / 30) {
       continue;
     }
     const M = mark();
+    if (process.env.BENCH_DEBUG && Math.floor(t) % 20 === 0) console.error(`t=${Math.round(t)} phase=${world.phase} loud=${st.loud} struck=${st.struck} spot=${st.spot && st.spot.map(Math.round)} mark=${M ? [Math.round(M.x), Math.round(M.y), M.alive, M.inCar, M.state].join(",") : "none"} agents=${ags.map(a => [Math.round(a.x), Math.round(a.y), a.path ? a.path.length : 0].join(",")).join(" ")}`);
     if (!M) continue;
     const lead = ags.reduce((p, q) => W.dist(p.x, p.y, M.x, M.y) < W.dist(q.x, q.y, M.x, M.y) ? p : q);
     const dM = W.dist(lead.x, lead.y, M.x, M.y);
@@ -196,7 +203,7 @@ function fight(W, L, level, tactic, maxT = 900, greedy = false, dt = 1 / 30) {
       if (caller) {
         const d = W.dist(caller.x, caller.y, M.x, M.y);
         if (d < 14 && d > 8.5 && !world.canStrike(caller, M.x, M.y) && ags.every(a => W.dist(a.x, a.y, M.x, M.y) > 8)) {
-          world.callStrike(caller, M.x, M.y); st.struck = true; st.strikeAt = t; st.strikeX = M.x; st.strikeY = M.y;
+          st.struck = world.callStrike(caller, M.x, M.y); st.strikeAt = t;
           for (const a of ags) { const ang = Math.atan2(a.y - M.y, a.x - M.x); go(a, M.x + Math.cos(ang) * 12, M.y + Math.sin(ang) * 12); }
           continue;
         }
@@ -206,6 +213,8 @@ function fight(W, L, level, tactic, maxT = 900, greedy = false, dt = 1 / 30) {
       }
     }
     if (tactic === "banhammer" && st.struck && t - st.strikeAt < 6) continue;
+    // the strike came down and the mark lived: finish it the loud way
+    if (tactic === "banhammer" && st.struck) st.loud = true;
     // ---- the rifles ----
     if (tactic === "snipe" && !st.loud) {
       const rng = W.rangeOf(Object.assign({}, lead, { cur: lead.weapons.findIndex(w => w.type === "longrange") })) || 11;
@@ -307,6 +316,7 @@ if (args.includes("--grid")) {
     if (threat < 1 || threat > 5) continue;
     if (tactic === "snipe" && level === 0) continue;   // no rifles yet
     if (tactic === "banhammer" && level < 2) continue; // needs the scanner at MK2
+    if ((tactic === "snipe" || tactic === "banhammer") && ["intel", "job", "persuade"].includes(kind)) continue;   // nothing to shoot at
     queue.push({ kind, threat, level, tactic, n, seed: seed + threat * 100, district, greedy: args.includes("--greedy") });
   }
   const results = [];

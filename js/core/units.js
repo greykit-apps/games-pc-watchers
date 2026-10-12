@@ -27,7 +27,7 @@ W.FOE = [
   { guns: ["pistol:1", "pistol:1", "shotgun:1", "uzi:1"], armed: 0.7, hp: 1.1, acc: 1, react: 1 },
   { guns: ["pistol:2", "shotgun:2", "uzi:2", "uzi:2", "longrange:1"], armed: 1, hp: 1.25, acc: 1.05, react: 0.95 },
   { guns: ["shotgun:3", "uzi:3", "longrange:2", "minigun:2", "laser:1"], armed: 1, hp: 1.45, acc: 1.1, react: 0.9 },
-  { guns: ["uzi:3", "longrange:3", "minigun:3", "laser:3", "gauss:2"], armed: 1, hp: 1.7, acc: 1.15, react: 0.85 },
+  { guns: ["uzi:3", "longrange:3", "minigun:3", "laser:2", "minigun:3", "longrange:3", "gauss:1"], armed: 1, hp: 1.6, acc: 1.15, react: 0.85 },
 ];
 /* the enemy level a mission is fought at: the campaign's (L.mod.level), else
  * its threat less one, else the district's usual strength (level 2) */

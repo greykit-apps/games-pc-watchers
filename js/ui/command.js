@@ -483,7 +483,7 @@ W.Command = class {
         <header>${this.hx("RUNNING", "sub-t", 2)}<small>${rate.toFixed(1)} research points a day${run.length > 1 ? `, ${(rate / run.length).toFixed(1)} to each` : ""} · points can't be banked</small></header>
         ${run.length ? `<ul>${run.map(p => { const pc = Math.round(100 * (1 - p.left / p.total)); return `<li><b>${W.esc(p.name)}</b><span class="bar"><i style="width:${pc}%"></i></span><small>${Math.floor(p.total - p.left)} of ${p.total} RP done${rate ? ` · ${Math.ceil(p.left / (rate / run.length))} days` : ""}</small>
           <button data-a="cancel" data-r="${p.id}" data-fk="cancel-${p.id}" class="${this.armed === "cancel-" + p.id ? "armed" : ""}">${this.armed === "cancel-" + p.id ? "Confirm: stop, and lose what was paid" : "Stop"}</button></li>`; }).join("")}</ul>`
-          : `<p class="bad idle">Nothing running. Today's research points are wasted. Start something below.</p>`}
+          : `<p class="warn idle">Nothing running. Today's research points are wasted. Start something below.</p>`}
       </section>
       <div class="lab-tree" data-scroll="lab">
         <section class="panel"><h3 class="sub">Weapons <span>MK1 · MK2 · MK3</span></h3><ul class="tree">${M.WEAPON_LINES.map(l => lineRow(l.id, l.name, l.id === "gauss" ? "explosive rounds" : this.what({ kind: "weapon", line: l.id, mk: 1 }))).join("")}</ul></section>

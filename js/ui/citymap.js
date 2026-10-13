@@ -434,7 +434,7 @@
         // offers: a count on the tag's top-right corner, red when one can't wait
         const offers = s.offers.filter(o => o.zone === id), n = offers.length;
         if (n) {
-          const urgent = offers.some(o => o.kind === "cal" || o.kind === "siege" || o.expires <= s.day);
+          const urgent = offers.some(o => o.kind === "cal" || o.kind === "siege" || o.kind === "story" || o.expires <= s.day);   // as the list's Can't wait
           const txt = String(n), tw = W.pix.width(txt, pk) + 6 * pk, th = 11 * pk, rx = bx + bw - pk, ry = by - Math.round(th / 2);
           c.fillStyle = urgent ? RED : "#ff9a2e"; c.fillRect(rx, ry, tw, th);
           W.pix.draw(c, txt, rx + 3 * pk, ry + 2 * pk, { scale: pk, color: "#1c0d00" });

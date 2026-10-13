@@ -103,8 +103,8 @@
 .cx-bar .px{color:var(--t1);--px-shadow:#0c1018}
 .cx-bar button[aria-selected=true],.cx-bar .help-b[aria-expanded=true]{background:#45536e;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
 .cx-bar .help-b{flex:none;gap:8px}
-.cx-bar .help-b[aria-expanded=true] .px{color:var(--orange)}
-.cx-bar button[aria-selected=true] .px,.cx-bar button[aria-selected=true] canvas{color:var(--orange)}
+.cx-bar .help-b[aria-expanded=true] .px{color:var(--cyan)}
+.cx-bar button[aria-selected=true] .px,.cx-bar button[aria-selected=true] canvas{color:var(--cyan)}   /* cyan is selection */
 .cx-bar button[aria-selected=true] kbd{color:var(--t1);opacity:1}
 .cx-bar .n{font:700 12px var(--sans);font-style:normal;background:var(--orange);color:var(--ink-orange);padding:2px 6px}
 .cx-bar .n.warn{background:#2a1a08;color:var(--orange);box-shadow:inset 0 0 0 1px var(--orange)}
@@ -116,6 +116,7 @@
 .cx-help header{flex:none;display:flex;align-items:center;gap:10px;margin-bottom:4px}
 .cx-help header .hx{flex:1}
 .cx-help .h-body{min-height:0;overflow-y:auto;padding-right:4px;font-size:13px;color:var(--t2)}
+.cx-help .h-body:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 .cx-help .sub:first-child{margin-top:4px}
 .cx-help p{margin:0}
 .cx-help b{color:var(--t1)}
@@ -123,11 +124,12 @@
 .cx-help .h-key li{display:grid;grid-template-columns:78px 1fr;align-items:center;gap:8px}
 .cx-help .h-key li>:first-child{justify-self:start}
 .cx-help .h-keys{gap:4px}
-.cx-help kbd,.cx .hint kbd{margin:0 1px}
+.cx-help kbd,.cx .hint kbd{margin:0 1px;opacity:1}
 
 /* ---- the screen ---- */
 .cx-screen{grid-row:3;grid-column:1;min-height:0;padding:12px 16px 14px;overflow:hidden}   /* placed, so help can share its cell */
-.cx .sub-t{color:var(--orange);--px-shadow:#140800}
+/* panel headings speak in text-bright: orange is kept for what you press, the count tags and the LCDs */
+.cx .sub-t{color:var(--t1);--px-shadow:#0c1018}
 .cx .sub{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--t1);margin:12px 0 6px}
 .cx .sub span{color:var(--t3);letter-spacing:0;text-transform:none;font-weight:400;margin-left:6px}
 .cx .hint{color:var(--t3);font-size:13px;margin:6px 0}
@@ -203,6 +205,7 @@
 .cx .dial-ends{display:flex;justify-content:space-between;font-size:12px;color:var(--t3)}
 .cx .dial-out{display:flex;flex-wrap:wrap;gap:4px 14px;margin:8px 0 0;font-weight:700}
 .cx .dial-out small{color:var(--t3);font-weight:400}
+.cx .dial-out .kept{flex-basis:100%;margin-top:-2px}
 .cx .flags{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13px}
 .cx .flags li{padding:5px 8px;background:var(--face2)}
 .cx .flags li.bad{background:#3a1218;color:#ffd0d3} .cx .flags li.warn{background:#3a2a12;color:#ffe0bc}
@@ -211,7 +214,7 @@
 /* Cal, and the zones slipping */
 .cx .cal{display:flex;flex-direction:column;gap:6px;border-color:#7a3a42 #200a0e #200a0e #7a3a42;background:#2e2230}
 .cx .cal.on{background:#3a1820}
-.cx .cal-t{color:var(--red);--px-shadow:#200a0e}
+.cx .cal-t{color:var(--red-t);--px-shadow:#200a0e}
 .cx .cal p{margin:0}
 .cx .cal button{align-self:flex-start}
 .cx .watch ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
@@ -239,7 +242,15 @@
 .cx .urgent{background:#2e1a20;border-top:2px solid var(--red);padding:2px 10px 4px}
 .cx .urgent .offer{background:none;border:0;border-top:1px solid #5a2a32;padding:9px 0;margin:0}
 .cx .urgent .offer:first-of-type{border-top:0}
-.cx .dossier .offer{background:none;border:0;border-top:1px solid var(--divider);padding:9px 0}
+.cx .dossier .offer,.cx .next .offer{background:none;border:0;border-top:1px solid var(--divider);padding:9px 0}
+/* the next move: the mission B briefs, at the head of the overview */
+.cx .next{border-color:var(--orange-hi) var(--orange-lo) var(--orange-lo) var(--orange-hi)}
+.cx .next .nx-why{margin:6px 0 8px;color:var(--t1)}
+.cx .next.none p{margin:6px 0 0}
+/* what can't wait but is beyond the squad: one row, opened on request */
+.cx .urgent .far{border-top:1px solid #5a2a32;padding:8px 0 4px;font-size:13px;color:var(--t2)}
+.cx .urgent .far p{margin:0}
+.cx .urgent .far b{color:#ffd0d3}
 .cx .urgent .sub{color:#ffd0d3}
 .cx .og{display:flex;flex-direction:column;gap:6px}
 .cx .og-h{display:flex;align-items:center;gap:8px;margin:10px 0 0}
@@ -347,6 +358,7 @@
 .cx .kit .who canvas{width:32px;height:32px;border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
 .cx .kit .who b{color:var(--t1);letter-spacing:.06em}
 .cx .kit .who small{color:var(--t3);display:block}
+.cx .kit.sel .who small{color:var(--t2)}
 .cx .slots8{display:grid;grid-template-columns:repeat(4,48px);gap:3px;margin-left:auto}
 .cx .tile{position:relative;width:48px;height:30px;padding:0;min-height:0;display:grid;place-items:center;background:var(--well);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
 .cx button.tile:hover:not(:disabled){background:#1c2433}
@@ -426,16 +438,19 @@
 .cx .events li.dark b{color:var(--dark-t)}
 
 /* ---- banners and the toast ---- */
-.cx-banner{position:fixed;left:0;right:0;top:38%;z-index:30;display:flex;justify-content:center;padding:18px;cursor:pointer;animation:cx-ban .35s cubic-bezier(.16,1,.3,1)}
-.cx-banner>div{width:min(720px,100%);text-align:center;padding:16px 20px;border:2px solid;box-shadow:0 18px 40px rgba(0,0,0,.6)}
+/* a band docked under the screen bar: it drops like a shutter, over the top of the screen, clear of the map's middle and the dispatch */
+.cx-banner{position:fixed;left:0;right:0;top:150px;z-index:30;padding:0 16px;cursor:pointer}
+.cx-banner>div{display:flex;align-items:center;gap:20px;padding:10px 18px;border:2px solid;box-shadow:0 18px 40px rgba(0,0,0,.6);animation:cx-ban .38s cubic-bezier(.16,1,.3,1)}
+.cx-banner .ban-l{flex:1;min-width:0}
+.cx-banner small{margin-left:auto;white-space:nowrap}
 .cx-banner.red>div{background:#5a0e16;border-color:#ff7a84 #2a0408 #2a0408 #ff7a84;color:#ffe3e5}
 .cx-banner.gold>div{background:#4a3a08;border-color:#ffe58a #1c1402 #1c1402 #ffe58a;color:#fff4d0}
 .cx-banner .ban-t{color:#fff;--px-shadow:rgba(0,0,0,.6)}
-.cx-banner p{margin:10px 0 2px;font-size:16px}
-.cx-banner p.more{margin:6px 0 0;font-size:14px}
+.cx-banner p{margin:0;font-size:15px}
+.cx-banner p.more{margin:3px 0 0;font-size:14px}
 .cx-banner p.more b{letter-spacing:.08em;margin-right:4px}
 .cx-banner small{opacity:.75}
-@keyframes cx-ban{from{opacity:0;transform:scaleY(.6)}to{opacity:1;transform:none}}
+@keyframes cx-ban{from{clip-path:inset(0 0 100% 0);transform:translateY(-8px)}to{clip-path:inset(0);transform:none}}
 .cx-toast{position:fixed;left:50%;bottom:18px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:var(--face);border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);padding:8px 14px;color:var(--t1);transition:opacity .2s,transform .2s cubic-bezier(.16,1,.3,1);z-index:31}
 .cx-toast.on{opacity:1;transform:translate(-50%,0)}
 
@@ -450,7 +465,7 @@
 .cx-ticker .tk-copy span::after{content:"◆";margin-left:18px;color:var(--gold);font-size:9px;vertical-align:2px}
 @keyframes tk-roll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media (prefers-reduced-motion:reduce){.cx-ticker .tk-text{animation:none}.cx-ticker .tk-copy[aria-hidden]{display:none}.cx-ticker .tk-run{overflow-x:auto}}
-@media (prefers-reduced-motion:reduce){.cx-banner{animation:none}.cx .cells i.new{animation:none}.cx-toast{transition:none}.cx button:active:not(:disabled){transform:none}}
+@media (prefers-reduced-motion:reduce){.cx-banner>div{animation:none}.cx .cells i.new{animation:none}.cx-toast{transition:none}.cx button:active:not(:disabled){transform:none}}
 
 /* ---- narrower desktop windows (this is a desktop game: no phone layout) ---- */
 @media (max-width:1180px){
@@ -461,6 +476,7 @@
   .cx .lcd,.cx .warm{padding:4px 8px}
   .cx .warm{min-width:0}
   .cx .cells i{width:3px}
+  .cx .cells.z i{width:12px}
   .cx-split{min-width:120px;flex:1 1 120px}
   .cx .split-row{gap:6px;font-size:12px}
   .cx .split-row input{min-width:60px}

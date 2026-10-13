@@ -578,7 +578,8 @@ M.storyReady = z => !z.lost && !z.locked && z.story < M.STORY.length && z.C >= M
 /* A day's change to the board (see M.BOARD). full: every roll succeeds, for a
  * new campaign's first board and the day the city is taken. */
 M.refreshOffers = (s, full = false) => {
-  s.offers = s.offers.filter(o => o.expires >= s.day && !(o.kind === "cal" && s.cal.zone !== o.zone) && !M.zone(s, o.zone).locked);
+  // an offer goes with its zone: a siege only while the zone is lost, anything else only while it isn't (Cal's crew either way)
+  s.offers = s.offers.filter(o => { const z = M.zone(s, o.zone); return o.expires >= s.day && !(o.kind === "cal" && s.cal.zone !== o.zone) && !z.locked && (o.kind === "siege" ? z.lost : o.kind === "cal" || !z.lost); });
   const has = (z, kind) => s.offers.some(o => o.zone === z.id && o.kind === kind);
   // the urgent ones: a siege for each lost zone, Cal's crew where he pushes
   for (const z of s.zones) {
@@ -628,6 +629,7 @@ M.hasTalker = s => M.squad(s).some(a => a.items.some(i => i.type === "purrsuader
 M.canRun = (s, o) => {
   const z = M.zone(s, o.zone);
   const need = o.kind === "story" && M.STORY[o.step].needs;
+  if (o.kind === "siege" ? !z.lost : o.kind !== "cal" && z.lost) return z.lost ? `${M.zoneDef(z.id).name} is lost to Cal: a siege takes it back first` : `${M.zoneDef(z.id).name} is not lost: nothing to take back`;
   if (need && z.C < need) return `needs ${M.zoneDef(z.id).name} at ${Number.isInteger(need) ? `level ${need}` : `control ${need}`}`;
   if (!M.squad(s).length) return "no Watchers in the squad: put one in at the Clinic";
   if (M.needsTalker(o) && !M.hasTalker(s)) return "needs a Purrsuader in the squad: buy one at the Clinic";
@@ -878,7 +880,7 @@ M.event = (s, e, z) => {
   if (e.id === "bribes") { s.cal.bribed = true; M.note(s, "City Hall has been paid. Cal's next push will be half-hearted.", "good"); }
   if (e.id === "martial") { z.martial = 3; M.note(s, `Martial law in ${name}.`); }
   if (e.id === "hired") { s.hired = true; M.note(s, "A hired crew is on the payroll for the next mission.", "good"); }
-  if (e.id === "amnesty") { z.lost = false; z.C = 0.5; z.policy = M.defaultPolicy(s, z); M.note(s, `An amnesty: ${name} is back, at level 0.`, "good"); }
+  if (e.id === "amnesty") { z.lost = false; z.C = 0.5; z.policy = M.defaultPolicy(s, z); s.offers = s.offers.filter(o => !(o.kind === "siege" && o.zone === z.id)); M.note(s, `An amnesty: ${name} is back, at level 0.`, "good"); }
   if (e.floor) {
     z.floor = e.floor;
     M.note(s, e.floor === 1 ? `Propaganda in ${name}: PVN on every screen. The streets grow quieter. Nobody asks why.`
@@ -908,7 +910,7 @@ M.settle = (s, o, res) => {
     if (R.money) { s.cash += R.money; lines.push(["Paid", W.money(R.money)]); }
     if (R.untactic && z.tactic) { lines.push([`${D.name}: ${z.tactic}`, "gone with them"]); M.note(s, `${D.name}: ${z.tactic} is finished.`, "good"); z.tactic = null; M.cancel(s, `counter:${z.id}`); }
     if (R.endPush && s.cal.zone === z.id) { s.cal.left = 1; s.cal.broken = true; lines.push(["Cal's push", "broken"]); }
-    if (R.retake) { z.lost = false; z.C = 0.6; z.policy = M.defaultPolicy(s, z); lines.push([D.name, "taken back"]); M.note(s, `${D.name} is taken back.`, "good"); }
+    if (R.retake && z.lost) { z.lost = false; z.C = 0.6; z.policy = M.defaultPolicy(s, z); lines.push([D.name, "taken back"]); M.note(s, `${D.name} is taken back.`, "good"); }
     if (R.story) {
       z.story++;
       if (z.story >= M.STORY.length) {

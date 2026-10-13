@@ -14,7 +14,9 @@ Rerun any of them with `node tools/review/<name>.js`.
    3 with the Purrsuader II, never locked out by a full following) and counts as the job done.
 3. The tax moves with the level so a zone set to hold stays on hold — done in `43aeaf4`.
 4. The level-0 gain pricing (F-05) is **by design**: missions or money get a zone higher.
-5. **An ending**: losing every zone is a failure — implemented in `2b24503`.
+5. **An ending**: losing every zone is a failure — implemented in `2b24503`. And since Cal never pushes the
+   Towers, **every zone but the Towers lost is a retreat, not the end** (author, same day): Casey Benton retreats to
+   her stronghold, the player can rebuild from there — implemented in `7a5a6f1`.
 
 ## Summary: the five things to fix or decide first (as first reported)
 
@@ -511,6 +513,8 @@ Branch `review/2026-10-12`, one commit per fix, each revertible on its own:
 | `912f9bd` | decision 2 | `js/core/weapons.js`, `units.js`, `world.js`, `main.js`, README, `docs/missions.md` | The mark of a hit can be persuaded (6; 3 with the II; cap-exempt); talked round, the kill objective is done and the squad exfils |
 | `2b24503` | F-10 / decision 5 | `js/campaign/meta.js`, `js/ui/command.js`, `js/main.js`, `tools/campaign.js`, `docs/meta.md` | Every zone lost ends the campaign: `s.lost`, every offer refused, red banner, next-move panel, Casey's line, the title's resume entry, the bot stops |
 | `fb5cd59` | — | `tools/review/` | Checks for both rules (`persuade-the-target`, `city-lost-ending`) |
+| `7a5a6f1` | decision 5 | `js/campaign/meta.js`, `js/ui/command.js`, `js/main.js`, `docs/meta.md` | The stronghold: only the Towers held is a retreat with its own banner, panel and line, not the end |
+| `1b1b9aa` | — | `tools/review/` | The `stronghold-retreat` check |
 
 Verified after each: `node --check`, `tools/review/meta-checks.js` (the three stale-offer checks and both tax
 checks read CLEAR), `node tools/campaign.js 200 --seed=1` (won at mission 97 → 112 with the tax change),
@@ -520,11 +524,13 @@ an intel mission's objectives carry no "Eliminate", the camera stays on the squa
 Not changed: F-05 (by design), F-13 (reload is a free retry), F-15/F-16 (grade and bonus), F-18 (stealth),
 F-20 (bench sample size), F-21 (bodyguard cap).
 
-**On the ending.** Cal never pushes the Towers (`M.planCal` leaves Benton's seat out), so with the literal rule a
-campaign ends only when the player also lets the Towers go: by taxing them to nothing, or by decay at war.
-The reckless bot that lost 6.3 zones never lost the Towers, so it still never "loses". If the ending should be
-reachable by neglect alone, either let Cal push the Towers once everything else is his (one line in `planCal`),
-or make the trigger "every zone but the Towers". Both are small; I left the rule as stated.
+**On the ending.** Cal never pushes the Towers (`M.planCal` leaves Benton's seat out), so the full loss needs the
+player to let the Towers go too (taxed to nothing, or decay at war). The author's answer is the stronghold
+(`7a5a6f1`): with only the Towers held, a red CASEY BENTON HAS RETREATED banner once, a panel on the City screen
+saying how to rebuild, her line in the Office, "in the stronghold" on the title's resume entry, and a debrief line
+if it happened while the squad was out. The Towers keep paying (6 pips at level 3) and the sieges stay open; the
+flag lifts when any other zone is held again. Verified headless (`stronghold-retreat`: set, lifted by an amnesty,
+then `s.lost` when the Towers go too) and in the browser.
 
 ## Final re-verification pass
 

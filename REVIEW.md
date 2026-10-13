@@ -6,7 +6,17 @@ Rerun any of them with `node tools/review/<name>.js`.
 
 **Status:** complete. The final re-verification pass is at the end.
 
-## Summary: the five things to fix or decide first
+## Decisions (author, 2026-10-13)
+
+1. A siege goes away after an amnesty — done in `53b1815`.
+2. Persuade missions require persuading (killing the subject already loses them); **persuading an elimination
+   target is acceptable** — implemented in `912f9bd`: the mark can be talked round with a bodyguard's crowd (6, or
+   3 with the Purrsuader II, never locked out by a full following) and counts as the job done.
+3. The tax moves with the level so a zone set to hold stays on hold — done in `43aeaf4`.
+4. The level-0 gain pricing (F-05) is **by design**: missions or money get a zone higher.
+5. **An ending**: losing every zone is a failure — implemented in `2b24503`.
+
+## Summary: the five things to fix or decide first (as first reported)
 
 1. **A stale siege after an amnesty resets a rebuilt zone to control 0.6** (F-01, VERIFIED, High).
    Offers are never removed when their zone stops being lost, and a siege's reward is "the zone back at 0.6" unconditionally.
@@ -43,12 +53,12 @@ Rerun any of them with `node tools/review/<name>.js`.
 | F-02 | Medium | game logic | VERIFIED, fixed `53b1815` | `js/campaign/meta.js:581`, `:628` | Ordinary offers survive their zone being lost and are runnable there |
 | F-03 | Medium | game logic | VERIFIED, fixed `53b1815` | `js/campaign/meta.js:581`, `:913` | Story step 1 runnable in a lost zone; advances the chain, pays no control |
 | F-04 | Medium | game logic | VERIFIED, fixed `43aeaf4` (rules change) | `js/campaign/meta.js:299-306` | `fitPolicy` puts a zone's new pip on money: the tax dial drifts after a level-up; "Invest" stalls at 2.73 |
-| F-05 | Medium | balance | VERIFIED | `js/campaign/meta.js:23,266,286` | Level-0 gain is priced for the whole day: 0.99 → 3.04 in one day; base-2 zones never reach level 3 by pips |
+| F-05 | — | design | VERIFIED, by design (author) | `js/campaign/meta.js:23,266,286` | Level-0 gain is priced for the whole day: 0.99 → 3.04 in one day; base-2 zones never reach level 3 by pips |
 | F-06 | Low | game logic | VERIFIED | `js/campaign/meta.js:491-497` | Research points past a finishing project are lost, not passed to the others |
 | F-07 | Low | game logic | VERIFIED | `js/campaign/meta.js:993` | A persuade's control reward is repriced after the days away; the briefing figure is not what is paid |
 | F-08 | Low | PX | VERIFIED | `js/campaign/meta.js:354-361` | The dossier forecast is a straight line through a curved decay: "Level 1 in 2 days" for a zone that never falls |
 | F-09 | Low | docs | VERIFIED | `docs/meta.md` "Control" | A plateau zone with no pips is lost in 5 days, not "lands at level 1"; with 1 pip it falls to level 0 |
-| F-10 | — | design | VERIFIED | `js/campaign/meta.js:985`, `:619` | No fail state: free recruit on a wipe, guaranteed money job, no clock; 72/72 bot campaigns won |
+| F-10 | — | design | VERIFIED, fixed `2b24503` | `js/campaign/meta.js:985`, `:619` | No fail state: free recruit on a wipe, guaranteed money job, no clock; 72/72 bot campaigns won |
 | F-11 | High | game logic / PX | VERIFIED, fixed `02c8ddf` | `js/districts/kit.js:629-638` | Every persuade mission carries an "Eliminate <subject>" objective, shown in the HUD and ticked ✓ in the debrief |
 | F-12 | Medium | input | VERIFIED, fixed `16d8663` | `js/main.js:823,860,870` | Shift+1–4 never adds a Watcher to the selection: `ev.key` is `!`/`@`/`#`/`$` with Shift held |
 | F-13 | Medium | exploit | VERIFIED | `js/main.js:990-995` | Reloading the page mid-mission is a free retry: the campaign saves only at the debrief |
@@ -59,6 +69,7 @@ Rerun any of them with `node tools/review/<name>.js`.
 | F-18 | Medium | balance | VERIFIED | `tools/review/out/grid-n12.txt` | Stealth is the best way in at every measured cell; the Purrsuader "mob" is the worst one step over the tier |
 | F-19 | Low | PX | VERIFIED | `js/campaign/meta.js:135,177` | A new squad's first push from Cal is answerable only by a T4 "Hit Cal's crew": the counter-mission is beyond tier 1 |
 | F-20 | Medium | tooling | VERIFIED | `tools/fights.json` | Every balance claim rests on 4 fights per cell; the bot's "careful" number takes the best 2 of 4-5 tactics |
+| F-21 | Low | game logic | VERIFIED | `js/core/units.js:430,447`, `W.FOLLOWING` | A bodyguard needs 6 followers but the MK1 Purrsuader's following caps at 6, so MK1 never persuades one without a Brain mod |
 
 
 ## Detailed findings
@@ -289,6 +300,13 @@ decay + 0.7 push), so the tutorial line is right, but a player who reads "a miss
 the same screen is shown one they cannot take for sixty missions. The push took the Expo by day 7 in the test
 campaign with the dial left alone.
 
+### F-21 · Bodyguards are out of the MK1 Purrsuader's reach (Low, VERIFIED)
+
+Headless: with the MK1 Purrsuader (following cap 6) a bodyguard needs 6; `canPersuade` is false with 5 followers
+(short) and false with 6 (the following is full, so nobody else can be talked round). With 5 followers and a
+Brain MK1 it is true. Help says "bodyguards in black at 6" without the catch. The new target rule (decision 2)
+exempts the mark from the cap for this reason; bodyguards could get the same exemption, or the MK1 cap could be 7.
+
 ### F-20 · The bench table is 4 fights a cell (Medium, tooling, VERIFIED)
 
 `tools/fights.json` `measured: 2026-10-12`: every cell is `n4`. A 4-sample win rate has a 95% interval of roughly
@@ -490,14 +508,23 @@ Branch `review/2026-10-12`, one commit per fix, each revertible on its own:
 | `53b1815` | F-01/02/03 | `js/campaign/meta.js` | Offers follow their zone's lost/back state; amnesty drops its siege; `canRun` and the retake reward check it |
 | `d6b5186` | F-14 | `js/main.js` | `pointerenter` records the pointer's place before edge scrolling can read it |
 | `43aeaf4` | F-04 | `js/campaign/meta.js` | A zone keeps its tax across level changes (**rules change**: zones climb as dialled) |
+| `912f9bd` | decision 2 | `js/core/weapons.js`, `units.js`, `world.js`, `main.js`, README, `docs/missions.md` | The mark of a hit can be persuaded (6; 3 with the II; cap-exempt); talked round, the kill objective is done and the squad exfils |
+| `2b24503` | F-10 / decision 5 | `js/campaign/meta.js`, `js/ui/command.js`, `js/main.js`, `tools/campaign.js`, `docs/meta.md` | Every zone lost ends the campaign: `s.lost`, every offer refused, red banner, next-move panel, Casey's line, the title's resume entry, the bot stops |
+| `fb5cd59` | — | `tools/review/` | Checks for both rules (`persuade-the-target`, `city-lost-ending`) |
 
 Verified after each: `node --check`, `tools/review/meta-checks.js` (the three stale-offer checks and both tax
 checks read CLEAR), `node tools/campaign.js 200 --seed=1` (won at mission 97 → 112 with the tax change),
 `node tools/sim.js 2 --quiet --district=suburbs`, and in the browser: Shift+2/3 builds `[LYNX, MANX, SPHYNX]`,
 an intel mission's objectives carry no "Eliminate", the camera stays on the squad at mission start.
 
-Not changed (design decisions for the author): F-05 (gain priced per starting level), F-10 (no fail state),
-F-13 (reload is a free retry), F-15/F-16 (grade and bonus), F-18 (stealth), F-20 (bench sample size).
+Not changed: F-05 (by design), F-13 (reload is a free retry), F-15/F-16 (grade and bonus), F-18 (stealth),
+F-20 (bench sample size), F-21 (bodyguard cap).
+
+**On the ending.** Cal never pushes the Towers (`M.planCal` leaves Benton's seat out), so with the literal rule a
+campaign ends only when the player also lets the Towers go: by taxing them to nothing, or by decay at war.
+The reckless bot that lost 6.3 zones never lost the Towers, so it still never "loses". If the ending should be
+reachable by neglect alone, either let Cal push the Towers once everything else is his (one line in `planCal`),
+or make the trigger "every zone but the Towers". Both are small; I left the rule as stated.
 
 ## Final re-verification pass
 
@@ -519,6 +546,17 @@ Run on the branch's head (`tools/review/out/final-pass.txt`):
 Dropped from the report after re-verification: a suspected "bench runs every kind as an assassination" tooling bug
 (my shell passed the flags as one argument; the tool is fine) and a suspected sweep softlock with no contracts
 (1,050 generated missions, none).
+
+## Second pass (2026-10-13), after the author's decisions
+
+- `persuade-the-target` (engine-checks): the mark needs 6, cannot be persuaded with none, can with six shoppers;
+  the kill objective reads done, the phase is exfil, walking out wins with "The Alley Duchess is with you, and the
+  squad is out." and the target alive. `sim.js 2 --quiet` still 2/2.
+- `city-lost-ending` (meta-checks): all eight zones lost → `s.lost` true, a siege on the board refused with
+  "the city is lost: the campaign is over". Browser: Wait a day shows the red PUMACITY IS LOST banner, the next-move
+  panel says how to leave, the title's resume entry reads "the city is lost".
+- CI validate steps green; `campaign.js 200 --seed=1` won at mission 112; `reckless.js 4` unchanged (0 of 4 for
+  the reckless bots, none of them lost the Towers).
 
 ## Where to pick up
 

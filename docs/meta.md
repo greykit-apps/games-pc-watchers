@@ -89,7 +89,10 @@ level 1; with 1 pip on control, 7.5 a day for 5 days, landing at level 2.
 
 **When control reaches 0 the zone is lost.** It makes nothing, and it is only
 taken back with a **siege** mission against an entrenched enemy. **When every
-zone is lost the campaign is over**: Casey Benton has no city to hold.
+zone but the Towers is lost, Casey Benton retreats to her stronghold**: a
+warning, not an ending. The Towers still make their pips and the city can be
+taken back from there. **When every zone is lost the campaign is over**: she
+has no city to hold.
 
 ## Cal
 

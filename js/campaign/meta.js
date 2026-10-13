@@ -540,6 +540,17 @@ M.advanceDay = (s, onMission = false) => {
       else if (now === 0 && was > 0) M.note(s, `${M.zoneDef(z.id).name} falls to level 0. It's close to lost.`, "bad");
     }
   }
+  // every zone but the Towers gone: Casey Benton retreats to her stronghold. Not the end: the Towers still make
+  // their pips, and the city can be taken back from there by siege. It lifts when any other zone is held again.
+  const held = s.zones.filter(z => !z.lost);
+  if (!s.won && !s.stronghold && held.length === 1 && held[0].id === "towers") {
+    s.stronghold = true; s.strongholdNew = true;
+    M.note(s, "Casey Benton has retreated to her stronghold. Every zone but the Towers is Cal's. Hold the Towers, rebuild the squad, and take the city back by siege.", "bad");
+    M.news(s, M.pickNews(s, M.NEWS.stronghold), "bad");
+  } else if (s.stronghold && held.length > 1) {
+    s.stronghold = false;
+    M.note(s, "Casey Benton comes down from the Towers: the city is being taken back.", "good");
+  }
   // every zone gone: Casey Benton has no city to hold, and the campaign is over
   if (!s.lost && !s.won && s.zones.every(z => z.lost)) {
     s.lost = true;
@@ -1029,6 +1040,8 @@ M.settle = (s, o, res) => {
   }
   const lostNow = s.zones.filter(q => q.lost).length;
   if (lostNow > lost0) lines.push(["While you were out", `${lostNow - lost0} zone${lostNow - lost0 > 1 ? "s" : ""} lost`]);
+  if (s.strongholdNew) lines.push(["Casey Benton", "has retreated to her stronghold: every zone but the Towers is Cal's"]);
+  if (s.lost) lines.push(["The city", "is lost. The campaign is over."]);
   return { lines };
 };
 
@@ -1055,6 +1068,7 @@ M.NEWS = {
   push: ["Unrest reported in {zone}", "{zone}: residents told to stay indoors after dark"],
   lostZone: ["{zone} 'temporarily closed' to visitors", "City Hall: {zone} 'not a priority right now'"],
   cityLost: ["Casey Benton 'taking a break from public life'", "City Hall: 'no comment'"],
+  stronghold: ["PVN Tower 'closed for renovations'; Casey Benton 'working from home'", "City Hall: the Towers 'remain the heart of PumaCity'"],
   takeControl: ["Casey Benton: 'PumaCity will be safe. All of it.'", "City Hall announces a 'new era of order'"],
   reads: {
     strike: ["Meteor showers over PumaCity: gang bosses 'keeping their distance'", "Astronomers baffled; street crews stop meeting in groups"],

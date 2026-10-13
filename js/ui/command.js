@@ -84,7 +84,17 @@ W.Command = class {
       this.s.balance = rest ? r / rest : 0.5;
     }
     this.el.hidden = false;
+    // a retreat that happened while the squad was away (M.settle) is announced here, once
+    if (this.strongholdBanner()) W.M.save(this.s);
     this.draw();
+  }
+  // the retreat to the Towers: a banner once, when it happens; the flag is the campaign's, so a reload doesn't repeat it
+  strongholdBanner() {
+    const s = this.s;
+    if (!s.strongholdNew) return false;
+    s.strongholdNew = false;
+    this.banners.push({ tone: "red", big: "CASEY BENTON HAS RETREATED", sub: "Every zone but the Towers is Cal's. She holds out in her stronghold: keep the Towers, rebuild the squad, and take the city back by siege.", sound: "lose" });
+    return true;
   }
   close() {
     W.Command.kept = { s: this.s, zoneId: this.zoneId, allOffers: this.allOffers };
@@ -367,15 +377,16 @@ W.Command = class {
   // the next move: the mission B briefs, and why it's the one; or what the squad needs when nothing's in reach
   nextHTML() {
     const s = this.s, M = W.M, o = this.recOffer();
+    const retreat = s.stronghold && !s.lost ? `<article class="panel next none">${this.hx("THE STRONGHOLD", "sub-t", 2)}<p>Casey Benton has retreated to the Towers: every other zone is Cal's. The Towers still pay. Train on their quiet jobs, arm the squad, and take a zone back by siege; lose the Towers too and the campaign is over.</p></article>` : "";
     if (s.lost) return `<article class="panel next none">${this.hx("THE CITY IS LOST", "sub-t", 2)}<p>Every zone has fallen to Cal, and Casey Benton has no city to hold. The campaign is over. Press <kbd>Esc</kbd> twice for the title and start a new one.</p></article>`;
     if (!o) {
       const t = s.offers.length ? Math.min(...s.offers.map(x => x.threat || 1)) : 0;
-      return `<article class="panel next none">${this.hx("NEXT MOVE", "sub-t", 2)}
+      return `${retreat}<article class="panel next none">${this.hx("NEXT MOVE", "sub-t", 2)}
         <p>${s.offers.length ? `Nothing on the board is within the squad's reach${t > M.squadTier(s) ? `: the easiest is T${t}, the squad is tier ${M.squadTier(s)}` : ""}. Raise the tier with mods at the Clinic, guns from the Armoury, and missions survived; or wait a day for other work.` : "Nothing on offer. Wait a day."}</p></article>`;
     }
     const D = M.zoneDef(o.zone), z = M.zone(s, o.zone);
     const why = o.kind === "cal" ? `It ends Cal's push in ${D.name}.` : o.kind === "siege" ? `It takes ${D.name} back.` : o.kind === "story" ? `The next step of ${D.name}'s story.` : o.expires <= s.day ? "Its last day on the board." : `Within reach, in the weakest zone with work the squad can do${z.lost ? "" : ` (level ${M.level(z.C)})`}.`;
-    return `<article class="panel next">${this.hx("NEXT MOVE", "sub-t", 2)}<p class="nx-why">${W.esc(why)}</p>${this.offerHTML(o, false, "nx-")}</article>`;
+    return `${retreat}<article class="panel next">${this.hx("NEXT MOVE", "sub-t", 2)}<p class="nx-why">${W.esc(why)}</p>${this.offerHTML(o, false, "nx-")}</article>`;
   }
   overviewHTML() {
     const s = this.s, M = W.M, c = s.cal;
@@ -805,6 +816,7 @@ W.Command = class {
   caseySays() {
     const s = this.s, M = W.M;
     if (s.lost) return "You lost my city. Every street of it. We're done.";
+    if (s.stronghold) return "I'm in the Towers, and I'm staying here until you give me a reason not to. Get me my streets back.";
     if (s.won) return "It's done. The city is quiet. Don't get used to it.";
     if (s.war) return "He's stopped pretending. So have I. Lock it down, zone by zone.";
     const lost = s.zones.find(z => z.lost);
@@ -953,7 +965,7 @@ W.Command = class {
   /* ---------------- waiting, and the dispatch ---------------- */
   snap() {
     const s = this.s;
-    return { day: s.day, cash: s.cash, points: s.research.points, war: s.war, won: s.won, lost: s.lost, cal: s.cal.zone, log: s.log.length,
+    return { day: s.day, cash: s.cash, points: s.research.points, war: s.war, won: s.won, lost: s.lost, stronghold: s.stronghold, cal: s.cal.zone, log: s.log.length,
       zones: Object.fromEntries(s.zones.map(z => [z.id, { C: z.C, lost: z.lost, locked: z.locked, L: W.M.level(z.C) }])) };
   }
   wait(mode) {
@@ -996,6 +1008,7 @@ W.Command = class {
     if (s.cal.zone && s.cal.zone !== before.cal) this.banners.push({ tone: "red", big: "CAL MOVES", sub: `He's pushing ${M.zoneDef(s.cal.zone).name}${M.zone(s, s.cal.zone).lost ? ", which he already holds" : ""}. A mission against his crew ends it.`, sound: "alarm" });
     if (s.war && !before.war) this.banners.push({ tone: "gold", big: "TAKE CONTROL", sub: "Cal has committed. Decay runs faster everywhere.", sound: "alarm" });
     if (s.won && !before.won) this.banners.push({ tone: "gold", big: "PUMACITY IS HERS", sub: "Every zone is locked down. You win.", sound: "win" });
+    this.strongholdBanner();
     if (s.lost && !before.lost) this.banners = [{ tone: "red", big: "PUMACITY IS LOST", sub: "Every zone has fallen to Cal. The campaign is over: Esc twice for the title, and a new one.", sound: "lose" }];
     W.audio.play("order");
     W.M.save(s);

@@ -579,3 +579,23 @@ Dropped from the report after re-verification: a suspected "bench runs every kin
   saves older than `v2`.
 - Local only, not committed: `.claude/launch.json` in the main checkout points the Browser pane's dev server at this
   worktree on port 8766 (`python3 tools/serve.py 8766`); delete it when the worktree goes.
+
+## Design pass (2026-10-13), from `/critique`
+
+The critique of the command screens scored 28/40 (Good) with three P1s: the mission list had no height at the
+1024 floor, day 1 led with three missions the squad could not take, and the first viewport failed five of the
+eight cognitive-load checks. The author chose density first, a Today panel, and every other issue. Seven commits,
+one a step:
+
+| Commit | Step | What changed |
+|---|---|---|
+| `f4aab05` | /distill | Cal, Zones slipping and the dispatch fold into one **Today** panel, a line each, opened on click (a wait opens the dispatch itself); the list's mission card is two lines; the legend strip goes, its meanings on the zone buttons' tooltips and the map's aria-label |
+| `b956521` | /adapt | Under 1180px the right-hand side is one scrolling stack (next move or dossier, Today, missions), so the list exists at 1024×700; a dossier opens at its top |
+| `785b88c` | /arrange | Every list sorted by reach (within reach, a stretch, beyond), zones by their best mission; the beyond-the-squad ones fold into one counted line per list with Show them; the City badge, map chips and zone readings count missions within reach (`M.inReach`); the zone filter heads the list |
+| `6bea2c1` | /normalize | The Lab's tree is purchase rows (name, what it does, mark chips, the next mark's price button, the reason once); the Armoury's dealer rows get Buy, the racks Give, the card the moves open to what is picked |
+| `18b1c44` | /clarify | Help is a section a screen, the open one first; "0/30 points"; "Kept for control" in pips; days left only at four or fewer; the tier glossed |
+| `5389d5c` | /harden | U opens Until; a pause on the PVN ticker; the stronghold and lost panels framed red; checked that W works with a dial focused and the map Tabs north to south |
+| `90ad744` | /polish | The Office splits evenly; Lab rows keep three cells; the card's second line wraps; new text at 5:1 or better |
+
+Checked after: the CI validate steps, `tools/review/meta-checks.js` (unchanged results), no console errors on any
+screen at 1440×900 and 1024×700. Re-run `/critique` to re-score.

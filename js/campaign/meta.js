@@ -301,6 +301,12 @@ M.fitPolicy = (s, z) => {
   let sum = P.r + P.m + P.c;
   for (const k of ["r", "m", "c"]) while (sum > want && P[k] > 0) { P[k]--; sum--; }
   while (sum < want) { P.m++; sum++; }
+  // the dial is a tax: what the zone hands the city. A zone that gains or loses a pip keeps its tax, so the
+  // pips it keeps for control move with it (a zone dialled to "invest" goes on investing as it climbs)
+  if (z.tax != null && !z.locked && !z.lost) {
+    P.c = Math.max(0, Math.min(want, want - z.tax));
+    const rest = want - P.c; if (P.r > rest) P.r = rest; P.m = rest - P.r;
+  }
   if (z.locked) { P.r += P.c; P.c = 0; }
   return P;
 };
@@ -309,6 +315,7 @@ M.cyclePip = (s, z, from) => {
   const P = M.fitPolicy(s, z), next = { r: "m", m: z.locked ? "r" : "c", c: "r" }[from];
   if (P[from] <= 0) return;
   P[from]--; P[next]++;
+  z.tax = M.pips(s, z) - P.c;
 };
 /* The tax dial and the city balance (the command screen's controls). Each
  * zone's dial sets its pips on control; what's left of every zone's pips is
@@ -334,6 +341,7 @@ M.setDial = (s, z, c) => {
   if (z.lost || z.locked) return;
   P.c = Math.max(0, Math.min(p, Math.round(c)));
   P.m = p - P.c; P.r = 0;
+  z.tax = p - P.c;
   M.spread(s);
 };
 // zone works, once researched, are built where the player chooses: a pip more for good
@@ -880,7 +888,7 @@ M.event = (s, e, z) => {
   if (e.id === "bribes") { s.cal.bribed = true; M.note(s, "City Hall has been paid. Cal's next push will be half-hearted.", "good"); }
   if (e.id === "martial") { z.martial = 3; M.note(s, `Martial law in ${name}.`); }
   if (e.id === "hired") { s.hired = true; M.note(s, "A hired crew is on the payroll for the next mission.", "good"); }
-  if (e.id === "amnesty") { z.lost = false; z.C = 0.5; z.policy = M.defaultPolicy(s, z); s.offers = s.offers.filter(o => !(o.kind === "siege" && o.zone === z.id)); M.note(s, `An amnesty: ${name} is back, at level 0.`, "good"); }
+  if (e.id === "amnesty") { z.lost = false; z.C = 0.5; z.tax = null; z.policy = M.defaultPolicy(s, z); s.offers = s.offers.filter(o => !(o.kind === "siege" && o.zone === z.id)); M.note(s, `An amnesty: ${name} is back, at level 0.`, "good"); }
   if (e.floor) {
     z.floor = e.floor;
     M.note(s, e.floor === 1 ? `Propaganda in ${name}: PVN on every screen. The streets grow quieter. Nobody asks why.`
@@ -910,7 +918,7 @@ M.settle = (s, o, res) => {
     if (R.money) { s.cash += R.money; lines.push(["Paid", W.money(R.money)]); }
     if (R.untactic && z.tactic) { lines.push([`${D.name}: ${z.tactic}`, "gone with them"]); M.note(s, `${D.name}: ${z.tactic} is finished.`, "good"); z.tactic = null; M.cancel(s, `counter:${z.id}`); }
     if (R.endPush && s.cal.zone === z.id) { s.cal.left = 1; s.cal.broken = true; lines.push(["Cal's push", "broken"]); }
-    if (R.retake && z.lost) { z.lost = false; z.C = 0.6; z.policy = M.defaultPolicy(s, z); lines.push([D.name, "taken back"]); M.note(s, `${D.name} is taken back.`, "good"); }
+    if (R.retake && z.lost) { z.lost = false; z.C = 0.6; z.tax = null; z.policy = M.defaultPolicy(s, z); lines.push([D.name, "taken back"]); M.note(s, `${D.name} is taken back.`, "good"); }
     if (R.story) {
       z.story++;
       if (z.story >= M.STORY.length) {

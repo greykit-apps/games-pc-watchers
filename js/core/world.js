@@ -16,6 +16,8 @@ W.PICKUP_R = 2.4;
 /* where the squad gets out: the live ways out once the job is done, and
  * before that the pickup alone, so the way home can be planned */
 W.waysOut = world => world.phase === "exfil" ? (world.exfilPoints || []) : world.pickupAt ? [{ x: world.pickupAt[0], y: world.pickupAt[1] }] : [];
+/* seconds of green the lights have left for traffic on an axis: 0 on red (the clock in World.update) */
+W.greenLeft = (world, axis) => { const ph = world.time % 21; return axis === "x" ? (ph < 8 ? 8 - ph : 0) : (ph >= 10.5 && ph < 18.5 ? 18.5 - ph : 0); };
 /* the squares, in tiles, that drivers look round for cars and people (more than a car's reach ahead) */
 W.BUCKET = 8;
 /* a train's carriages, nose to nose */
@@ -263,7 +265,10 @@ W.World = class {
       const n = lane.cars ?? 2;
       const span = lane.to - lane.from;
       for (let i = 0; i < n; i++) {
-        const s = lane.from + span * ((i + Math.random() * 0.5) / n);
+        let s = lane.from + span * ((i + Math.random() * 0.5) / n);
+        // a car never starts on a railway, nose or tail: on past the far side of it
+        const onRail = a => [-1.6, 0, 1.6].some(o => this.map.groundAt(lane.axis === "x" ? a + o : lane.at, lane.axis === "x" ? lane.at : a + o) === W.G.RAIL);
+        if (!lane.train) for (let k = 0; k < 16 && onRail(s); k++) s += lane.dir;
         if (lane.train) {
           // a train: its carriages nose to tail, moved as one by the lead (cars[0])
           const T = { lane, cars: [], holdT: 0, wait: 0, lastStop: null };
@@ -358,16 +363,41 @@ W.World = class {
         if (ahead > -halfAlong && ahead < 2.6 + halfAlong) want = Math.min(want, Math.max(0, ahead - halfAlong - 0.4) * 2);
       }
     }
-    // a level crossing: nobody, not even a getaway driver, races a train
-    const L = car.lane;
+    // a level crossing: nobody, not even a getaway driver, races a train. A railway's tracks lie side by side and
+    // are crossed as one: a car that waits for a train on the far track waits short of the near one, never on it,
+    // and the time to get over is the time to clear them all
+    const L = car.lane, bands = [];
     for (const T of this.trains) {
       const I = T.info;
       if (!I || I.ax === ax || I.lat < L.from || I.lat > L.to) continue;
-      const reach = I.half + 1;
-      const toBand = ((I.lat - dir * reach) - front) * dir;    // our nose to the near side of its track
-      if (toBand < 0 || toBand > 9) continue;                    // already on it (clear it), or far off
-      const clear = (toBand + reach * 2 + car.len) / Math.max(car.speed, 2.5) + 1.5;
-      if (W.etaAt(I, lat) < clear) want = Math.min(want, Math.max(0, toBand - 0.3) * 2.5);
+      const reach = I.half + 1, a = ((I.lat - dir * reach) - front) * dir, b = ((I.lat + dir * reach) - front) * dir;
+      bands.push({ I, near: Math.min(a, b), far: Math.max(a, b) });
+    }
+    bands.sort((p, q) => p.near - q.near);
+    // tracks with no room between them for a car to stand are one crossing
+    const crossings = [];
+    for (const B of bands) {
+      const C = crossings[crossings.length - 1];
+      if (C && B.near - C.far < car.len + 0.5) { C.far = Math.max(C.far, B.far); C.trains.push(B.I); }
+      else crossings.push({ near: B.near, far: B.far, trains: [B.I] });
+    }
+    let onRails = null;
+    for (const C of crossings) {
+      if (C.far + car.len < 0) continue;            // behind us: the tail too
+      if (C.near < 0) { onRails = C; break; }       // on it already: clear it, all of it
+      if (C.near > 9) break;                        // far off
+      const clear = (C.far + car.len) / Math.max(car.speed, 2.5) + 1.5;
+      // and nobody starts across without room to stop clear of the far side: a red light, or a queue, just beyond it
+      const room = C.far + car.len + 0.6, speedOn = Math.max(car.speed, 2.5);
+      const lightShut = !reckless && this.map.junctions.some(j => {
+        const lo = ax ? j.y0 : j.x0, hi = ax ? j.y1 : j.x1;
+        if (lat < lo || lat > hi) return false;
+        const entry = ((ax ? (dir > 0 ? j.x0 : j.x1) : (dir > 0 ? j.y0 : j.y1)) - front) * dir;
+        return entry > C.near && entry < room && W.greenLeft(this, car.axis) < entry / speedOn + 0.5;
+      });
+      const queued = this.cars.some(o => o !== car && !o.train && o.lane === L && o.speed < 1 && (() => { const d = ((ax ? o.x : o.y) - s) * dir - o.len / 2; return d > 0 && d < room + car.len / 2; })());
+      if (lightShut || queued || C.trains.some(I => W.etaAt(I, lat) < clear)) want = Math.min(want, Math.max(0, C.near - 0.3) * 2.5);
+      break;
     }
     // people in the road (not on a bridge overhead). A driver brakes for
     // anyone in front, though now and then one is looking the other way; a
@@ -394,6 +424,8 @@ W.World = class {
         if (lat < lo || lat > hi) continue;
         const entry = ax ? (dir > 0 ? j.x0 : j.x1) : (dir > 0 ? j.y0 : j.y1);
         const ahead = (entry - front) * dir;
+        // (on a level crossing, a light just beyond it is run rather than stopped at with the car's tail on the track)
+        if (onRails && ahead < onRails.far + car.len + 0.6) continue;
         if (ahead >= -0.05 && ahead < 2.2 && !this.light[car.axis]) want = Math.min(want, Math.max(0, ahead - 0.6) * 2.5);
       }
     }

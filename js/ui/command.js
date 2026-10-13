@@ -174,7 +174,7 @@ W.Command = class {
         <div class="lcd"><small>Cash</small>${this.px(W.money(s.cash), "lcd-t", 2)}</div>
         <div class="lcd take" title="What the city makes a day: money, and research points (RP)"><small>A day<span class="sr">, money and research points (RP)</span></small><span class="v">${this.takeLCD(take)}</span></div>
         <div class="warm ${s.war ? "at" : s.warReady ? "ready" : ""}"><small>${s.war ? "Taking control" : s.warReady ? "Take Control: your order" : "Take Control"}</small>
-          ${s.war ? (n => `<span class="cells z" role="meter" aria-label="Zones locked down" aria-valuemin="0" aria-valuemax="${s.zones.length}" aria-valuenow="${n}">${s.zones.map((z, i) => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</span><b>${n}/${s.zones.length} locked</b>`)(s.zones.filter(z => z.locked).length) : `<span class="cells" role="meter" aria-label="Upgrade points toward Take Control" aria-valuemin="0" aria-valuemax="${war}" aria-valuenow="${Math.min(pts, war)}">${cells}</span><b>${pts}/${war}</b>`}</div>
+          ${s.war ? (n => `<span class="cells z" role="meter" aria-label="Zones locked down" aria-valuemin="0" aria-valuemax="${s.zones.length}" aria-valuenow="${n}">${s.zones.map((z, i) => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</span><b>${n}/${s.zones.length} locked</b>`)(s.zones.filter(z => z.locked).length) : `<span class="cells" role="meter" aria-label="Upgrade points toward Take Control" aria-valuemin="0" aria-valuemax="${war}" aria-valuenow="${Math.min(pts, war)}">${cells}</span><b title="Upgrade points: each weapon, mod or gear mark researched counts 1, an MK3 or the BanHammer 2">${pts}/${war} points</b>`}</div>
       </div>
       <div class="cx-split">
         <label for="cx-bal" title="What the zones don't spend on control, split between research and money">City split</label>
@@ -245,29 +245,56 @@ W.Command = class {
   /* ---- help: the rules in brief, over whichever screen is open ---- */
   helpHTML() {
     const tag = (cls, t) => `<span class="tg ${cls}">${this.px(t, "", 2)}</span>`;
-    return `<aside class="panel cx-help" id="cx-help" aria-label="How it works">
-      <header>${this.hx("HOW IT WORKS", "sub-t", 2)}<button class="x" data-a="help" data-fk="help-x">Close</button></header>
-      <div class="h-body" data-scroll="help" tabindex="0" aria-label="How it works">
+    const M = W.M;
+    // a section a screen, the open screen's first; the keys last
+    const S = {
+      city: ["The City", `
         <h3 class="sub">A day</h3>
-        <p>Every zone makes pips each day. Its <b>tax</b> dial, in the zone's dossier, sets how many it hands the city; the rest it spends on <b>control</b>. What the city takes is split between <b>research</b> and <b>money</b> by the slider in the top bar. <b>Wait a day</b> (<kbd>W</kbd>) runs it. <b>Until…</b> waits longer, and stops early if a zone falls or Cal moves.</p>
+        <p>Every zone makes pips each day. Its <b>tax</b> dial, in the zone's dossier, sets how many it hands the city; the rest it keeps for <b>control</b>. What the city takes is split between <b>research</b> and <b>money</b> by the slider in the top bar. <b>Wait a day</b> (<kbd>W</kbd>) runs it. <b>Until…</b> waits longer, and stops early if a zone falls or Cal moves. <b>Today</b> keeps the day's news: Cal, the zones slipping, and the dispatch of the last wait.</p>
         <h3 class="sub">Control</h3>
-        <p>Control decays every day. A zone's <b>tax</b> is what it hands the city; what it keeps goes on control. <b>HOLD</b> on the dial is the tax that stops the fall. Tax under it to <b>invest</b>, and the zone climbs; over it to <b>milk</b>, and the city takes more while the zone slips. Levels run 0 to 3, and each level adds a pip. If control runs out altogether, the zone is <b>lost</b>, and makes nothing until a siege takes it back.</p>
+        <p>Control decays every day. <b>HOLD</b> on the dial is the tax that stops the fall. Tax under it to <b>invest</b>, and the zone climbs; over it to <b>milk</b>, and the city takes more while the zone slips. Levels run 0 to 3, and each level adds a pip. If control runs out altogether, the zone is <b>lost</b>, and makes nothing until a siege takes it back. Lose every zone but the Towers and Casey Benton retreats to her stronghold; lose the Towers too and the campaign is over.</p>
         <h3 class="sub">Cal</h3>
         <p>Cal pushes one zone at a time, harder the better you are doing. A mission against his crew there ends the push. Intel missions and informants show where he goes next.</p>
         <h3 class="sub">Missions</h3>
-        <p>A mission has a <b>threat</b>, T1 to T5. The squad has a <b>tier</b>, from its guns, mods and ranks. At or under it, a mission is <b>within reach</b>. One over is <b>a stretch</b>. Further is <b>beyond the squad</b>: expect to lose Watchers, and the dead stay dead. <b>Quiet</b> missions can be done without a shot fired. Missions take days, and the dials stand as set while the squad is away.</p>
-        <h3 class="sub">Research</h3>
-        <p>A project costs money to start and research points (RP) to finish. Points can't be banked: with nothing running, they're thrown away. Weapons go on sale in the Armoury, mods in the Clinic. Each finished mark is an upgrade point (an MK3 or the BanHammer counts 2). At ${W.M.N.WAR_AT}, Casey Benton can <b>take control</b> of the city. Lock every zone down to win.</p>
+        <p>A mission has a <b>threat</b>, T1 to T5. The squad has a <b>tier</b>, 1 to 5, from its guns, mods and ranks: raise it in the Armoury and the Clinic, and with missions survived. At or under the tier a mission is <b>within reach</b>. One over is <b>a stretch</b>: expect to lose a Watcher. Further is <b>beyond the squad</b>: expect to lose most of them, and the dead stay dead. <b>Quiet</b> missions can be done without a shot fired. Missions take days, and the dials stand as set while the squad is away.</p>
         <h3 class="sub">Reading the map</h3>
         <ul class="h-key">
           <li><i class="sw l2"></i><span>Gold, brighter as control rises, from level 0 to 3</span></li>
           <li><i class="sw lk"></i><span>Locked down: it doesn't decay</span></li>
           <li><i class="sw ls"></i><span>Lost to Cal</span></li>
           <li><i class="sw cal"></i><span>Cal: dashed where he goes next, pulsing where he's pushing</span></li>
-          <li>${tag("o", "2")}<span>Missions in the zone; ${tag("r", "1")} when one can't wait</span></li>
+          <li>${tag("o", "2")}<span>Missions in the zone within reach; ${tag("r", "1")} when one can't wait</span></li>
           <li><span>${this.px("▲3D", "up", 2)} ${this.px("▼5D", "dn", 2)}</span><span>The next level, up or down, and the days to it</span></li>
           <li>${tag("g", "▲L1")}<span>What the last wait moved, until you do something else</span></li>
-        </ul>
+        </ul>`],
+      lab: ["The Lab", `
+        <h3 class="sub">Research</h3>
+        <p>A project costs money to start and research points (RP) to finish. The city's RP go into whatever is running, split evenly; with nothing running they're thrown away. Stopping a project keeps nothing: the money is spent.</p>
+        <h3 class="sub">Marks and points</h3>
+        <p>Weapons, mods and gear come in three marks, each needing the one before. Weapons go on sale in the Armoury, mods in the Clinic, as each mark finishes. Each finished mark is an <b>upgrade point</b>; an MK3 or the BanHammer counts 2. The city's own projects (overseers, zone works, requisitions, propaganda) count none.</p>
+        <h3 class="sub">Take Control</h3>
+        <p>At ${M.N.WAR_AT} upgrade points Casey Benton can <b>take control</b> of the city, on your order from this screen. Decay runs faster, Cal commits, and every zone gets a story to finish; the last step locks it down. Lock every zone down to win. There is no clock.</p>`],
+      clinic: ["The Clinic", `
+        <h3 class="sub">The roster</h3>
+        <p>Up to ${M.ROSTER_MAX} Watchers; ${M.SQUAD} go out on a mission, the rest wait in reserve. A recruit is ${W.money(M.PRICE.recruit)} and comes with a pistol. Watchers who come home from ${M.RANKS[0]} missions are Regulars, from ${M.RANKS[1]} Veterans, from ${M.RANKS[2]} Elite: a little more aim, a little quicker, and a little more tier. The dead are gone, with everything spent on them.</p>
+        <h3 class="sub">Mods</h3>
+        <p>Six parts, three marks each, fitted here once the mark is researched, per Watcher. Legs for speed, arms for rate of fire and heavy guns, chest for armour and health, heart for healing and stims, eyes for aim and sight, brain for reflexes and the Purrsuader.</p>`],
+      office: ["Casey's Office", `
+        <h3 class="sub">What money buys</h3>
+        <p>Each event is bought once, for a zone or for the city, when production won't do: a festival for control, informants for Cal's next move, bribes to blunt his push, martial law to freeze a zone, hired guns for the next mission, an amnesty to get a lost zone back without a siege. Propaganda and mind control need research first. Anything over ${W.money(100000)} asks twice.</p>`],
+      armoury: ["The Armoury", `
+        <h3 class="sub">Kit</h3>
+        <p>Each Watcher carries eight things: guns, the Purrsuader, up to 4 medikits; a BanHammer strike takes no slot. Ammunition is topped up free before every mission; medikits are not. The scanner is one piece of kit shared by all four, fitted a mark at a time.</p>
+        <h3 class="sub">Moving it</h3>
+        <p>Drag kit onto a Watcher to give it, between Watchers to hand it over, onto the racks to put it back, onto the dealer to sell it; or use the buttons, which do the same. From the keyboard, <kbd>Enter</kbd> gives or puts back, <kbd>Delete</kbd> sells. Anything dear asks first.</p>
+        <h3 class="sub">The racks and the dealer</h3>
+        <p>The racks hold what the squad owns and isn't carrying: bought, or brought home from the field (anything a Watcher picks up comes here, researched or not). The dealer sells every researched mark at list price, and buys anything back for half.</p>`],
+    };
+    const order = [this.screen, ...W.Command.SCREENS.filter(k => k !== this.screen)];
+    return `<aside class="panel cx-help" id="cx-help" aria-label="How it works">
+      <header>${this.hx("HOW IT WORKS", "sub-t", 2)}<button class="x" data-a="help" data-fk="help-x">Close</button></header>
+      <div class="h-body" data-scroll="help" tabindex="0" aria-label="How it works">
+        ${order.map((k, i) => `<section class="h-sec ${i ? "" : "here"}"><h2 class="h-h">${S[k][0]}${i ? "" : " <small>this screen</small>"}</h2>${S[k][1]}</section>`).join("")}
         <h3 class="sub">Keys</h3>
         <ul class="h-keys"><li><kbd>1</kbd>–<kbd>5</kbd> the screens</li><li><kbd>W</kbd> wait a day</li><li><kbd>B</kbd> brief the mission marked B: the dossier's best, or the one to take</li><li>Arrow keys walk the map from zone to zone</li>
           <li><kbd>Esc</kbd> steps back; twice from the City leaves for the title</li><li><kbd>?</kbd> this help</li></ul>
@@ -364,7 +391,7 @@ W.Command = class {
     return d > 0 ? "Under HOLD: control climbs" : d < 0 ? "Over HOLD: the zone slips" : "At HOLD: it won't fall";
   }
   dialSay(P, p, head) { return `tax ${p - P.c} of ${p}. ${head}`; }
-  dialOut(z, P, y) { return `To the city: <span class="c-m">${W.money(P.m * W.M.moneyYield(z) * W.M.N.PIP_MONEY)}</span> and <span class="c-r">${(P.r * y).toFixed(1)} RP</span> a day<small class="kept">Kept for control: ${W.money(P.c * y * W.M.N.PIP_MONEY)} a day</small>`; }
+  dialOut(z, P, y) { const p = P.r + P.m + P.c; return `To the city: <span class="c-m">${W.money(P.m * W.M.moneyYield(z) * W.M.N.PIP_MONEY)}</span> and <span class="c-r">${(P.r * y).toFixed(1)} RP</span> a day<small class="kept">Kept for control: ${P.c} of ${p} pip${p === 1 ? "" : "s"}</small>`; }
 
   // the next move: the mission B briefs, and why it's the one; or what the squad needs when nothing's in reach
   nextHTML() {
@@ -472,7 +499,7 @@ W.Command = class {
           ${this.showFar ? list.map(o => this.offerHTML(o, cls === "urgent")).join("") : ""}` : "";
     const filter = this.zoneId ? `<p class="ops-filter">${this.allOffers ? `Every zone · <button class="link" data-a="alloffers" data-fk="alloffers">Only ${W.esc(M.zoneDef(this.zoneId).name)}</button>` : `${W.esc(M.zoneDef(this.zoneId).name)} only · <button class="link" data-a="alloffers" data-fk="alloffers">Every zone (${s.offers.length - urgent.length})</button>`}</p>` : "";
     return `<header class="ops-head">${this.hx("MISSIONS", "sub-t", 2)}
-        <p class="squadline"><span title="Missions above the squad's tier cost Watchers. Quiet ones can be done without a shot fired.">Squad tier <b>${tier}</b><span class="sr">: missions above it cost Watchers; quiet ones can be done without a shot fired</span></span> <span class="dots t-ok" aria-hidden="true">${this.dots(tier, tier)}</span> · ${squad.map(a => W.esc(a.name)).join(", ")}
+        <p class="squadline"><span title="The tier is what the squad's guns, mods and ranks can take on, 1 to 5. A mission over it costs Watchers; quiet ones can be done without a shot fired.">Squad tier <b>${tier}</b> <small>from its guns, mods and ranks</small></span> <span class="dots t-ok" aria-hidden="true">${this.dots(tier, tier)}</span> · ${squad.map(a => W.esc(a.name)).join(", ")}
           <button class="link" data-a="screen" data-screen="clinic" data-fk="to-clinic">Clinic</button></p>
         ${M.escalation(s) ? `<p class="hint">Cal is arming his people as the city turns: fighting jobs +${M.escalation(s)} threat. Quiet jobs in calm zones stay easy.</p>` : ""}${filter}</header>
       ${urgentNear.length || urgentFar.length ? `<section class="urgent"><h3 class="sub">Can't wait <span>${urgentNear.length + urgentFar.length}</span></h3>${urgentNear.map(o => this.offerHTML(o, true)).join("")}${farLine(urgentFar, "urgent")}</section>` : ""}
@@ -490,15 +517,15 @@ W.Command = class {
     const risk = th <= tier ? "ok" : th === tier + 1 ? "hard" : "deadly";
     const title = o.kind === "story" ? (M.lastStand(s, M.zone(s, o.zone), o.step) ? "Cal's last stand" : M.STORY[o.step].name) : (o.landmark && o.landmark !== D.name ? o.landmark : D.name);
     const left = o.expires - s.day;
-    const exp = o.expires >= s.day + 90 ? "" : left <= 0 ? `<b class="bad">last day</b>` : `${left} day${left === 1 ? "" : "s"} left`;
+    const exp = o.expires >= s.day + 90 || left > 4 ? "" : left <= 0 ? `<b class="bad">last day</b>` : `${left} day${left === 1 ? "" : "s"} left`;
     const riskWord = { ok: "within reach", hard: "a stretch", deadly: "beyond the squad" }[risk];
     const brief = k => `<button class="${this.rec === o.id || (fkp && risk === "ok") ? "go" : ""}" data-a="deploy" data-o="${o.id}" aria-label="Brief: ${W.esc(title)}, ${W.esc(K.name)}${title !== D.name ? ` in ${W.esc(D.name)}` : ""}"${k ? ` aria-keyshortcuts="B"` : ""} data-fk="${fkp}deploy-${o.id}" ${why ? "disabled" : ""}>${k ? `<kbd aria-hidden="true">B</kbd>` : ""}Brief</button>`;
     // in the list: two lines, the rest on the card's title and in the dossier
     if (!fkp) {
-      const tip = `${K.name} in ${D.name} · threat ${th}, ${riskWord} · ${o.days} days away${exp ? ` · ${left <= 0 ? "last day" : `${left} days left`}` : ""} · ${M.describeReward(s, o)}${why ? ` · ${why}` : ""}`;
+      const tip = `${K.name} in ${D.name} · threat ${th}, ${riskWord} · ${o.days} days away · ${o.expires >= s.day + 90 ? "won't expire" : left <= 0 ? "last day" : `${left} days left`} · ${M.describeReward(s, o)}${why ? ` · ${why}` : ""}`;
       return `<div class="offer lite k-${o.kind} ${urgent ? "urgent" : ""} ${this.rec === o.id ? "rec" : ""}" title="${W.esc(tip)}">
         <div class="o-main">
-          <p class="o-line"><b class="o-name">${W.esc(title)}</b><span class="threat t-${risk}"><b>T${th}</b></span><span class="t-${risk}">${riskWord}</span>${left <= 3 && o.expires < s.day + 90 ? `<b class="bad">${left <= 0 ? "last day" : `${left} day${left === 1 ? "" : "s"} left`}</b>` : ""}</p>
+          <p class="o-line"><b class="o-name">${W.esc(title)}</b><span class="threat t-${risk}"><b>T${th}</b></span><span class="t-${risk}">${riskWord}</span>${exp ? `<b class="bad">${left <= 0 ? "last day" : `${left} day${left === 1 ? "" : "s"} left`}</b>` : ""}</p>
           <small>${W.esc(K.name)}${K.quiet ? ", quiet" : ""}${urgent ? ` · ${W.esc(D.name)}` : ""} · ${W.esc(M.describeReward(s, o))}</small>
           ${why ? `<p class="why">${W.esc(why)}</p>` : ""}
         </div>

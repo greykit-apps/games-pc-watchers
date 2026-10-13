@@ -125,6 +125,12 @@
 .cx-help .h-key li>:first-child{justify-self:start}
 .cx-help .h-keys{gap:4px}
 .cx-help kbd,.cx .hint kbd{margin:0 1px;opacity:1}
+.cx-help .h-sec{padding:4px 0 10px;border-top:1px solid var(--divider)}
+.cx-help .h-sec.here{border-top:0;padding-top:0}
+.cx-help .h-h{margin:0 0 2px;font:700 12px/1.4 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--orange)}
+.cx-help .h-h small{font-weight:400;letter-spacing:.02em;text-transform:none;color:var(--t3)}
+.cx-help .h-sec:not(.here) .h-h{color:var(--t3)}
+.cx .squadline small{color:var(--t3);font-size:12px}
 
 /* ---- the screen ---- */
 .cx-screen{grid-row:3;grid-column:1;min-height:0;padding:12px 16px 14px;overflow:hidden}   /* placed, so help can share its cell */

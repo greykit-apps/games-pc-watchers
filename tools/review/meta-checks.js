@@ -188,4 +188,13 @@ const won = (s, ids) => ({ won: true, agents: M.squad(s).map(a => ({ id: a.id, a
   say("tax-dial-stall", stuck < 3 && z.C >= 3 ? "VERIFIED" : "CLEAR", `base-3 zone from 1.0, tax 0 set once: ${stuck.toFixed(2)} after 20 days; tax re-set to 0 every day: ${z.C.toFixed(2)}`);
 }
 
+/* 14. An ending: every zone lost ends the campaign; nothing can be run after it. */
+{
+  const s = fresh(2);
+  for (const z of s.zones) { z.lost = true; z.C = 0; }
+  M.advanceDay(s);
+  const siege = s.offers.find(o => o.kind === "siege");
+  say("city-lost-ending", s.lost && siege && M.canRun(s, siege) ? "VERIFIED" : "CLEAR", `all eight zones lost: s.lost = ${s.lost}; a siege on the board: ${!!siege}; canRun says "${siege && M.canRun(s, siege)}"; the log: "${s.log[0].text}"`);
+}
+
 console.log("\n" + out.length + " checks run.");

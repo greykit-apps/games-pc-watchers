@@ -104,3 +104,24 @@ const roster = () => M.missionRoster(M.fresh(1));
   const grade = (time, lost = 0, civ = 0, bonus = 0) => { const pts = 100 - lost * 18 - Math.max(0, civ - 2) * 4 + bonus * 8 - Math.max(0, time - 240) / 12; return pts >= 105 ? "S" : pts >= 90 ? "A" : pts >= 72 ? "B" : pts >= 55 ? "C" : "D"; };
   say("grade-by-time", "INFO", `a flawless mission (no losses, no civilians, no bonus) grades ${[180, 300, 420, 600, 780, 900].map(t => `${t}s: ${grade(t)}`).join(", ")}; with both bonuses: ${[300, 600, 900].map(t => `${t}s: ${grade(t, 0, 0, 2)}`).join(", ")}`);
 }
+
+/* 7. The mark of a hit talked round: the kill objective is done, the squad goes to exfil, and walking out wins. */
+{
+  const L = W.missionLevel({ district: "downtown", seed: 77 });
+  L.mission = { kind: "assassinate", threat: 2, cal: false, pay: {} }; L.mod = Object.assign({}, M.THREAT[2]);
+  const R = roster(); const w = new W.World(L, { roster: R });
+  const a = w.agents[0], T = w.targetUnit;
+  a.cur = a.weapons.findIndex(x => x.type === "purrsuader"); a.weaponOut = true;
+  const needCold = W.persuadeNeed(w, a, T), canCold = W.canPersuade(w, a, T);
+  // six followers behind the squad: six shoppers talked round
+  const civs = w.units.filter(u => u.kind === "civ" && !u.subject).slice(0, 6); for (const c of civs) W.persuade(w, a, c);
+  const canWithCrowd = W.canPersuade(w, a, T);
+  if (canWithCrowd) W.persuade(w, a, T);
+  for (let i = 0; i < 30; i++) w.update(1 / 60);
+  const kill = w.objectives.find(o => o.type === "kill");
+  // and out: everyone at the pickup
+  for (const u of w.agents) { u.x = w.pickupAt[0]; u.y = w.pickupAt[1]; u.path = null; }
+  for (let i = 0; i < 120 && w.status === "play"; i++) w.update(1 / 60);
+  say("persuade-the-target", canWithCrowd && kill.state === "done" && w.status === "won" && T.alive ? "VERIFIED" : "CLEAR",
+    `target needs ${needCold} followers (can with none: ${canCold}); with 6: ${canWithCrowd}; objective "${kill.text}" ${kill.state}; phase ${w.phase}; mission ${w.status}: ${w.endReason}; target alive ${T.alive}`);
+}

@@ -1,0 +1,5 @@
+convention  2 tracks, 84 cars over 3 x 600s: 8 smashed by trains (8 standing still, 0 moving)
+downtown    2 tracks, 120 cars over 3 x 600s: 0 smashed by trains (0 standing still, 0 moving)
+ranch: no railway
+starport: no railway
+suburbs     2 tracks, 96 cars over 3 x 600s: 0 smashed by trains (0 standing still, 0 moving)

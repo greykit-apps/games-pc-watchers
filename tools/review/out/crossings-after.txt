@@ -1,0 +1,7 @@
+ok
+convention, 24 x 900s (6 hours): 0 cars smashed by trains; traffic averages 2.91 tiles/s
+convention  2 tracks, 112 cars over 4 x 900s: 1 smashed by trains (0 standing still, 1 moving); traffic averages 2.85 tiles/s; 3 cars stood still a full minute
+downtown    2 tracks, 160 cars over 4 x 900s: 0 smashed by trains (0 standing still, 0 moving); traffic averages 2.20 tiles/s; 0 cars stood still a full minute
+suburbs     2 tracks, 128 cars over 4 x 900s: 0 smashed by trains (0 standing still, 0 moving); traffic averages 3.56 tiles/s; 0 cars stood still a full minute
+
+[exited with code 0]

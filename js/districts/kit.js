@@ -626,9 +626,11 @@ W.populateMission = (world, L, d, opts) => {
   world.startAt = [sp.x, sp.y];
   if (world.subjectUnit) world.objective({ type: "persuade", unit: world.subjectUnit, text: `Talk ${L.names.target} round, and walk them out` });
   // a persuade job with nobody carrying a Purrsuader cannot be done: say so at once, rather than let them find out
-  if (world.subjectUnit && !world.agents.some(a => a.weapons.some(w => W.WEAPONS[w.type].persuade))) {
-    world.noPurr = true;
-    world.msg("JOYEUSE: nobody's carrying a Purrsuader. You can't talk anyone round like that; abort, and come back with one.", "#ffb000");
+  if (world.subjectUnit) {
+    if (!world.agents.some(a => a.weapons.some(w => W.WEAPONS[w.type].persuade))) {
+      world.noPurr = true;
+      world.msg("JOYEUSE: nobody's carrying a Purrsuader. You can't talk anyone round like that; abort, and come back with one.", "#ffb000");
+    }
   }
   else if (world.terminal && world.terminal.safe) world.objective({ type: "job", text: `Crack the safe at ${tg.name} (${world.terminal.need} seconds), and get the goods out` });
   else if (world.terminal) world.objective({ type: "intel", text: `Copy the data at ${tg.name} (hold the terminal ${world.terminal.need} seconds)` });

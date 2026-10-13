@@ -1,0 +1,37 @@
+== validate (as .gitlab-ci.yml)
+checked 30 local asset reference(s) in index.html
+3/3 won
+0/2 won
+112 missions, 109 won, day 543; research 53 points, taking control since mission 61; zones towers:locked oldtown:locked lantern:locked maple:locked juniper:locked expo:locked starport:locked ranch:locked; fallen 22; WON at mission 112
+validate: all green
+== meta-checks
+CLEAR     amnesty-stale-siege: amnesty bought; siege offer still on the board: false; runnable: false; control before the stale siege 2.73 (level 2), after 2.73 (level 2)
+CLEAR     offers-survive-zone-loss: Expo lost: true; offers there before: [job T3]; non-siege offers still up: 0; runnable in the lost zone: none
+CLEAR     story-step-in-lost-zone: story offer before the loss: true (towers); zone lost: true; story offer still up: false; runnable: false; story progress after running it in a lost zone: 0
+VERIFIED  level0-control-jump: base-3 zone, all pips on control: from 0.99 -> 3.04 in ONE day; from 1.00 -> 2.45 -> 3.03 -> 3.34 -> 3.95 -> 3.95 -> 3.95; from 2.00 -> 2.8 -> 3.09 -> 3.43 -> 3.95 -> 3.95 -> 3.95
+VERIFIED  level0-control-jump-base2: base-2 zone from 0.99 with all pips on control -> 2.04 in one day (level 2)
+VERIFIED  research-overflow-wasted: 20 RP into two projects needing 1 and 30: the second has 20 left (passing the overflow on would leave 11)
+VERIFIED  persuade-reward-repriced: briefing showed +0.5 control; after 8 days away the zone was level -1 and the formula pays +0.6
+VERIFIED  squad-wipe-free-recruit: all four dead: roster now 1 (OCELOT), hired free; cash $10,065,250
+CLEAR     broke-money-job-guarantee: cash 0 for 20 days: 0 job(s) at T2 or under on the board ()
+INFO      board-size: 20 seeds x 60 idle days, cash 0: most offers on a board 10; most fallback (training/money) offers at once 2
+INFO      cal-pressure-at-pacified-city: 6 zones at level 3: Cal's push adds 1.30 control a day; a base-2 zone at 0.3 needs 2 pips to hold and has 2; after one day it is 0.70
+INFO      war-hold-cost: towers@1.5: hold 3/4 · towers@2.5: hold 5/5 · towers@3: hold 7/6 · towers@3.7: hold 2/6 · oldtown@1.5: hold 3/4 · oldtown@2.5: hold 5/5 · oldtown@3: hold 7/6 · oldtown@3.7: hold 2/6 · lantern@1.5: hold 3/3 · lantern@2.5: hold 5/4 · lantern@3: hold 7/5 · lantern@3.7: hold 2/5 · maple@1.5: hold 3/3 · maple@2.5: hold 5/4 · maple@3: hold 7/5 · maple@3.7: hold 2/5 · juniper@1.5: hold 3/3 · juniper@2.5: hold 5/4 · juniper@3: hold 7/5 · juniper@3.7: hold 2/5 · expo@1.5: hold 3/4 · expo@2.5: hold 5/5 · expo@3: hold 7/6 · expo@3.7: hold 2/6 · starport@1.5: hold 3/4 · starport@2.5: hold 5/5 · starport@3: hold 7/6 · starport@3.7: hold 2/6
+INFO      training-job-pay: a intel in the Towers pays {"rp":0,"reveal":true,"money":5000} for 3 days away; the city makes $6,000 a day in money at the start (default policies)
+INFO      forecast-accuracy: 135 forecasts checked against the day loop; 12 off by more than a day; worst: 59 days off: oldtown at 3.6 with 3 pips, forecast level 2 in 1, took 60
+CLEAR     tax-dial-drifts-on-level-up: tax set to 0 of 4 pips at level 1; after the climb to level 3 (6 pips) the policy is r0 m0 c6: tax 0
+CLEAR     tax-dial-stall: base-3 zone from 1.0, tax 0 set once: 3.95 after 20 days; tax re-set to 0 every day: 3.95
+
+16 checks run.
+== engine-checks
+CLEAR     setup-sweepNoContracts: 0 of 1050 missions
+CLEAR     setup-siegeNoDefenders: 0 of 1050 missions
+CLEAR     setup-crackdownNoOp: 0 of 1050 missions
+CLEAR     setup-persuadeNoSubject: 0 of 1050 missions
+CLEAR     setup-noPickup: 0 of 1050 missions
+CLEAR     setup-pickupIsDrop: 0 of 1050 missions
+INFO      siege-defenders: convention T4: 18.0 defenders a siege, 0 unreachable · convention T5: 18.0 defenders a siege, 0 unreachable · downtown T4: 18.0 defenders a siege, 0 unreachable · downtown T5: 18.0 defenders a siege, 0 unreachable · ranch T4: 16.0 defenders a siege, 0 unreachable · ranch T5: 17.0 defenders a siege, 0 unreachable · starport T4: 19.0 defenders a siege, 0 unreachable · starport T5: 19.0 defenders a siege, 0 unreachable · suburbs T4: 18.0 defenders a siege, 0 unreachable · suburbs T5: 18.0 defenders a siege, 0 unreachable
+INFO      longwhisker-surprise: 40 set-ups at ~10.0 tiles, threat 3: one MK1 rifle shot killed the target 22 times (55%; the pistol's 0.78 x 0.95 rifle accuracy at that range would predict about 58%); an alarm (mark or street) followed in 40
+VERIFIED  loot-mark-upgrade: went out with Uzi MK1, picked up an MK3 in the field: carries Uzi MK3 now; racks: {}; Uzi research done: false
+INFO      dead-watcher-drops: a Watcher carrying a Laser MK3, a pistol, a BanHammer strike and 3 medikits dies: on the ground now: laser MK3
+INFO      grade-by-time: a flawless mission (no losses, no civilians, no bonus) grades 180s: A, 300s: A, 420s: B, 600s: C, 780s: C, 900s: D; with both bonuses: 300s: S, 600s: B, 900s: C

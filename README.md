@@ -192,7 +192,8 @@ the map.
   then runs for his car on North Avenue. A car takes a few rounds, then goes
   up and takes anyone beside it.
 - **The Purrsuader** talks people into following you. Shoppers come at once,
-  Security once you have 2 followers, the crew at 4, and the bodyguards at 6.
+  Security once you have 2 followers, the crew at 4, and the bodyguards at 6;
+  the target too, at 6, and a target talked round counts as the job done.
   Followers pick up dropped guns and fight for you.
 - **Stims** (the bars on each card): Zoomers for speed and rate of fire, Red
   Dot for aim and sight, Silvervine for reflexes and initiative. A dose above

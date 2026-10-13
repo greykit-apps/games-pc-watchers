@@ -1,0 +1,11 @@
+CLEAR     setup-sweepNoContracts: 0 of 1050 missions
+CLEAR     setup-siegeNoDefenders: 0 of 1050 missions
+CLEAR     setup-crackdownNoOp: 0 of 1050 missions
+CLEAR     setup-persuadeNoSubject: 0 of 1050 missions
+CLEAR     setup-noPickup: 0 of 1050 missions
+CLEAR     setup-pickupIsDrop: 0 of 1050 missions
+INFO      siege-defenders: convention T4: 18.0 defenders a siege, 0 unreachable · convention T5: 18.0 defenders a siege, 0 unreachable · downtown T4: 18.0 defenders a siege, 0 unreachable · downtown T5: 18.0 defenders a siege, 0 unreachable · ranch T4: 16.0 defenders a siege, 0 unreachable · ranch T5: 17.0 defenders a siege, 0 unreachable · starport T4: 19.0 defenders a siege, 0 unreachable · starport T5: 19.0 defenders a siege, 0 unreachable · suburbs T4: 18.0 defenders a siege, 0 unreachable · suburbs T5: 18.0 defenders a siege, 0 unreachable
+INFO      longwhisker-surprise: 40 set-ups at ~9.9 tiles, threat 3: one MK1 rifle shot killed the target 26 times (65%; the pistol's 0.78 x 0.95 rifle accuracy at that range would predict about 58%); an alarm (mark or street) followed in 40
+VERIFIED  loot-mark-upgrade: went out with Uzi MK1, picked up an MK3 in the field: carries Uzi MK3 now; racks: {}; Uzi research done: false
+INFO      dead-watcher-drops: a Watcher carrying a Laser MK3, a pistol, a BanHammer strike and 3 medikits dies: on the ground now: laser MK3
+INFO      grade-by-time: a flawless mission (no losses, no civilians, no bonus) grades 180s: A, 300s: A, 420s: B, 600s: C, 780s: C, 900s: D; with both bonuses: 300s: S, 600s: B, 900s: C

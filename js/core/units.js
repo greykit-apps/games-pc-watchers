@@ -427,11 +427,12 @@ W.followingCap = world => {
 };
 /* how many followers it takes to talk t round (before the brain mods count) */
 W.persuadeNeed = (world, agent, t) => {
-  let need = t.kind === "target" ? Infinity : t.kind === "crew" ? (t.guard ? 6 : W.PERSUADE_NEED.crew) : W.PERSUADE_NEED[t.kind];
+  let need = t.kind === "target" ? W.PERSUADE_NEED.target : t.kind === "crew" ? (t.guard ? 6 : W.PERSUADE_NEED.crew) : W.PERSUADE_NEED[t.kind];
   if (need === undefined || need === Infinity) return need;
-  // the Purrsuader II needs no crowd for anyone not already fighting us, and half the crowd for those who are
+  // the Purrsuader II needs no crowd for anyone not already fighting us, and half the crowd for those who are;
+  // the mark of a hit always wants the crowd (half of it, with the II): they know what the Watchers are
   const def = W.curDef(agent);
-  if (def && def.persuade > 1) need = W.hostileTo(world, agent, t) ? Math.ceil(need / 2) : 0;
+  if (def && def.persuade > 1) need = t.kind === "target" || W.hostileTo(world, agent, t) ? Math.ceil(need / 2) : 0;
   // Cal's enforcers: a citizen wants one more in the crowd before they listen
   const CC = W.CAL_COUNTERS[world.level.mission && world.level.mission.counter];
   if (CC && CC.need && t.kind === "civ") need += CC.need;
@@ -443,8 +444,8 @@ W.canPersuade = (world, agent, t) => {
   // Mind control does not reach them: the job is to turn them.
   // (the subject never counts against the following's cap: a full crowd cannot lock the job out)
   if (t.subject) { const d = W.curDef(agent); let need = t.need || 0; if (d && d.persuade > 1) need = Math.ceil(need / 2); return W.squadFollowers(world) + W.mod(agent, "brain") >= need; }
-  // a full following: nobody else
-  if (W.squadFollowers(world) >= W.followingCap(world)) return false;
+  // a full following: nobody else (the mark of a hit is the job, not a follower: a full crowd cannot lock it out)
+  if (t.kind !== "target" && W.squadFollowers(world) >= W.followingCap(world)) return false;
   // a zone under mind control: nobody there hears the Purrsuader
   if (world.level.mission && world.level.mission.mindControl) return false;
   const need = W.persuadeNeed(world, agent, t);

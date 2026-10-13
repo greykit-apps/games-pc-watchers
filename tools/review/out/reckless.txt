@@ -1,0 +1,6 @@
+raw, careful about losses (the shipped --harsh bot): 12 of 12 won; won at mission 126 (day 596); Watchers lost a mission 0.27; fallen a campaign 35; cash at the end $600k; lost zones at the end 0.0
+   by threat minus tier: -4: 18 taken, 100% won, 0.00 lost · -3: 41 taken, 100% won, 0.00 lost · -2: 456 taken, 100% won, 0.00 lost · -1: 337 taken, 99% won, 0.00 lost · 0: 438 taken, 96% won, 0.25 lost · +1: 204 taken, 83% won, 1.31 lost · +2: 13 taken, 38% won, 3.31 lost
+raw, a Watcher worth nothing to it (takes whatever pays most): 0 of 12 won; won at mission NaN (day NaN); Watchers lost a mission 1.34; fallen a campaign 268; cash at the end $100k; lost zones at the end 2.5
+   by threat minus tier: -2: 41 taken, 100% won, 0.00 lost · -1: 117 taken, 100% won, 0.00 lost · 0: 848 taken, 100% won, 0.03 lost · +1: 784 taken, 74% won, 1.10 lost · +2: 81 taken, 37% won, 2.99 lost · +3: 58 taken, 29% won, 3.88 lost · +4: 471 taken, 11% won, 3.95 lost
+raw, Watchers worth nothing, never researches: 0 of 12 won; won at mission NaN (day NaN); Watchers lost a mission 0.08; fallen a campaign 17; cash at the end $1514k; lost zones at the end 6.3
+   by threat minus tier: 0: 2288 taken, 100% won, 0.01 lost · +1: 105 taken, 70% won, 1.42 lost · +2: 7 taken, 43% won, 3.43 lost

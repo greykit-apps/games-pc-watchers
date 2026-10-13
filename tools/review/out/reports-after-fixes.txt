@@ -1,0 +1,40 @@
+===== report baseline AFTER fixes (F-01..04)
+12 campaigns, 200 missions at most, careful, baseline; fights from tools/fights.json (2026-10-12)
+
+ok    Offers on the board before Take Control        5.8 avg, 9 most        5 to 7 / 9
+ok    Offers on the board, taking control            7.2 avg, 13 most       9 or fewer
+ok    Boards with a quiet job at threat 2 or less    100%                   100%
+ok    Boards a fresh squad can win something on      100%                   100%
+ok    Same kind twice among the ordinary offers      2%                     under 10%
+      Kinds taken                                    intel 29%, story 28%, persuade 15%, siege 11%, job 5%, crackdown 4%, cal 4%, sweep 3%, assassinate 2% 
+MISS  Ordinary kinds taken under 5% of missions      job, crackdown, assassinate, sweep none
+      Missions with Cal answering a habit            55%: quiet 38%, loud 17% 
+      Watchers lost per mission at or under the tier 0.08                   0.15 to 0.3
+      Watchers lost per mission, all                 0.59                   
+      by threat minus tier:  -4: 4 taken, 100% won, 0.00 lost · -3: 44 taken, 100% won, 0.00 lost · -2: 300 taken, 100% won, 0.00 lost · -1: 236 taken, 100% won, 0.00 lost · 0: 478 taken, 96% won, 0.17 lost · +1: 170 taken, 84% won, 1.00 lost · +2: 71 taken, 58% won, 2.31 lost · +3: 146 taken, 34% won, 3.05 lost
+ok    Cash at the end                                $557k avg, $743k most  under $1M
+      cash by mission:  10: $232k · 20: $294k · 30: $243k · 40: $288k · 50: $317k · 60: $276k · 70: $285k · 80: $242k · 90: $283k · 100: $344k · 110: $235k
+      squad tier by mission:  1: 1.0 · 21: 2.8 · 41: 3.2 · 61: 3.9 · 81: 2.7 · 101: 2.6
+      first MK2 done at mission 18, first MK3 at 53; idle days 0 a campaign
+MISS  Take Control at mission / won at mission       60 / 121 (day 248 / 598) 55 to 65 / 90 to 110
+ok    Campaigns won                                  12 of 12               all
+===== report --harsh AFTER fixes
+12 campaigns, 200 missions at most, raw, baseline; fights from tools/fights.json (2026-10-12)
+
+ok    Offers on the board before Take Control        6.0 avg, 9 most        5 to 7 / 9
+ok    Offers on the board, taking control            6.9 avg, 13 most       9 or fewer
+ok    Boards with a quiet job at threat 2 or less    100%                   100%
+ok    Boards a fresh squad can win something on      100%                   100%
+ok    Same kind twice among the ordinary offers      1%                     under 10%
+      Kinds taken                                    intel 34%, story 23%, persuade 21%, siege 7%, job 6%, sweep 3%, cal 3%, assassinate 2%, crackdown 1% 
+MISS  Ordinary kinds taken under 5% of missions      crackdown, assassinate, sweep none
+      Missions with Cal answering a habit            68%: loud 55%, quiet 13%, strike 0% 
+      Watchers lost per mission at or under the tier 0.09                   0.15 to 0.3
+      Watchers lost per mission, all                 0.28                   
+      by threat minus tier:  -4: 18 taken, 100% won, 0.00 lost · -3: 41 taken, 100% won, 0.00 lost · -2: 456 taken, 100% won, 0.00 lost · -1: 337 taken, 99% won, 0.00 lost · 0: 438 taken, 96% won, 0.25 lost · +1: 204 taken, 83% won, 1.31 lost · +2: 13 taken, 38% won, 3.31 lost
+      Cash at the end                                $600k avg, $1010k most 
+      cash by mission:  10: $207k · 20: $354k · 30: $302k · 40: $275k · 50: $229k · 60: $354k · 70: $239k · 80: $250k · 90: $225k · 100: $296k · 110: $332k
+      squad tier by mission:  1: 1.0 · 21: 2.5 · 41: 3.0 · 61: 3.6 · 81: 2.9 · 101: 3.3
+      first MK2 done at mission 19, first MK3 at 54; idle days 7 a campaign
+      Take Control at mission / won at mission       61 / 126 (day 251 / 596) 55 to 65 / 90 to 110
+ok    Campaigns won                                  12 of 12               8 of 12 by about mission 140

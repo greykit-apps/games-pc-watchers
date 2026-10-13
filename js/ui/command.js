@@ -26,6 +26,7 @@ W.Command = class {
     // the dossier and list the player had open survive a briefing, for the same campaign
     const kept = W.Command.kept && W.Command.kept.s === game.campaign ? W.Command.kept : {};
     this.zoneId = kept.zoneId || null;
+    this.today = kept.today || { cal: false, slip: false, dispatch: false };
     this.agentId = null;
     this.officeZone = null;
     this.allOffers = !!kept.allOffers;
@@ -97,7 +98,7 @@ W.Command = class {
     return true;
   }
   close() {
-    W.Command.kept = { s: this.s, zoneId: this.zoneId, allOffers: this.allOffers };
+    W.Command.kept = { s: this.s, zoneId: this.zoneId, allOffers: this.allOffers, today: this.today };
     if (this.map) this.map.stop();
     window.removeEventListener("resize", this.onResize);
     clearTimeout(this.bannerT); clearTimeout(this.toastT); clearTimeout(this.bannerDelay);
@@ -231,23 +232,14 @@ W.Command = class {
     this.briefKey = bt ? bt.id + (this.zoneId ? "dz-" : "nx-") : null;
     const zb = s.zones.slice().sort((a, b) => { const [ax, ay] = W.CityMap.place(a.id), [bx, by] = W.CityMap.place(b.id); return Math.round(ay / 12) - Math.round(by / 12) || ax - bx; }).map(z => {
       const [x, y] = W.CityMap.place(z.id);
-      return `<button class="zb" data-a="zone" data-z="${z.id}" data-fk="zone-${z.id}" aria-pressed="${this.zoneId === z.id}" aria-label="${W.esc(this.zoneSay(z))}"
+      return `<button class="zb" data-a="zone" data-z="${z.id}" data-fk="zone-${z.id}" aria-pressed="${this.zoneId === z.id}" aria-label="${W.esc(this.zoneSay(z))}" title="${W.esc(this.zoneSay(z))}"
         style="left:${x}%;top:${y}%"></button>`;
     }).join("");
-    return `<section class="cx-mapbox" aria-label="Map of PumaCity">
+    return `<section class="cx-mapbox" aria-label="Map of PumaCity. Gold is control, brighter as it rises; hatched red is lost to Cal; a red outline is where he pushes. The count on a zone is its missions, red when one can't wait; the arrow is where its control goes next.">
         <div class="cx-slot" data-mapslot>${zb}</div>
-        <div class="cx-legend" role="group" aria-label="Key">
-          <ul><li><i class="sw l0"></i>L0</li><li><i class="sw l1"></i>L1</li><li><i class="sw l2"></i>L2</li><li><i class="sw l3"></i>L3</li>
-            <li><i class="sw lk"></i>Locked</li><li><i class="sw ls"></i>Lost</li><li><i class="sw cal"></i>Cal</li></ul>
-          <ul>${this.keyMarks()}</ul></div>
       </section>
-      <section class="cx-mid"><div class="mid-main" data-scroll="mid">${this.zoneId ? this.dossierHTML(W.M.zone(s, this.zoneId)) : this.overviewHTML()}</div>${this.dispatchHTML()}</section>
+      <section class="cx-mid"><div class="mid-main" data-scroll="mid">${this.zoneId ? this.dossierHTML(W.M.zone(s, this.zoneId)) : this.nextHTML()}</div>${this.todayHTML()}</section>
       <section class="cx-ops" data-scroll="ops" aria-label="Missions">${this.opsHTML()}</section>`;
-  }
-  keyMarks() {
-    const tag = (cls, t) => `<span class="tg ${cls}">${this.px(t, "", 2)}</span>`;
-    return `<li>${tag("o", "2")}missions</li><li>${tag("r", "1")}one can't wait</li>
-      <li>${this.px("▲3D", "up", 2)}next level in 3 days</li><li>${tag("g", "▲L1")}moved on the last wait</li>`;
   }
 
   /* ---- help: the rules in brief, over whichever screen is open ---- */
@@ -388,27 +380,38 @@ W.Command = class {
     const why = o.kind === "cal" ? `It ends Cal's push in ${D.name}.` : o.kind === "siege" ? `It takes ${D.name} back.` : o.kind === "story" ? `The next step of ${D.name}'s story.` : o.expires <= s.day ? "Its last day on the board." : `Within reach, in the weakest zone with work the squad can do${z.lost ? "" : ` (level ${M.level(z.C)})`}.`;
     return `${retreat}<article class="panel next">${this.hx("NEXT MOVE", "sub-t", 2)}<p class="nx-why">${W.esc(why)}</p>${this.offerHTML(o, false, "nx-")}</article>`;
   }
-  overviewHTML() {
-    const s = this.s, M = W.M, c = s.cal;
-    const calOffer = s.offers.some(o => o.kind === "cal");
-    const cal = c.zone
-      ? `<p><b class="bad">Cal is pushing ${W.esc(M.zoneDef(c.zone).name)}</b>, ${c.left} more day${c.left === 1 ? "" : "s"}${c.bribed ? " (half-hearted: City Hall was paid)" : ""}. ${calOffer ? "Hitting his crew there ends it: first under Can't wait." : "A mission against his crew there would end it."}</p>`
-      : c.revealed && c.next ? `<p>Cal is resting. <b class="warn">Next: ${W.esc(M.zoneDef(c.next).name)}, in ${c.nextIn} day${c.nextIn === 1 ? "" : "s"}.</b> Bank control there now.</p>`
-      : `<p>Cal is resting. Where he goes next is anyone's guess: intel missions, or informants from the Office, would tell you.</p>`;
+  /* ---- Today: Cal, the zones slipping and the dispatch, a line each, opened on request ---- */
+  todayHTML() {
+    const s = this.s, M = W.M, c = s.cal, T = this.today;
+    const name = id => W.esc(M.zoneDef(id).name);
+    // Cal: where he is, where he goes, and what he has made of the Watchers (M.noteHabits)
+    const calOffer = s.offers.some(o => o.kind === "cal"), A = c.reads && M.CAL_ANSWER[c.reads];
+    const calLine = c.zone ? `<b class="bad">Pushing ${name(c.zone)}</b>, ${c.left} more day${c.left === 1 ? "" : "s"}${c.bribed ? ", half-hearted" : ""}`
+      : c.revealed && c.next ? `Resting. <b class="warn">Next: ${name(c.next)}, in ${c.nextIn} day${c.nextIn === 1 ? "" : "s"}</b>`
+      : "Resting. Where he goes next is anyone's guess";
+    const calBody = `<p>${c.zone ? `${c.bribed ? "City Hall was paid: his push is half-hearted. " : ""}${calOffer ? "Hitting his crew there ends it: it's first under Can't wait." : "A mission against his crew there would end it."}` : c.revealed && c.next ? "Bank control there before he arrives, or go after his gang there first." : "Intel missions, or informants from the Office, would tell you."}</p>
+      ${A ? `<p><b class="warn">He has heard about ${W.esc(A.heard)}.</b> His answer: ${W.esc(A.answer)}. Work another way and he loses the thread.</p>` : ""}`;
+    // slipping: lost zones, and any that fall a level within ten days at today's rate
     const watch = s.zones.filter(z => !z.locked).map(z => ({ z, f: M.forecast(s, z) }))
       .filter(({ z, f }) => z.lost || (f && f.days <= 10 && (f.lost || (f.to != null && f.to < M.level(z.C)))))
       .sort((a, b) => (b.z.lost - a.z.lost) || ((a.f && a.f.days) || 0) - ((b.f && b.f.days) || 0));
-    // what he has made of the Watchers (M.noteHabits)
-    const A = c.reads && M.CAL_ANSWER[c.reads];
-    const reads = A ? `<p class="reads"><b class="warn">He has heard about ${W.esc(A.heard)}.</b> His answer: ${W.esc(A.answer)}. Work another way and he loses the thread.</p>` : "";
-    return `${this.nextHTML()}<article class="panel cal ${c.zone ? "on" : ""}">${this.hx("CAL", "cal-t", 2)}${cal}${reads}</article>
-      <article class="panel watch"><h3 class="sub">Zones slipping <span>${watch.length || "none"}</span></h3>
-        ${watch.length ? `<ul>${watch.map(({ z, f }) => `<li><button data-a="zone" data-z="${z.id}" data-fk="w-${z.id}"><b>${W.esc(M.zoneDef(z.id).name)}</b><span class="${z.lost ? "bad" : "down"}">${z.lost ? "Lost: siege to retake" : this.fcText(f)}</span></button></li>`).join("")}</ul>`
-          : `<p class="quiet">Every zone is holding or climbing. Pick one on the map to set its tax.</p>`}
-      </article>`;
+    const slipLine = watch.length ? watch.map(({ z, f }) => `<b class="${z.lost ? "bad" : "warn"}">${name(z.id)}</b>${z.lost ? " lost" : ` ${this.fcText(f).toLowerCase()}`}`).join(", ") : "None: every zone holds or climbs";
+    const slipBody = watch.length ? `<ul class="watch">${watch.map(({ z, f }) => `<li><button data-a="zone" data-z="${z.id}" data-fk="w-${z.id}"><b>${name(z.id)}</b><span class="${z.lost ? "bad" : "down"}">${z.lost ? "Lost: siege to retake" : this.fcText(f)}</span></button></li>`).join("")}</ul>`
+      : `<p class="quiet">Pick a zone on the map to set its tax.</p>`;
+    // the dispatch: the last wait, and what happened since
+    const D = this.dispatchHTML();
+    const row = (id, label, line, body, extra = "") => `<div class="td-row ${T[id] ? "open" : ""}">
+        <button data-a="today" data-t="${id}" data-fk="today-${id}" aria-expanded="${!!T[id]}" aria-controls="td-${id}"><span class="td-k">${label}</span><span class="td-l">${line}</span>${extra}<i class="td-x" aria-hidden="true"></i></button>
+        <div class="td-body" id="td-${id}" ${T[id] ? "" : "hidden"}>${body}</div></div>`;
+    return `<section class="panel today" aria-label="Today">
+      <header>${this.hx("TODAY", "sub-t", 2)}<small>Day ${s.day}</small></header>
+      <div class="td-rows" data-scroll="today">${row("cal", "Cal", calLine, calBody)}
+      ${row("slip", "Slipping", slipLine, slipBody, watch.length ? `<i class="n">${watch.length}</i>` : "")}
+      ${row("dispatch", "Dispatch", D.line, D.body)}</div>
+    </section>`;
   }
 
-  /* ---- the dispatch: what the last wait did, what happened since; earlier days on request ---- */
+  /* ---- the dispatch: what the last wait did, what happened since; earlier days on request. {line, body} for Today ---- */
   dispatchHTML() {
     const s = this.s, d = s.dispatch && s.dispatch.to <= s.day ? s.dispatch : null;
     const span = (a, b) => a === b ? `Day ${a}` : `Days ${a}–${b}`;
@@ -430,12 +433,13 @@ W.Command = class {
     }
     const shown = new Set(d ? since : [from]);
     const days = logDays.filter(day => !shown.has(day)).slice(0, 8);
-    return `<section class="panel dispatch" aria-label="Dispatch">
-      <header>${this.hx("DISPATCH", "sub-t", 2)}<small>${span(from, to)}${to < s.day ? ` · now Day ${s.day}` : ""}</small></header>
-      <div class="d-body" data-scroll="dispatch">${body}
+    // the one line: when, and the first thing that happened
+    const first = d ? (since.length ? this.logDay(since[0])[0] : d.lines[0]) : this.logDay(from)[0];
+    const n = d ? d.lines.length + since.reduce((t, day) => t + this.logDay(day).length, 0) : this.logDay(from).length;
+    const line = `${span(from, to)}: ${first ? W.esc(first.text.length > 72 ? first.text.slice(0, 70).replace(/\s+\S*$/, "") + "…" : first.text) : "a quiet day"}${n > 1 ? ` <span class="quiet">+${n - 1}</span>` : ""}`;
+    return { line, body: `<div class="d-body" data-scroll="dispatch">${body}
       ${days.length ? `<button class="link" data-a="log" data-fk="log" aria-expanded="${this.showLog}">${this.showLog ? "Hide" : "Show"} earlier days</button>` : ""}
-      ${this.showLog ? days.map(day => `<h4>Day ${day}</h4><ul class="old">${this.logDay(day).map(l => li(l)).join("")}</ul>`).join("") : ""}</div>
-    </section>`;
+      ${this.showLog ? days.map(day => `<h4>Day ${day}</h4><ul class="old">${this.logDay(day).map(l => li(l)).join("")}</ul>`).join("") : ""}</div>` };
   }
   // a day's log, with the same line said twice said once
   logDay(day) {
@@ -482,6 +486,19 @@ W.Command = class {
     const left = o.expires - s.day;
     const exp = o.expires >= s.day + 90 ? "" : left <= 0 ? `<b class="bad">last day</b>` : `${left} day${left === 1 ? "" : "s"} left`;
     const riskWord = { ok: "within reach", hard: "a stretch", deadly: "beyond the squad" }[risk];
+    const brief = k => `<button class="${this.rec === o.id || (fkp && risk === "ok") ? "go" : ""}" data-a="deploy" data-o="${o.id}" aria-label="Brief: ${W.esc(title)}, ${W.esc(K.name)}${title !== D.name ? ` in ${W.esc(D.name)}` : ""}"${k ? ` aria-keyshortcuts="B"` : ""} data-fk="${fkp}deploy-${o.id}" ${why ? "disabled" : ""}>${k ? `<kbd aria-hidden="true">B</kbd>` : ""}Brief</button>`;
+    // in the list: two lines, the rest on the card's title and in the dossier
+    if (!fkp) {
+      const tip = `${K.name} in ${D.name} · threat ${th}, ${riskWord} · ${o.days} days away${exp ? ` · ${left <= 0 ? "last day" : `${left} days left`}` : ""} · ${M.describeReward(s, o)}${why ? ` · ${why}` : ""}`;
+      return `<div class="offer lite k-${o.kind} ${urgent ? "urgent" : ""} ${this.rec === o.id ? "rec" : ""}" title="${W.esc(tip)}">
+        <div class="o-main">
+          <p class="o-line"><b class="o-name">${W.esc(title)}</b><span class="threat t-${risk}"><b>T${th}</b></span><span class="t-${risk}">${riskWord}</span>${left <= 3 && o.expires < s.day + 90 ? `<b class="bad">${left <= 0 ? "last day" : `${left} day${left === 1 ? "" : "s"} left`}</b>` : ""}</p>
+          <small>${W.esc(K.name)}${K.quiet ? ", quiet" : ""}${urgent ? ` · ${W.esc(D.name)}` : ""} · ${W.esc(M.describeReward(s, o))}</small>
+          ${why ? `<p class="why">${W.esc(why)}</p>` : ""}
+        </div>
+        ${brief(!why && this.briefKey === o.id)}
+      </div>`;
+    }
     return `<div class="offer k-${o.kind} ${urgent ? "urgent" : ""} ${this.rec === o.id ? "rec" : ""}">
       <div class="o-main">
         <b class="o-name">${W.esc(title)}</b>
@@ -492,7 +509,7 @@ W.Command = class {
         ${M.bigGun(o) ? `<p class="o-gun">${M.carriesBanhammer(s) ? "A BanHammer strike goes with the squad: it counts here. X calls it down; a strike not fired comes home." : "A BanHammer strike would count here, if the squad carried one."}</p>` : ""}
         ${why ? `<p class="why">${W.esc(why)}</p>` : ""}
       </div>
-      ${(k => `<button class="${this.rec === o.id || (fkp && risk === "ok") ? "go" : ""}" data-a="deploy" data-o="${o.id}" aria-label="Brief: ${W.esc(title)}, ${W.esc(K.name)}${title !== D.name ? ` in ${W.esc(D.name)}` : ""}"${k ? ` aria-keyshortcuts="B"` : ""} data-fk="${fkp}deploy-${o.id}" ${why ? "disabled" : ""}>${k ? `<kbd aria-hidden="true">B</kbd>` : ""}Brief</button>`)(!why && this.briefKey === o.id + fkp)}
+      ${brief(!why && this.briefKey === o.id + fkp)}
     </div>`;
   }
 
@@ -853,6 +870,7 @@ W.Command = class {
       case "alloffers": this.allOffers = !this.allOffers; return this.draw();
       case "showfar": this.showFar = !this.showFar; return this.draw();
       case "log": this.showLog = !this.showLog; return this.draw();
+      case "today": this.today[d.t] = !this.today[d.t]; W.audio.play("click"); return this.draw();
       case "office": this.officeZone = d.z; return this.go("office");
       case "declare": if (!M.declareWar(s)) return W.audio.play("deny"); this.banners.push({ tone: "gold", big: "TAKE CONTROL", sub: "Casey Benton gives the order. Cal commits. Lock the city down, zone by zone.", sound: "alarm" }); break;
       case "works": if (!M.placeWorks(s, M.zone(s, d.z))) return W.audio.play("deny"); W.audio.play("heal"); break;
@@ -1003,6 +1021,7 @@ W.Command = class {
     }
     // kept in the campaign, so a briefing or a reload doesn't lose what the last wait did
     s.dispatch = { from: before.day, to: s.day, days, lines };
+    this.today.dispatch = true;
     // the banners: what nobody should miss
     for (const z of s.zones) if (z.lost && !before.zones[z.id].lost) this.banners.push({ tone: "red", big: "ZONE LOST", sub: `${M.zoneDef(z.id).name} has fallen to Cal. A siege takes it back.`, sound: "lose" });
     if (s.cal.zone && s.cal.zone !== before.cal) this.banners.push({ tone: "red", big: "CAL MOVES", sub: `He's pushing ${M.zoneDef(s.cal.zone).name}${M.zone(s, s.cal.zone).lost ? ", which he already holds" : ""}. A mission against his crew ends it.`, sound: "alarm" });

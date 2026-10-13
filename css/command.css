@@ -137,17 +137,13 @@
 /* ---- the City ---- */
 .cx-city{display:grid;grid-template-columns:auto minmax(300px,1fr) minmax(320px,1.1fr);gap:12px;height:100%}
 .cx-mapbox{display:flex;flex-direction:column;gap:6px;min-height:0;height:100%}
-.cx-slot{position:relative;height:calc(100% - 52px);aspect-ratio:1;max-width:50vw;background:#0a0d14;border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.cx-slot{position:relative;height:100%;aspect-ratio:1;max-width:50vw;background:#0a0d14;border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
 .cx-map{position:absolute;inset:0;width:100%;height:100%;display:block}
 /* zone labels are hit areas over the canvas, which draws their hover and selection; they must out-rank the steel
    button's hover plate and its 1px press, or the label is covered on hover and jumps from under the cursor on press */
 .cx button.zb,.cx button.zb:hover:not(:disabled),.cx button.zb:active:not(:disabled){position:absolute;width:22%;height:9%;transform:translate(-50%,-50%);background:transparent;border:0;min-height:0;padding:0;cursor:pointer}
 .cx button.zb:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-/* the key: the territory on one row, the map's own marks on the next */
-.cx-legend{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--t3)}
-.cx-legend ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
-.cx-legend li{display:flex;align-items:center;gap:5px}
-/* the map's tags, as the map draws them */
+/* the map's tags, as the map draws them (the help's key) */
 .cx .tg{display:inline-block;padding:2px 3px;line-height:0}
 .cx .tg.o{background:var(--orange);color:var(--ink-orange)} .cx .tg.r{background:var(--red);color:var(--ink-orange)} .cx .tg.g{background:var(--green);color:#0d1f06}
 .cx .px.up{color:var(--green)} .cx .px.dn{color:var(--red-t)}
@@ -161,12 +157,27 @@
 .cx .sw.ls{background:repeating-linear-gradient(45deg,var(--red) 0 2px,#3a0a10 2px 4px)}
 .cx .sw.cal{background:transparent;border:2px solid var(--red)}
 .cx-ops,.cx .mid-main{min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px}
-/* the middle column: the dossier (or the overview) over the dispatch. The dispatch keeps a home a long dossier
-   can't push off the screen: the dossier stops 170px short of the bottom and scrolls, the dispatch scrolls in what's left */
+/* the middle column: the dossier (or the next move) over Today. Today keeps a home a long dossier can't push
+   off the screen: the dossier stops 160px short of the bottom and scrolls; Today's open rows scroll in what's left */
 .cx-mid{min-height:0;display:flex;flex-direction:column;gap:10px}
-.cx .mid-main{flex:0 0 auto;max-height:calc(100% - 170px)}
-.cx-mid>.dispatch{flex:0 1 auto;min-height:0;display:flex;flex-direction:column}
-.cx .dispatch .d-body{min-height:0;overflow-y:auto;padding-right:4px}
+.cx .mid-main{flex:0 0 auto;max-height:calc(100% - 160px)}
+.cx-mid>.today{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;padding-bottom:4px}
+.cx .today header{flex:none;display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.cx .today header small{color:var(--t3)}
+.cx .today .td-rows{min-height:0;overflow-y:auto}
+/* a row: its name, one line, and a mark that it opens; the body under it on request */
+.cx .td-row{border-top:1px solid var(--divider)}
+.cx .td-row>button,.cx .td-row>button:hover:not(:disabled){width:100%;display:flex;align-items:center;gap:10px;text-align:left;background:none;border:0;padding:7px 0;min-height:34px;font-weight:400;color:var(--t2)}
+.cx .td-row>button:hover:not(:disabled) .td-l{color:var(--orange-hi)}
+.cx .td-k{flex:none;width:64px;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--t3)}
+.cx .td-l{flex:1;min-width:0;color:var(--t1);font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cx .td-row .n{flex:none;font:700 11px var(--sans);background:var(--orange);color:var(--ink-orange);padding:1px 5px}
+.cx .td-x{flex:none;width:12px;color:var(--t3);font-size:11px;text-align:center}
+.cx .td-x::before{content:"▸"} .cx .td-row.open .td-x::before{content:"▾"}
+.cx .td-row.open .td-l{-webkit-line-clamp:unset}
+.cx .td-body{padding:0 0 8px 74px;font-size:13px;color:var(--t2)}
+.cx .td-body p{margin:0 0 4px}
+.cx .today .td-rows{padding-right:4px}
 
 /* the dossier */
 .cx .dossier .dz-head{display:flex;align-items:flex-start;gap:10px}
@@ -212,24 +223,18 @@
 .cx .flags li.dark{background:#2e1530;color:#ffd0f2} .cx .flags li.good{background:#183018;color:#d8f5c8}
 
 /* Cal, and the zones slipping */
-.cx .cal{display:flex;flex-direction:column;gap:6px;border-color:#7a3a42 #200a0e #200a0e #7a3a42;background:#2e2230}
-.cx .cal.on{background:#3a1820}
-.cx .cal-t{color:var(--red-t);--px-shadow:#200a0e}
-.cx .cal p{margin:0}
-.cx .cal button{align-self:flex-start}
-.cx .watch ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
-.cx .watch li button{width:100%;display:flex;justify-content:space-between;gap:8px;text-align:left;font-weight:600}
-.cx .watch li button span{font-weight:600}
-.cx .watch li .down,.cx .watch li .bad{color:#ffbdc0}   /* red-t is too dim on a steel plate */
+.cx ul.watch{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.cx ul.watch li button{width:100%;display:flex;justify-content:space-between;gap:8px;text-align:left;font-weight:600}
+.cx ul.watch li button span{font-weight:600}
+.cx ul.watch li .down,.cx ul.watch li .bad{color:#ffbdc0}   /* red-t is too dim on a steel plate */
 
-/* the dispatch */
-.cx .dispatch header{flex:none;display:flex;align-items:center;gap:10px;margin-bottom:6px}
-.cx .dispatch header small{color:var(--t3)}
-.cx .dispatch ul{list-style:none;margin:0;padding:0;font-size:13px}
-.cx .dispatch li{padding:4px 0;border-top:1px solid var(--divider);color:var(--t2)}
-.cx .dispatch li.good{color:var(--green)} .cx .dispatch li.bad{color:var(--red-t)}
-.cx .dispatch h4{font-size:12px;color:var(--t3);margin:8px 0 2px;letter-spacing:.08em;text-transform:uppercase}
-.cx .dispatch .old li{color:var(--t3)}
+/* the dispatch, inside Today */
+.cx .d-body ul{list-style:none;margin:0;padding:0;font-size:13px}
+.cx .d-body li{padding:4px 0;border-top:1px solid var(--divider);color:var(--t2)}
+.cx .d-body li:first-child{border-top:0}
+.cx .d-body li.good{color:var(--green)} .cx .d-body li.bad{color:var(--red-t)}
+.cx .d-body h4{font-size:12px;color:var(--t3);margin:8px 0 2px;letter-spacing:.08em;text-transform:uppercase}
+.cx .d-body .old li{color:var(--t3)}
 
 /* the missions */
 .cx .ops-head{display:flex;flex-direction:column;gap:4px}
@@ -258,6 +263,12 @@
 .cx .og-h button:hover{background:none;color:var(--orange)}
 .cx .offer{display:flex;gap:10px;align-items:flex-start;background:var(--face);border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);padding:8px 10px}
 .cx .offer.rec{border-color:var(--orange-hi) var(--orange-lo) var(--orange-lo) var(--orange-hi)}
+/* the list's card: a line of name, threat and reach; a line of kind, zone and pay */
+.cx .offer.lite{padding:6px 10px;align-items:center}
+.cx .o-line{margin:0;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:13px}
+.cx .o-line .o-name{font-size:14px}
+.cx .offer.lite small{display:block;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cx .offer.lite .why{margin-top:2px}
 .cx .o-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .cx .o-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:1px 0}
 .cx .threat{display:inline-flex;align-items:center;gap:5px}
@@ -488,8 +499,8 @@
   /* too short to pin it: the column scrolls as one, the dispatch under the dossier at its own height */
   .cx-city .cx-mid{overflow-y:auto;padding-right:4px}
   .cx-city .mid-main{max-height:none;overflow:visible;padding-right:0}
-  .cx-city .cx-mid>.dispatch{flex:none}
-  .cx-city .dispatch .d-body{overflow:visible}
+  .cx-city .cx-mid>.today{flex:none}
+  .cx-city .today .d-body{overflow:visible}
   .cx-clinic{grid-template-columns:minmax(220px,.8fr) minmax(0,1.8fr)}
   .cx-armoury{grid-template-columns:minmax(0,1fr) minmax(300px,.8fr);height:auto}
   .cx .loadouts ul{grid-template-columns:repeat(2,minmax(0,1fr))}

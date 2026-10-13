@@ -47,8 +47,8 @@ const Game = W.game = {
       primary: W.M.load() ? "resume" : "new",
       items: [
         (c => c && { act: "resume", label: "Resume campaign", key: "R", meta: `Day ${c.day} · ${W.money(c.cash)}${c.war ? " · taking control" : ""}` })(W.M.load()),
-        { act: "new", label: "New campaign", key: "N", meta: "four Watchers, eight zones, one Cal" },
-        { act: "skirmish", label: "Skirmish", key: "K", meta: "any district, nothing saved" },
+        { act: "new", label: "New campaign", key: "N" },
+        { act: "skirmish", label: "Skirmish", key: "K" },
         "gap",
         { act: "settings", label: "Settings", key: "S" },
         { act: "help", label: "Help", key: "?" },

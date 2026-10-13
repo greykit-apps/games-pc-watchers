@@ -661,6 +661,8 @@ M.canRun = (s, o) => {
   if (M.needsTalker(o) && !M.hasTalker(s)) return "needs a Purrsuader in the squad: buy one at the Clinic";
   return "";
 };
+// an offer the squad can take today: nothing stops it running, and it is at most one over the squad's tier
+M.inReach = (s, o) => !M.canRun(s, o) && (o.threat || 1) <= M.squadTier(s, o) + 1;
 // what a money reward is worth now: the dearest single purchase open to the squad
 M.moneyReward = s => {
   const best = Math.max(...M.CATALOGUE.filter(r => M.isDone(s, r.id)).map(r => r.kind === "weapon" ? M.PRICE.weapon[r.mk] : r.kind === "mod" ? M.PRICE.mod[r.mk] : r.line === "purrsuader" ? M.PRICE.purrsuader[r.mk] : 0), M.PRICE.mod[1]);

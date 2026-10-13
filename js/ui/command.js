@@ -214,7 +214,7 @@ W.Command = class {
     const s = this.s, M = W.M;
     const idle = !s.research.running.length;
     const tabs = [
-      ["city", "CITY", "1", "Map, zones, missions", s.offers.length ? `<i class="n">${s.offers.length}</i>` : "", s.offers.length ? `${s.offers.length} mission${s.offers.length > 1 ? "s" : ""}` : ""],
+      ["city", "CITY", "1", "Map, zones, missions", (n => n ? `<i class="n">${n}</i>` : "")(s.offers.filter(o => M.inReach(s, o)).length), (n => n ? `${n} mission${n > 1 ? "s" : ""} within reach` : "")(s.offers.filter(o => M.inReach(s, o)).length)],
       ["lab", "LAB", "2", "Research and Take Control", idle ? `<i class="n warn">IDLE</i>` : "", idle ? "nothing running" : ""],
       ["clinic", "CLINIC", "3", "The roster, and mods", `<i class="n soft">${M.squad(s).length}/${M.SQUAD}</i>`, `${M.squad(s).length} of ${M.SQUAD} in the squad`],
       ["office", "OFFICE", "4", "What the Boss can buy", "", ""],
@@ -277,8 +277,8 @@ W.Command = class {
     const M = W.M, D = M.zoneDef(z.id), s = this.s;
     if (z.lost) return `${D.name}: lost to Cal`;
     if (z.locked) return `${D.name}: locked down`;
-    const f = M.forecast(s, z), n = s.offers.filter(o => o.zone === z.id).length;
-    return `${D.name}: level ${M.level(z.C)}, ${this.fcText(f).toLowerCase()}${s.cal.zone === z.id ? ", Cal is pushing here" : ""}${n ? `, ${n} mission${n > 1 ? "s" : ""}` : ""}`;
+    const f = M.forecast(s, z), n = s.offers.filter(o => o.zone === z.id && M.inReach(s, o)).length, far = s.offers.filter(o => o.zone === z.id).length - n;
+    return `${D.name}: level ${M.level(z.C)}, ${this.fcText(f).toLowerCase()}${s.cal.zone === z.id ? ", Cal is pushing here" : ""}${n ? `, ${n} mission${n > 1 ? "s" : ""} within reach` : ""}${far ? `, ${far} beyond the squad` : ""}`;
   }
   fcText(f) {
     if (!f) return "";
@@ -455,25 +455,31 @@ W.Command = class {
     const rec = this.recOffer();
     this.rec = rec && rec.id;
     const shown = o => this.zoneId || o.id !== this.rec;     // with no dossier open, the next move sits in the middle column
-    const urgent = s.offers.filter(urgentOf).sort((a, b) => (a.threat || 1) - (b.threat || 1));
-    const beyond = o => (o.threat || 1) > M.squadTier(s, o) + 1;
+    // reach first, everywhere: within reach, then a stretch, then by threat; what's beyond the squad folds into one line
+    const reach = o => { const th = o.threat || 1, t = M.squadTier(s, o); return th <= t ? 0 : th === t + 1 ? 1 : 2; };
+    const byReach = (a, b) => reach(a) - reach(b) || (a.threat || 1) - (b.threat || 1);
+    const beyond = o => reach(o) === 2;
+    const urgent = s.offers.filter(urgentOf).sort(byReach);
     const urgentNear = urgent.filter(o => !beyond(o) && shown(o)), urgentFar = urgent.filter(beyond);
-    const rest = pool.filter(o => !urgentOf(o) && shown(o));
+    const rest = pool.filter(o => !urgentOf(o) && shown(o)).sort(byReach);
+    const near = rest.filter(o => !beyond(o)), far = rest.filter(beyond);
+    // zones in the order of their best mission, then the weakest zone first
     const byZone = {};
-    for (const o of rest) (byZone[o.zone] = byZone[o.zone] || []).push(o);
-    const order = Object.keys(byZone).sort((a, b) => M.zone(s, a).C - M.zone(s, b).C);
+    for (const o of near) (byZone[o.zone] = byZone[o.zone] || []).push(o);
+    const order = Object.keys(byZone).sort((a, b) => reach(byZone[a][0]) - reach(byZone[b][0]) || M.zone(s, a).C - M.zone(s, b).C);
+    const farLine = (list, cls = "") => list.length ? `<div class="far ${cls}"><p><b>${list.length} beyond the squad:</b> ${list.map(o => `${W.esc(M.KINDS[o.kind].name)} in ${W.esc(M.zoneDef(o.zone).name)} (T${o.threat || 1})`).join(", ")}. A stretch at squad tier ${Math.min(...list.map(o => o.threat || 1)) - 1}, within reach at ${Math.min(...list.map(o => o.threat || 1))}.</p>
+          <button class="link" data-a="showfar" data-fk="showfar-${cls || "list"}" aria-expanded="${!!this.showFar}">${this.showFar ? "Hide them" : "Show them"}</button></div>
+          ${this.showFar ? list.map(o => this.offerHTML(o, cls === "urgent")).join("") : ""}` : "";
+    const filter = this.zoneId ? `<p class="ops-filter">${this.allOffers ? `Every zone · <button class="link" data-a="alloffers" data-fk="alloffers">Only ${W.esc(M.zoneDef(this.zoneId).name)}</button>` : `${W.esc(M.zoneDef(this.zoneId).name)} only · <button class="link" data-a="alloffers" data-fk="alloffers">Every zone (${s.offers.length - urgent.length})</button>`}</p>` : "";
     return `<header class="ops-head">${this.hx("MISSIONS", "sub-t", 2)}
         <p class="squadline"><span title="Missions above the squad's tier cost Watchers. Quiet ones can be done without a shot fired.">Squad tier <b>${tier}</b><span class="sr">: missions above it cost Watchers; quiet ones can be done without a shot fired</span></span> <span class="dots t-ok" aria-hidden="true">${this.dots(tier, tier)}</span> · ${squad.map(a => W.esc(a.name)).join(", ")}
           <button class="link" data-a="screen" data-screen="clinic" data-fk="to-clinic">Clinic</button></p>
-        ${M.escalation(s) ? `<p class="hint">Cal is arming his people as the city turns: fighting jobs +${M.escalation(s)} threat. Quiet jobs in calm zones stay easy.</p>` : ""}</header>
-      ${urgentNear.length || urgentFar.length ? `<section class="urgent"><h3 class="sub">Can't wait <span>${urgentNear.length + urgentFar.length}</span></h3>${urgentNear.map(o => this.offerHTML(o, true)).join("")}
-        ${urgentFar.length ? `<div class="far"><p><b>${urgentFar.length} beyond the squad:</b> ${urgentFar.map(o => `${W.esc(M.KINDS[o.kind].name)} in ${W.esc(M.zoneDef(o.zone).name)} (T${o.threat || 1})`).join(", ")}. Within reach at squad tier ${Math.min(...urgentFar.map(o => o.threat || 1))}.</p>
-          <button class="link" data-a="showfar" data-fk="showfar" aria-expanded="${!!this.showFar}">${this.showFar ? "Hide them" : "Show them"}</button></div>
-          ${this.showFar ? urgentFar.map(o => this.offerHTML(o, true)).join("") : ""}` : ""}</section>` : ""}
-      ${this.zoneId && !this.allOffers ? `<button class="link" data-a="alloffers" data-fk="alloffers">Show missions in every zone (${s.offers.length - urgent.length})</button>` : this.zoneId ? `<button class="link" data-a="alloffers" data-fk="alloffers">Only ${W.esc(M.zoneDef(this.zoneId).name)}</button>` : ""}
+        ${M.escalation(s) ? `<p class="hint">Cal is arming his people as the city turns: fighting jobs +${M.escalation(s)} threat. Quiet jobs in calm zones stay easy.</p>` : ""}${filter}</header>
+      ${urgentNear.length || urgentFar.length ? `<section class="urgent"><h3 class="sub">Can't wait <span>${urgentNear.length + urgentFar.length}</span></h3>${urgentNear.map(o => this.offerHTML(o, true)).join("")}${farLine(urgentFar, "urgent")}</section>` : ""}
       ${order.map(id => { const z = M.zone(s, id), L = M.level(z.C);
         return `<section class="og"><h3 class="og-h"><button data-a="zone" data-z="${id}" data-fk="og-${id}">${W.esc(M.zoneDef(id).name)}</button><span class="lvl ${z.lost ? "ls" : "l" + Math.max(0, L)}">${z.lost ? "LOST" : "L" + L}</span></h3>
-          ${byZone[id].sort((a, b) => (a.threat || 1) - (b.threat || 1)).map(o => this.offerHTML(o)).join("")}</section>`; }).join("")}
+          ${byZone[id].map(o => this.offerHTML(o)).join("")}</section>`; }).join("")}
+      ${farLine(far)}
       ${!s.offers.length ? `<p class="quiet">Nothing on offer. Wait a day.</p>` : ""}`;
   }
   dots(threat) {

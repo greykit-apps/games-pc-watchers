@@ -255,9 +255,13 @@
 .cx .next .nx-why{margin:6px 0 8px;color:var(--t1)}
 .cx .next.none p{margin:6px 0 0}
 /* what can't wait but is beyond the squad: one row, opened on request */
-.cx .urgent .far{border-top:1px solid #5a2a32;padding:8px 0 4px;font-size:13px;color:var(--t2)}
-.cx .urgent .far p{margin:0}
+.cx .far{border-top:1px solid var(--divider);margin-top:10px;padding:8px 0 4px;font-size:13px;color:var(--t3)}
+.cx .far p{margin:0}
+.cx .far b{color:var(--t2)}
+.cx .urgent .far{border-top-color:#5a2a32;margin-top:0;color:var(--t2)}
 .cx .urgent .far b{color:#ffd0d3}
+.cx .ops-filter{margin:2px 0 0;font-size:13px;color:var(--t3)}
+.cx .ops-filter .link{padding:2px 0;min-height:24px}
 .cx .urgent .sub{color:#ffd0d3}
 .cx .og{display:flex;flex-direction:column;gap:6px}
 .cx .og-h{display:flex;align-items:center;gap:8px;margin:10px 0 0}

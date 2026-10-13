@@ -238,8 +238,8 @@ W.Command = class {
     return `<section class="cx-mapbox" aria-label="Map of PumaCity. Gold is control, brighter as it rises; hatched red is lost to Cal; a red outline is where he pushes. The count on a zone is its missions, red when one can't wait; the arrow is where its control goes next.">
         <div class="cx-slot" data-mapslot>${zb}</div>
       </section>
-      <section class="cx-mid"><div class="mid-main" data-scroll="mid">${this.zoneId ? this.dossierHTML(W.M.zone(s, this.zoneId)) : this.nextHTML()}</div>${this.todayHTML()}</section>
-      <section class="cx-ops" data-scroll="ops" aria-label="Missions">${this.opsHTML()}</section>`;
+      <div class="cx-right" data-scroll="right"><section class="cx-mid"><div class="mid-main" data-scroll="mid">${this.zoneId ? this.dossierHTML(W.M.zone(s, this.zoneId)) : this.nextHTML()}</div>${this.todayHTML()}</section>
+      <section class="cx-ops" data-scroll="ops" aria-label="Missions">${this.opsHTML()}</section></div>`;
   }
 
   /* ---- help: the rules in brief, over whichever screen is open ---- */
@@ -973,6 +973,8 @@ W.Command = class {
     const z = open && W.M.zone(this.s, id);
     if (moveFocus) this.focusTo = open ? (z.lost || z.locked ? `close-${id}` : `dial-${id}`) : `zone-${id}`;
     this.draw();
+    // where the right-hand side scrolls as one (narrow windows), the dossier opens at the top of it
+    const r = this.el.querySelector('[data-scroll="right"]'); if (r) r.scrollTop = 0;
   }
   go(screen) {
     this.screen = screen; W.store.set("cmdscreen_v1", screen); this.armed = null; this.untilOpen = false;

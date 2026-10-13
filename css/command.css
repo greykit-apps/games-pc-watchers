@@ -136,6 +136,8 @@
 
 /* ---- the City ---- */
 .cx-city{display:grid;grid-template-columns:auto minmax(300px,1fr) minmax(320px,1.1fr);gap:12px;height:100%}
+/* the two columns right of the map are grid children at full width; under 1180px they fold into one scrolling stack */
+.cx-right{display:contents}
 .cx-mapbox{display:flex;flex-direction:column;gap:6px;min-height:0;height:100%}
 .cx-slot{position:relative;height:100%;aspect-ratio:1;max-width:50vw;background:#0a0d14;border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
 .cx-map{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -492,15 +494,14 @@
   .cx .split-row{gap:6px;font-size:12px}
   .cx .split-row input{min-width:60px}
   .cx-wait .go{padding:6px 10px;font-size:13px}
-  .cx-city{grid-template-columns:auto minmax(0,1fr)}
-  .cx-city .cx-ops{grid-column:2}
-  .cx-city{grid-template-rows:auto minmax(0,1fr)}
-  .cx-city .cx-mapbox{grid-row:1/3}
-  /* too short to pin it: the column scrolls as one, the dispatch under the dossier at its own height */
-  .cx-city .cx-mid{overflow-y:auto;padding-right:4px}
+  /* the map, and beside it one column that scrolls as a whole: the next move (or the dossier), Today, then the missions,
+     each at its own height, so the list is always there to scroll to */
+  .cx-city{grid-template-columns:auto minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+  .cx-right{display:flex;flex-direction:column;gap:10px;min-height:0;overflow-y:auto;padding-right:4px}
+  .cx-city .cx-mid,.cx-city .cx-ops{flex:none;min-height:0;overflow:visible;padding-right:0}
   .cx-city .mid-main{max-height:none;overflow:visible;padding-right:0}
   .cx-city .cx-mid>.today{flex:none}
-  .cx-city .today .d-body{overflow:visible}
+  .cx-city .today .td-rows{overflow:visible;padding-right:0}
   .cx-clinic{grid-template-columns:minmax(220px,.8fr) minmax(0,1.8fr)}
   .cx-armoury{grid-template-columns:minmax(0,1fr) minmax(300px,.8fr);height:auto}
   .cx .loadouts ul{grid-template-columns:repeat(2,minmax(0,1fr))}

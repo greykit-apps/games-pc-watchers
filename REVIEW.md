@@ -4,7 +4,7 @@ Branch `review/2026-10-12`, worktree `.claude/worktrees/review`, from `main` at 
 Review scripts live in `tools/review/`; their saved output is in `tools/review/out/`.
 Rerun any of them with `node tools/review/<name>.js`.
 
-**Status:** findings, balance, PX, code health and suggestions are written; the final re-verification pass is noted at the end.
+**Status:** complete. The final re-verification pass is at the end.
 
 ## Summary: the five things to fix or decide first
 
@@ -498,3 +498,37 @@ an intel mission's objectives carry no "Eliminate", the camera stays on the squa
 
 Not changed (design decisions for the author): F-05 (gain priced per starting level), F-10 (no fail state),
 F-13 (reload is a free retry), F-15/F-16 (grade and bonus), F-18 (stealth), F-20 (bench sample size).
+
+## Final re-verification pass
+
+Run on the branch's head (`tools/review/out/final-pass.txt`):
+
+- The CI `validate` steps (`check-assets`, `node --check` on every script, `sim.js 3`, `sim.js 2 --district=ranch`,
+  `campaign.js 200 --seed=1`): all green.
+- `meta-checks.js`: the three stale-offer checks (F-01/02/03) and both tax checks (F-04) read CLEAR after the
+  fixes; the level-0 jump (F-05), research overflow (F-06), repriced reward (F-07) and free recruit (F-10) still
+  read VERIFIED, as they are unfixed by design. The money-job check first read CLEAR on the final pass because the
+  test let the city's cash accumulate past the $55,000 trigger; it now zeroes cash daily and reads VERIFIED again.
+- `engine-checks.js`: no degenerate setups in 1,050 missions; loot-mark upgrade still VERIFIED (design note).
+- Browser, after the fixes: Shift+2/3 adds Watchers; an intel mission lists no "Eliminate"; the camera stays on the
+  squad at mission start; a forced-win persuade debrief, the abort flow, the Lab, the Office (festival), Until…,
+  the Map Room, a fly-over and a skirmish with a fight all ran with no console errors.
+- Re-checked the two High findings: F-01 by script (CLEAR after `53b1815`); F-11 by building a persuade mission
+  headless (objectives carry no "Eliminate") and in the browser.
+
+Dropped from the report after re-verification: a suspected "bench runs every kind as an assassination" tooling bug
+(my shell passed the flags as one argument; the tool is fine) and a suspected sweep softlock with no contracts
+(1,050 generated missions, none).
+
+## Where to pick up
+
+- Decide F-10 (an ending), F-13 (reload), F-05 (gain pricing) and F-18 (stealth / the Purrsuader): these are the
+  design calls; everything else is small.
+- `43aeaf4` (the tax dial) is the one commit that changes rules; cherry-pick the others freely.
+- The campaign bot needs a risk cap before `--report` is used to re-tune (see Balance → Observations), and
+  `tools/fights.json` should be regenerated at 12+ fights a cell.
+- Not reviewed: `js/core/render.js`, `js/core/sprites.js`, `js/ui/citymap.js`, `js/ui/art.js`, `js/ui/pixfont.js`
+  and `js/core/audio.js` beyond a skim for crash paths; the Armoury's drag-and-drop by mouse (keyboard path tested);
+  saves older than `v2`.
+- Local only, not committed: `.claude/launch.json` in the main checkout points the Browser pane's dev server at this
+  worktree on port 8766 (`python3 tools/serve.py 8766`); delete it when the worktree goes.

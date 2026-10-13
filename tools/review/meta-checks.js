@@ -112,7 +112,7 @@ const won = (s, ids) => ({ won: true, agents: M.squad(s).map(a => ({ id: a.id, a
 /* 7. Cash: can the player ever be unable to act? With zero cash and no squad, is there always a job? */
 {
   const s = fresh(9); s.cash = 0;
-  for (let d = 0; d < 20; d++) M.advanceDay(s);
+  for (let d = 0; d < 20; d++) { M.advanceDay(s); s.cash = 0; }   // broke every day: the city's take is spent as it comes
   const cheap = s.offers.filter(o => o.kind === "job" && o.threat <= 2);
   say("broke-money-job-guarantee", cheap.length ? "VERIFIED" : "CLEAR", `cash 0 for 20 days: ${cheap.length} job(s) at T2 or under on the board (${cheap.map(o => M.zoneDef(o.zone).name).join(", ")})`);
 }

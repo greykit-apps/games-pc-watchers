@@ -65,8 +65,12 @@ W.Command = class {
       this.layer = document.createElement("div");
       this.layer.className = "cx-layer";
       this.layer.innerHTML = `<div class="cx-toast" role="status"></div><div class="cx-banner" hidden></div><div class="sr" aria-live="polite" data-live></div>
-        <div class="cx-ticker" role="region" aria-label="PVN news"><b class="tk-tag">PVN</b><div class="tk-run"><div class="tk-text" data-ticker></div></div></div>`;
-      this.layer.addEventListener("click", ev => { if (ev.target.closest(".cx-banner")) this.hideBanner(); });
+        <div class="cx-ticker ${W.store.get("ticker_v1", true) ? "" : "paused"}" role="region" aria-label="PVN news"><b class="tk-tag">PVN</b><div class="tk-run"><div class="tk-text" data-ticker></div></div><button class="tk-pause" data-tk aria-pressed="${!W.store.get("ticker_v1", true)}" aria-label="Pause the news ticker" title="Pause or run the news">${W.store.get("ticker_v1", true) ? "❚❚" : "▶"}</button></div>`;
+      this.layer.addEventListener("click", ev => {
+        if (ev.target.closest(".cx-banner")) this.hideBanner();
+        const tk = ev.target.closest("[data-tk]");
+        if (tk) { const run = !!this.layer.querySelector(".cx-ticker.paused"); W.store.set("ticker_v1", run); this.layer.querySelector(".cx-ticker").classList.toggle("paused", !run); tk.setAttribute("aria-pressed", String(!run)); tk.textContent = run ? "❚❚" : "▶"; tk.setAttribute("aria-label", run ? "Pause the news ticker" : "Run the news ticker"); W.audio.play("click"); }
+      });
       document.body.appendChild(this.layer);
       this.mapCv = document.createElement("canvas");
       this.mapCv.className = "cx-map";
@@ -185,7 +189,7 @@ W.Command = class {
       <div class="cx-wait">
         <button class="go" data-a="wait" data-fk="wait" aria-keyshortcuts="W"><kbd aria-hidden="true">W</kbd>Wait a day</button>
         <div class="until">
-          <button data-a="until" data-fk="until" aria-expanded="${!!this.untilOpen}" aria-haspopup="true">Until…</button>
+          <button data-a="until" data-fk="until" aria-expanded="${!!this.untilOpen}" aria-haspopup="true" aria-keyshortcuts="U"><kbd aria-hidden="true">U</kbd>Until…</button>
           ${this.untilOpen ? `<div class="until-menu" role="menu" aria-label="Wait until"><small class="mh">Wait until</small>
             <button role="menuitem" data-a="waituntil" data-u="research" data-fk="u-research" ${running ? "" : "disabled"}>Research finishes${running ? "" : `<small>nothing running</small>`}</button>
             <button role="menuitem" data-a="waituntil" data-u="cal" data-fk="u-cal">Cal moves</button>
@@ -296,7 +300,7 @@ W.Command = class {
       <div class="h-body" data-scroll="help" tabindex="0" aria-label="How it works">
         ${order.map((k, i) => `<section class="h-sec ${i ? "" : "here"}"><h2 class="h-h">${S[k][0]}${i ? "" : " <small>this screen</small>"}</h2>${S[k][1]}</section>`).join("")}
         <h3 class="sub">Keys</h3>
-        <ul class="h-keys"><li><kbd>1</kbd>–<kbd>5</kbd> the screens</li><li><kbd>W</kbd> wait a day</li><li><kbd>B</kbd> brief the mission marked B: the dossier's best, or the one to take</li><li>Arrow keys walk the map from zone to zone</li>
+        <ul class="h-keys"><li><kbd>1</kbd>–<kbd>5</kbd> the screens</li><li><kbd>W</kbd> wait a day; <kbd>U</kbd> wait until</li><li><kbd>B</kbd> brief the mission marked B: the dossier's best, or the one to take</li><li>Arrow keys walk the map from zone to zone</li>
           <li><kbd>Esc</kbd> steps back; twice from the City leaves for the title</li><li><kbd>?</kbd> this help</li></ul>
       </div></aside>`;
   }
@@ -396,8 +400,8 @@ W.Command = class {
   // the next move: the mission B briefs, and why it's the one; or what the squad needs when nothing's in reach
   nextHTML() {
     const s = this.s, M = W.M, o = this.recOffer();
-    const retreat = s.stronghold && !s.lost ? `<article class="panel next none">${this.hx("THE STRONGHOLD", "sub-t", 2)}<p>Casey Benton has retreated to the Towers: every other zone is Cal's. The Towers still pay. Train on their quiet jobs, arm the squad, and take a zone back by siege; lose the Towers too and the campaign is over.</p></article>` : "";
-    if (s.lost) return `<article class="panel next none">${this.hx("THE CITY IS LOST", "sub-t", 2)}<p>Every zone has fallen to Cal, and Casey Benton has no city to hold. The campaign is over. Press <kbd>Esc</kbd> twice for the title and start a new one.</p></article>`;
+    const retreat = s.stronghold && !s.lost ? `<article class="panel next grave">${this.hx("THE STRONGHOLD", "grave-t", 2)}<p>Casey Benton has retreated to the Towers: every other zone is Cal's. The Towers still pay. Train on their quiet jobs, arm the squad, and take a zone back by siege; lose the Towers too and the campaign is over.</p></article>` : "";
+    if (s.lost) return `<article class="panel next grave">${this.hx("THE CITY IS LOST", "grave-t", 2)}<p>Every zone has fallen to Cal, and Casey Benton has no city to hold. The campaign is over. Press <kbd>Esc</kbd> twice for the title and start a new one.</p></article>`;
     if (!o) {
       const t = s.offers.length ? Math.min(...s.offers.map(x => x.threat || 1)) : 0;
       return `${retreat}<article class="panel next none">${this.hx("NEXT MOVE", "sub-t", 2)}
@@ -1176,6 +1180,7 @@ W.Command = class {
     if (tag === "SELECT" || (tag === "INPUT" && ev.target.type !== "range")) return false;
     if (k >= "1" && k <= String(W.Command.SCREENS.length)) { this.go(W.Command.SCREENS[+k - 1]); return true; }
     if (k === "w") { this.wait(1); return true; }
+    if (k === "u") { this.untilOpen = !this.untilOpen; W.audio.play("click"); this.draw(); const first = this.untilOpen && this.el.querySelector('.until-menu [role="menuitem"]:not(:disabled)'); if (first) first.focus(); else { const u = this.el.querySelector('[data-fk="until"]'); if (u) u.focus(); } return true; }
     if (k === "?") { this.toggleHelp(); return true; }
     // B is also the Konami code's second-last key: mid-code, it waits for the A
     if (k === "b" && this.screen === "city" && this.konami !== KONAMI.length - 1) {

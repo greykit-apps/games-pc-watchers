@@ -260,6 +260,10 @@
 .cx .next{border-color:var(--orange-hi) var(--orange-lo) var(--orange-lo) var(--orange-hi)}
 .cx .next .nx-why{margin:6px 0 8px;color:var(--t1)}
 .cx .next.none p{margin:6px 0 0}
+/* the retreat and the loss: red, as what they say */
+.cx .next.grave{border-color:#ff7a84 #3a060a #3a060a #ff7a84;background:#2e1a20}
+.cx .next.grave p{margin:6px 0 0;color:#ffd0d3}
+.cx .grave-t{color:var(--red-t);--px-shadow:#200a0e}
 /* what can't wait but is beyond the squad: one row, opened on request */
 .cx .far{border-top:1px solid var(--divider);margin-top:10px;padding:8px 0 4px;font-size:13px;color:var(--t3)}
 .cx .far p{margin:0}
@@ -481,7 +485,9 @@
 .cx-ticker .tk-tag{display:flex;align-items:center;padding:0 10px;background:var(--gold);color:#1a1300;font-weight:700;letter-spacing:.12em;font-size:12px}
 .cx-ticker .tk-run{flex:1;overflow:hidden;display:flex;align-items:center}
 .cx-ticker .tk-text{display:flex;flex:none;white-space:nowrap;animation:tk-roll 60s linear infinite}
-.cx-ticker:hover .tk-text{animation-play-state:paused}
+.cx-ticker:hover .tk-text,.cx-ticker.paused .tk-text{animation-play-state:paused}
+.cx-ticker .tk-pause{flex:none;min-height:0;padding:0 10px;border:0;border-left:2px solid var(--divider);background:var(--well);color:var(--t3);font-size:11px;letter-spacing:.1em}
+.cx-ticker .tk-pause:hover:not(:disabled){background:var(--chip);color:var(--t1)}
 .cx-ticker .tk-copy{display:flex;flex:none}
 .cx-ticker .tk-copy span{padding:0 18px 0 0}
 .cx-ticker .tk-copy span::after{content:"◆";margin-left:18px;color:var(--gold);font-size:9px;vertical-align:2px}

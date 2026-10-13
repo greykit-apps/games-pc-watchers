@@ -558,7 +558,7 @@ W.Command = class {
     const avail = M.available(s);
     // one row a line, as the Office's: the name and what it does; the marks' state; at the right, the next mark to
     // start (its price, then its points), or how the one running is getting on; the reason beneath, said once
-    const chips = marks => marks.length > 1 ? `<span class="lab-mks" aria-hidden="true">${marks.map(r => { const p = run.find(x => x.id === r.id); return `<i class="${M.isDone(s, r.id) ? "done" : p ? "run" : ""}">MK${r.mk}</i>`; }).join("")}</span>` : "";
+    const chips = marks => `<span class="lab-mks" aria-hidden="true">${marks.length > 1 ? marks.map(r => { const p = run.find(x => x.id === r.id); return `<i class="${M.isDone(s, r.id) ? "done" : p ? "run" : ""}">MK${r.mk}</i>`; }).join("") : ""}</span>`;
     const buy = (r, label, aria) => {
       if (!r) return `<span class="buy quiet">done</span>`;
       const p = run.find(x => x.id === r.id);

@@ -197,4 +197,16 @@ const won = (s, ids) => ({ won: true, agents: M.squad(s).map(a => ({ id: a.id, a
   say("city-lost-ending", s.lost && siege && M.canRun(s, siege) ? "VERIFIED" : "CLEAR", `all eight zones lost: s.lost = ${s.lost}; a siege on the board: ${!!siege}; canRun says "${siege && M.canRun(s, siege)}"; the log: "${s.log[0].text}"`);
 }
 
+/* 15. The retreat: every zone but the Towers lost is a warning, lifted when a zone comes back; the Towers too, and it's over. */
+{
+  const s = fresh(2);
+  for (const z of s.zones) if (z.id !== "towers") { z.lost = true; z.C = 0; }
+  M.advanceDay(s);
+  const a = s.stronghold, aNew = s.strongholdNew, pips = M.pips(s, M.zone(s, "towers")), runnable = s.offers.filter(o => !M.canRun(s, o)).map(o => o.kind);
+  M.event(s, M.EVENTS.find(e => e.id === "amnesty"), M.zone(s, "ranch")); M.advanceDay(s);
+  const b = s.stronghold;
+  for (const z of s.zones) { z.lost = true; z.C = 0; } M.advanceDay(s);
+  say("stronghold-retreat", a && !b && s.lost ? "VERIFIED" : "CLEAR", `only the Towers held: stronghold ${a} (banner pending ${aNew}), not lost, the Towers make ${pips} pips, runnable: ${[...new Set(runnable)].join(", ")}; the Ranch back by amnesty: stronghold ${b}; then all lost: s.lost ${s.lost}`);
+}
+
 console.log("\n" + out.length + " checks run.");

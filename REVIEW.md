@@ -4,8 +4,7 @@ Branch `review/2026-10-12`, worktree `.claude/worktrees/review`, from `main` at 
 Review scripts live in `tools/review/`; their saved output is in `tools/review/out/`.
 Rerun any of them with `node tools/review/<name>.js`.
 
-**Status: in progress.** This file is updated as the review goes. Sections marked
-*(pending)* have not been reached yet.
+**Status:** findings, balance, PX, code health and suggestions are written; the final re-verification pass is noted at the end.
 
 ## Summary: the five things to fix or decide first
 
@@ -61,7 +60,6 @@ Rerun any of them with `node tools/review/<name>.js`.
 | F-19 | Low | PX | VERIFIED | `js/campaign/meta.js:135,177` | A new squad's first push from Cal is answerable only by a T4 "Hit Cal's crew": the counter-mission is beyond tier 1 |
 | F-20 | Medium | tooling | VERIFIED | `tools/fights.json` | Every balance claim rests on 4 fights per cell; the bot's "careful" number takes the best 2 of 4-5 tactics |
 
-*(more rows pending: UI walk-through, code health)*
 
 ## Detailed findings
 
@@ -297,9 +295,9 @@ campaign with the dial left alone.
 ±40 points; 1.00 means "won 4 of 4". The campaign bot's "careful" odds take the best two of four or five tactics
 by that 4-sample ranking, which systematically picks lucky cells. The balance section's numbers inherit this.
 
-## Balance analysis *(partial; see tools/review/out/)*
+## Balance analysis
 
-### Campaign bot, six strategies (`tools/campaign.js --report`, 12 seeds each)
+### Campaign bot, six strategies (`tools/campaign.js --report`, 12 seeds each, code as shipped)
 
 | Strategy | Won | Take Control at mission | Won at mission (day) | Lost / mission | Cash at end |
 |---|---|---|---|---|---|
@@ -313,30 +311,173 @@ by that 4-sample ranking, which systematically picks lucky cells. The balance se
 By threat minus tier (baseline): 0: 443 taken, 97% won, 0.15 lost · +1: 75 taken, 87% won, 0.87 lost · +2: 11,
 73%, 1.91 · +3: 20, 30%, 3.45. Watchers lost at or under the tier: 0.08 against the plan's 0.15–0.3 target.
 
-Observations:
+### Can it be lost? (`tools/review/reckless.js`, 12 seeds, raw odds, 200 missions)
+
+| Player | Won | Lost / mission | Fallen a campaign | Cash at end | Zones lost at end |
+|---|---|---|---|---|---|
+| the shipped bot, careful about losses | 12/12 at mission 126 | 0.27 | 35 | $600k | 0.0 |
+| a Watcher worth nothing to it (takes whatever pays most) | **0/12** | 1.34 | **268** | $100k | 2.5 |
+| the same, and never opens the Lab | **0/12** | 0.08 | 17 | $1.5M | **6.3 of 8** |
+
+So the challenge is real: a player who takes missions by pay alone buries 268 Watchers in 200 missions and never
+wins; one who never researches watches six zones fall to Cal while sitting on $1.5M. What is missing is an
+*ending*: neither of those campaigns stops. Free recruits arrive, a T2 money job is always on the board, and the
+siege to take anything back is T4 against a tier-1 squad. The careless player grinds in a hole rather than losing.
+(F-10.)
+
+### Observations
+
 - **Waiting is the strongest play.** Five idle days a mission takes Take Control from mission 57 to 46 and ends with
   six times the cash. `docs/meta.md` "Decided 1" accepts this; it also means the city out-earns anything a mission
-  pays once a few zones are at level 3 ($9,000 a day a base-3 zone, F-05 table), so missions become optional.
-- **The "stretch" word undersells the cliff.** `command.js:472` calls threat = tier+1 "a stretch". The bench says a
-  stretch costs 0.87–1.27 Watchers a mission (87% won); two over costs 1.9–2.6. Help text: "One over is a stretch.
-  Further is beyond the squad: expect to lose Watchers." One over is where the losses start.
-- **Sweep is a dead option for the bot** (under 5% in 5 of 6 strategies) and crackdown in the raw run.
+  pays once a few zones are at level 3 ($9,000 a day a base-3 zone, F-05 table), so missions become optional
+  once the squad is tier 3. For "no grind" this cuts both ways: no grind is forced, but the fastest route to a safe
+  campaign is to press W.
+- **The "stretch" word undersells the cliff.** `command.js:472` calls threat = tier+1 "a stretch". The bench
+  (12-fight grid, F-18) says a stretch costs 1.0–1.3 Watchers a mission by assault and 0.25–1.0 by stealth; two
+  over costs 2–3.3. Help text: "One over is a stretch. Further is beyond the squad: expect to lose Watchers." One
+  over is where the losses start.
+- **Sweep is a dead option for the bot** (under 5% in 5 of 6 strategies) and crackdown in the raw run. The bot
+  values a sweep at three side jobs; a human might like it more (it is the one job with a choice of how much to do).
+- **The bot's numbers are sensitive to the board, not only the rules.** Rerunning the baseline after the stale-offer
+  fix alone (`tools/review/out/report-pretax.txt`) moved Watchers lost a mission from 0.22 to 0.36 and the +3-gap
+  missions taken from 20 to 44; after the tax fix (`reports-after-fixes.txt`) 0.59 and 146. The rules did not get
+  deadlier: the bot values a story step at $500k–$3M against a Watcher at $60k–$800k, so whenever a lockdown
+  becomes runnable it storms it at any tier, and the tax fix makes zones reach the lockdown's 2.5 sooner at war.
+  A human waits. Treat `--report`'s death rate as a lower bound on the rules and an upper bound on the bot's
+  judgement, and give the bot a risk cap before using it to tune again.
 
 ### Control model (`tools/review/out/control-dynamics.txt`)
 
 See F-05. Also: Cal's push with 6 zones pacified is 1.30 a day; a base-2 zone at 3.7 with every pip on control
 falls 3.29 → 1.09 in four days, while one at 1.5 falls to 0.7 and holds (level-0 gain 1.0 again). At war a base-3
-zone at 3.0 under a push oscillates between 1.5 and 2.1 with every pip on control.
+zone at 3.0 under a push oscillates between 1.5 and 2.1 with every pip on control. A full plateau zone needs 2 of
+its 6 pips to hold, 0 pips loses it in 5 days.
 
-### Research pacing
+### Research and money pacing
 
 With every zone at level 2 and half the city's pips on research the city makes 10 RP a day: MK1 in 3 days, MK2 8,
 MK3 14, BanHammer 16, propaganda 40, mind control 70, zone works 38, requisition 58. The whole weapon/mod/gear tree
 is 3,640 RP and $738,000 to start; the 30 points for Take Control are 48% of its 62. A Watcher at MK3 in everything
 costs $835,000; four of them $3.34M plus a $380,000 scanner. The bot reaches tier 4 by mission 61 with ~$500k
-banked, so the money sink works; the research sink is mostly spent before Take Control.
+banked, so the money sink works; the research sink is mostly spent before Take Control. Mission pay: a job at
+threat 2 pays the dearest purchase open to you (×1), a T5 job ×3; a calm persuade or intel pays $5,000–$10,000.
+A base-3 zone at level 3 makes $9,000 a day on money alone, so by mid-game one zone out-earns a T2 job every two
+days without anyone leaving the clinic.
 
-## Improvement suggestions *(pending)*
+### Mission engine (`tools/fights.json`, `tools/review/out/grid-n12.txt`, `engine-checks.js`)
+
+- At the squad's own tier every kind is won 93–100% with 0–0.25 Watchers lost, whatever the way in. The danger
+  lives entirely in the threat-minus-tier gap; the kinds themselves are close in difficulty (sieges a little harder,
+  persuades a little easier at the top).
+- Stealth is the best way in everywhere measured (F-18); assault one over the tier loses 1.3–2.5 of 4.
+- A siege fields 16–19 defenders at T4–5, all reachable on foot; no degenerate setups in 1,050 generated missions
+  (sweeps always have contracts, sieges defenders, crackdowns an operation, persuades a subject, every mission a
+  pickup at least 24 tiles from the drop).
+- The Longwhisker's surprise shot killed an unaware T3 target in 26 of 40 tries at ~10 tiles (65%; the gun's
+  accuracy after range fall-off predicts about 58%, so the one-shot rule adds little that a second shot would not),
+  and every one of the 40 raised the mark's alarm through the bodyguards within 3 tiles. "Whoever a silenced round
+  kills raises no alarm" holds for a lone lookout, never for a guarded target.
+- Field loot upgrades in place: a Watcher who went out with an Uzi MK1 and walked over an Uzi MK3 comes home
+  carrying the MK3, research or no research (`giveWeapon` merges marks). Consistent with the harvesting design, but
+  it means a T4 crackdown hands out MK3 guns the Lab has not reached; worth knowing when reading the tier curve.
+- A dead Watcher drops their guns (a Laser MK3 drops; the BanHammer and medikits do not), so a wiped squad's kit is
+  recoverable by the survivors, and a lost mission's loot is gone with the squad.
+
+## Player experience
+
+Desktop, 1280×860 and 1024 wide, Chrome. Mobile not reviewed, by the author's rule.
+
+**Onboarding.** The command screen is dense but reads: the NEXT MOVE panel, the B key, the "within reach / a
+stretch / beyond the squad" words, HOLD on the dial and the Joyeuse log lines carry a newcomer through day 1
+without the Syndicate reference. Two snags: the day-1 board lists three T4 "Can't wait" jobs a tier-1 squad cannot
+touch (F-19), and the first push takes a zone by day 7 unless the player reads the dispatch and dials the Expo up;
+losing a zone in the first week with the only counter-mission three tiers away is a hard welcome. The IDLE badge and
+the "research points wasted" line are good; the Lab has no "recommended first project".
+
+**In the field.** The briefing's plan (drop-off and getaway choices with armed-group counts) is the best screen in
+the game. The mission start is fine once F-14 is fixed; before it, a keyboard-driven start could open on a black
+corner. The objectives list is clear except for F-11 and F-16. The scanner, V view, hover labels and cursor modes
+read well. The HUD's stim bars are small at 1024 wide. Edge scrolling plus a 14 px band is easy to trigger from the
+HUD edge. Alt-click's quiet route is the single most important control and lives only in the hint line and Help.
+
+**Pacing.** Missions are 60–110 s for the bots and several minutes for a person; the district maps make every job
+a long walk in and out, which is the design, but the grade penalises it (F-15). Between missions the loop is
+tight. The endgame (Take Control) is where the bot's deaths cluster and where a human's patience is tested by
+lockdown steps that sit on the board "beyond the squad" for a long time.
+
+**Feedback and clarity.** The debrief's payslip and the dispatch do the work. Three places say less than they could:
+the forecast line on the dossier (F-08), the "a stretch" risk word (balance observations), and the abort dialog
+("counts as a failed mission") not saying the days still pass.
+
+**Accessibility (desktop scope).** Pause works (Space, and the menu pauses). Controls are not remappable; the left
+hand's cluster (E/C/R/F/Q/X/Z/V) is sensible for QWERTY. Keyboard reaches every command-screen control; the
+Armoury's drag has a keyboard path (Enter/Delete). Text at 1024 wide is small in the HUD and the ops list but not
+below 11 px. Colour carries risk (T-dots orange/red) alongside the words, so it is not colour-only.
+
+**Replayability.** Eight zones, five districts, generated missions on seeds, Cal's habit-reading and the plan
+choices give variety; the dominant stealth line (F-18) and the wait-and-bank economy are the two things that make a
+second campaign feel like the first.
+
+## Code health (secondary)
+
+The structure is sound for the size: one `W` namespace, plain data tables for every tunable (`M.N`, `M.COST`,
+`M.PRICE`, `W.FOE`, `W.KINDS`, `W.ENCOUNTERS`), the campaign with no DOM, the engine headless-loadable, and real
+tools. Things that will hurt:
+
+- **`M.settle` (meta.js:895–1016) does everything**: rewards, loot, promotions, the days away, side-job control,
+  habits, zone loss. Two review fixes touched it. Splitting it into reward / roster / days / aftermath would let
+  each be unit-tested; today `tools/campaign.js`'s invariant checks are the only net.
+- **Two sources of truth for a zone's policy.** `policy {r,m,c}` plus `s.balance` plus, after F-04, `z.tax`.
+  Storing tax and balance only and deriving the pips would remove `fitPolicy`/`spread`'s reconciliation.
+- **No rule-level tests.** Everything the review found in `meta.js` was found with 30-line scripts
+  (`tools/review/meta-checks.js`); none of it is covered by `validate` in CI. Those checks could run there.
+- **`tools/fights.json` goes stale silently.** It records the commit it was measured at (`commit`), but nothing
+  compares that to HEAD; after an engine change the campaign report quietly uses old fights. Four fights a cell
+  (F-20) also makes the table noisy. `tools/metasim.js` is already stale by its own docstring.
+- **`docs/` lag the code** (F-09; `docs/missions.md` still says "the engine side is still to build"; About says one
+  district). The author expects this; worth a pass before release.
+- **Dead code:** `M.cyclePip` (meta.js:308) has no caller.
+- **Magic numbers outside the tables:** the failed-mission penalty 0.3 (meta.js:936), retake 0.6 and amnesty 0.5,
+  the 99-day "never expires" sentinel, the grade thresholds (main.js:972–973), `W.SUSPICION`'s 0.23/0.12 step
+  constants (units.js:769).
+- **The keyboard handler** (main.js:821–902) is one 80-line function across five modes; a per-mode map would
+  make F-12-style slips rarer.
+
+## Improvement suggestions, by impact over effort
+
+1. **Give the campaign an ending** (high impact, low effort). Stop the free recruit at three wipes, or make the
+   last recruit's death with no cash for another a loss; and/or lose when Cal holds every zone but the Towers.
+   The reckless simulation shows players who deserve to lose currently grind instead. (F-10)
+2. **Save at mission start and settle a started offer as failed on reload** (high, low). Closes the only way round
+   "the dead stay dead". (F-13)
+3. **Price control gain by the level crossed, not the level the day starts on** (high, low): integrate `GAIN`
+   across the day or cap a day's gain at 1.0; and give base-2 zones a way over the wall by production. (F-05)
+4. **Say what "a stretch" costs** (medium, trivial): "a stretch: expect to lose one" and keep "beyond the squad"
+   for +2. (balance observations)
+5. **Make the Purrsuader way viable one over the tier** (medium, medium): followers that carry picked-up guns are
+   good, but a following of 6 unarmed civilians is cannon fodder; let the MK2/MK3 following start armed, or count
+   a full following as squad power the way a hired crew does. (F-18)
+6. **Shorten the first week** (medium, low): start the Expo and Starport at 1.2 rather than 0.6, or hold Cal's
+   first push until day 10, so a new player is not shown a lost zone and a T4 counter before their third mission.
+   (F-19)
+7. **Grade by distance, not time** (low, trivial): start the time term at the mission's walk length / 2.5 tiles
+   a second rather than 240 s. (F-15)
+8. **Only offer the follower bonus when a Purrsuader is in the squad** (low, trivial). (F-16)
+9. **Carry research overflow to the next project** (low, trivial). (F-06)
+10. **Compute the forecast by stepping the real decay** (low, low): run `dayDelta` forward 30 days instead of
+    dividing by today's rate. (F-08)
+11. **Run the review's meta checks in CI** (medium, low): `node tools/review/meta-checks.js` fails loudly when
+    a VERIFIED line reappears; add it to `validate`.
+
+Bolder, optional:
+
+- **Cal as a board opponent, not a decay term.** His push is a number today. Give him a visible agent (a lieutenant
+  with a name per zone) whose assassination ends the push at any tier, so the early game has a counter the squad
+  can take.
+- **A clock, opt-in.** "Casey's patience": a hard campaign mode where Take Control must come by day N, since the
+  author wants challenge and the wait-and-bank line is the safe play.
+- **Make the city's income depend on the squad.** Tie a zone's money yield to the last mission run there (a
+  freshness bonus that decays), so missions stay worth leaving the clinic for after tier 3.
 
 ## What changed
 

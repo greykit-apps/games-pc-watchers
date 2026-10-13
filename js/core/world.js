@@ -654,8 +654,8 @@ W.World = class {
         else if (this.terminal && this.terminal.safe) this.goodsOut ? this.end("won", "The goods are out.") : this.end("lost", "The goods never left.");
         else if (this.sweep) { const n = this.contracts.filter(c => c.done).length; this.stats.out ? this.end("won", `${n} of ${this.contracts.length} broken up, and the squad is out.`) : this.end("lost", "Nobody got out."); }
         else if (this.stash || this.siege) this.stats.out ? this.end("won", this.stash ? "The operation is broken, and the squad is out." : `${this.siege.name} is taken, and the squad is out.`) : this.end("lost", "The job was done, but nobody got out.");
-        else if (this.stats.out) this.end("won", `${this.names.target} is dead, and the squad is out.`);
-        else this.end("lost", `${this.names.target} is dead, but nobody got out.`);
+        else if (this.stats.out) this.end("won", `${this.names.target} is ${this.targetUnit && this.targetUnit.alive ? "with you" : "dead"}, and the squad is out.`);
+        else this.end("lost", `${this.names.target} is ${this.targetUnit && this.targetUnit.alive ? "with you" : "dead"}, but nobody got out.`);
       }
       return;
     }
@@ -735,11 +735,12 @@ W.World = class {
     const T = this.targetUnit;
     for (const o of this.objectives) {
       if (o.state !== "active") continue;
-      if (o.type === "kill" && !o.unit.alive) { o.state = "done"; this.msg(`Objective complete: ${o.text}.`, "#4ade6a"); }
+      // the mark dead, or talked round and walking with the squad: either way they are off Casey's board
+      if (o.type === "kill" && o.unit && (!o.unit.alive || o.unit.follower)) { o.state = "done"; this.msg(`Objective complete: ${o.text}.`, "#4ade6a"); }
       if (o.type === "recruit" && this.stats.recruited >= o.n) { o.state = "done"; this.msg(`Bonus: ${o.text}.`, "#4ade6a"); }
       if (o.type === "civcap" && this.stats.civ > o.n) { o.state = "failed"; this.msg(`Bonus lost: ${o.text}.`, "#ffb000"); }
     }
-    if (T && !T.alive && this.status === "play") this.startExfil(`${this.names.target} is dead.`);
+    if (T && (!T.alive || T.follower) && this.status === "play") this.startExfil(T.alive ? `${this.names.target} is with you.` : `${this.names.target} is dead.`);
     else if (!this.units.some(u => u.isAgent && u.alive)) this.end("lost", "Every Watcher is down.");
     else if ((this.escapeCar && this.escapeCar.gone) || this.escaped) this.end("lost", `${this.names.target} got away.`);
   }

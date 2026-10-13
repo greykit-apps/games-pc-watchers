@@ -46,7 +46,7 @@ const Game = W.game = {
       name: "Watchers",
       primary: W.M.load() ? "resume" : "new",
       items: [
-        (c => c && { act: "resume", label: "Resume campaign", key: "R", meta: `Day ${c.day} · ${W.money(c.cash)}${c.war ? " · taking control" : ""}` })(W.M.load()),
+        (c => c && { act: "resume", label: "Resume campaign", key: "R", meta: `Day ${c.day} · ${W.money(c.cash)}${c.lost ? " · the city is lost" : c.won ? " · won" : c.war ? " · taking control" : ""}` })(W.M.load()),
         { act: "new", label: "New campaign", key: "N" },
         { act: "skirmish", label: "Skirmish", key: "K" },
         "gap",
@@ -111,7 +111,7 @@ const Game = W.game = {
       ["Tactics", `<p><b>Local security</b> (Plaza Security, Port Authority, ranch hands) do not know who you are. A gun in plain view earns one warning; keep it out and they open fire, and call their friends. Holster before you walk past them.</p>
         <p><b>The crew</b> in red spot an armed Watcher from far off, an unarmed one only up close. Walk in with your hands empty, and draw at the last moment.</p>
         <p>Once they make you, <b>the target runs</b>: for a car, or for a way out on foot (watch the scanner). If they get away, the mission is lost. A car takes a few rounds and then goes up, taking anyone beside it.</p>
-        <p><b>The Purrsuader</b> talks people into following you. Civilians come at once; security once you have 2 followers; the crew in red at 4, bodyguards in black at 6. Followers pick up guns the dead drop, and fight for you. The <b>Purrsuader II</b> reaches twice as far, works twice as fast, and talks round anyone who isn't already shooting at you, crowd or no crowd; those who are need half the crowd.</p>
+        <p><b>The Purrsuader</b> talks people into following you. Civilians come at once; security once you have 2 followers; the crew in red at 4, bodyguards in black at 6; the mark of a hit at 6 too, and talked round they count as the job done. Followers pick up guns the dead drop, and fight for you. The <b>Purrsuader II</b> reaches twice as far, works twice as fast, and talks round anyone who isn't already shooting at you, crowd or no crowd; those who are need half the crowd.</p>
         <p>Watchers <b>pick up</b> any weapon they walk over. Ammunition is finite; the pistol never runs dry.</p>`],
       ["Stims", `<p>Every Watcher carries three stims, on the bars under the portrait. Click or drag a bar to set the dose. With several Watchers selected, the dose goes to them all.</p>
         <table><tr><td><b>Zoomers</b></td><td>speed and rate of fire</td></tr>
@@ -495,7 +495,7 @@ const Game = W.game = {
       else if (u.faction === "player") { h.mode = "move"; h.label = "Follower"; h.labelColor = "#54f2ff"; }
       else {
         const [lbl, col] = this.describe(u);
-        if (purr && u.kind !== "target") {
+        if (purr) {
           h.mode = "persuade";
           const ok = W.canPersuade(this.world, sel[0], u), mind = this.world.level.mission && this.world.level.mission.mindControl;
           const full = !u.subject && W.squadFollowers(this.world) >= W.followingCap(this.world);

@@ -107,7 +107,8 @@ Nowhere else counts. The threat also sets how busy the district is on the
 way there and back (`W.ENCOUNTER_DENSITY` in `js/districts/encounters.js`).
 
 A kill target (assassination, Cal's lieutenants, a story step's mark) can
-never be persuaded, at any Purrsuader mark: Casey wants them dead. The one a
+be persuaded with a bodyguard's crowd behind the squad (6; 3 with the Purrsuader
+II), and counts as the job done: taken off the board alive. The one a
 persuade mission walks out is not a kill target, and should be its own kind
 of unit (or flag) that the Purrsuader can reach.
 

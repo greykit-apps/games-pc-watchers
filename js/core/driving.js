@@ -245,6 +245,19 @@ W.kerbBeside = (world, c, fx, fy, away) => {
   }
   return m.nearestWalkable(c.x, c.y, 4);
 };
+/* A spot clear of a car's lane, level with `along` on it: the pavement on
+ * u's side if there is any near, else the other side's, else the road just
+ * out of the lane. Where a follower waits for the car, or steps to let it by. */
+W.wayside = (world, c, u, along) => {
+  const m = world.map, ax = c.axis === "x", lat = ax ? c.y : c.x, side = (ax ? u.y : u.x) >= lat ? 1 : -1;
+  const at = (sg, off) => ax ? [along, lat + sg * off] : [lat + sg * off, along];
+  for (const sg of [side, -side]) for (const off of [1.2, 1.6, 2.0, 2.4, 2.8, 3.2, 3.6, 4.0]) {
+    const [x, y] = at(sg, off);
+    if (m.walkable(x, y) && m.groundAt(x, y) !== W.G.ROAD && m.groundAt(x, y) !== W.G.RAIL) return [x, y];
+  }
+  for (const sg of [side, -side]) { const [x, y] = at(sg, 1.2); if (m.walkable(x, y)) return [x, y]; }
+  return null;
+};
 /* The car goes up (after its blast, which nobody inside feels twice): each
  * Watcher in it takes W.CAR_BLAST through their armour, and any left alive
  * is thrown clear on to the pavement, flat for a moment. Enough to kill one

@@ -592,6 +592,17 @@ W.thinkFollower = (world, u) => {
     if (foe) { W.engage(world, u, foe, false); }
     else u.target = null;
   }
+  // in the way of a car of ours: off its lane to the near side, a moment (on hold or not, fighting or not)
+  if (u.giveWay) {
+    const c = u.giveWay; u.giveWay = null;
+    const p = !(u.wayUntil > world.time) && !c.dead && W.wayside(world, c, u, c.axis === "x" ? u.x : u.y);
+    if (p) { u.wayTo = p; u.wayUntil = world.time + 2; }
+  }
+  if (u.wayUntil > world.time) {
+    const p = u.wayTo;
+    if (W.dist(u.x, u.y, p[0], p[1]) > 0.3 && (!u.path || W.dist(u.dest[0], u.dest[1], p[0], p[1]) > 0.3)) W.goTo(world, u, p[0], p[1], { avoidRoad: true });
+    return;
+  }
   // told to hold (Z): they stay put, firing on anyone in range, until told to come
   if (u.hold) { if (u.path) W.stop(u); return; }
   if (!W.armed(u)) {
@@ -600,6 +611,17 @@ W.thinkFollower = (world, u) => {
     if (it) { if (!u.path) W.goTo(world, u, it.x, it.y); return; }
   }
   const L = u.leader, d = W.dist(u.x, u.y, L.x, L.y);
+  // the leader in a car: wait beside it off the road, not round it in the lane, and trail it when it goes
+  if (L.inCar && L.car) {
+    const c = L.car, ax = c.axis === "x";
+    const inLane = Math.abs((ax ? u.y : u.x) - (ax ? c.y : c.x)) < c.wid / 2 + 0.5 && Math.abs((ax ? u.x : u.y) - (ax ? c.x : c.y)) < c.len / 2 + 3;
+    const fine = u.path ? W.dist(u.dest[0], u.dest[1], c.x, c.y) < 4.5 : !inLane && W.dist(u.x, u.y, c.x, c.y) < 4.5;
+    if (!fine) {
+      const p = W.wayside(world, c, u, (ax ? c.x : c.y) + ((u.id % 5) - 2) * 0.8);
+      if (p) W.goTo(world, u, p[0], p[1], { avoidRoad: true });
+    }
+    return;
+  }
   if (d > 2.2 && (!u.path || (u.dest && W.dist(u.dest[0], u.dest[1], L.x, L.y) > 1.6))) {
     const a = (u.id * 2.4) % (Math.PI * 2);
     W.goTo(world, u, L.x + Math.cos(a) * 1.1, L.y + Math.sin(a) * 1.1);

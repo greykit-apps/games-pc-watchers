@@ -384,6 +384,8 @@ W.World = class {
         if (u.seenBy !== car.id) { u.seenBy = car.id; if (!car.player && Math.random() < 0.06) car.distractT = 0.8; }
         if (!(car.distractT > 0)) want = 0;
       }
+      // a follower of ours in the way of a car of ours that wants to go: they step aside
+      if (car.route && car.riders.length && !car.exiting && u.follower && !u.isAgent && d > -car.len / 2 && d < 3) u.giveWay = car;
     }
     // the lights
     if (!reckless) {

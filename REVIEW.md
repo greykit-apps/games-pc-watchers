@@ -551,7 +551,10 @@ Dropped from the report after re-verification: a suspected "bench runs every kin
 
 - `persuade-the-target` (engine-checks): the mark needs 6, cannot be persuaded with none, can with six shoppers;
   the kill objective reads done, the phase is exfil, walking out wins with "The Alley Duchess is with you, and the
-  squad is out." and the target alive. `sim.js 2 --quiet` still 2/2.
+  squad is out." and the target alive. `sim.js 2 --quiet` still 2/2. Browser, Market Plaza: with six shoppers
+  talked round the hover label on Vesper Sly reads "Persuade", `canPersuade` is true at a following of 7 over a cap
+  of 6, and the debrief reads "Mission complete: Vesper Sly is with you, and the squad is out." with ✓ Eliminate
+  Vesper Sly. (His own crew shot him once the squad was gone; the result stands either way.)
 - `city-lost-ending` (meta-checks): all eight zones lost → `s.lost` true, a siege on the board refused with
   "the city is lost: the campaign is over". Browser: Wait a day shows the red PUMACITY IS LOST banner, the next-move
   panel says how to leave, the title's resume entry reads "the city is lost".

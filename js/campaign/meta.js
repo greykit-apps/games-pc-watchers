@@ -540,6 +540,12 @@ M.advanceDay = (s, onMission = false) => {
       else if (now === 0 && was > 0) M.note(s, `${M.zoneDef(z.id).name} falls to level 0. It's close to lost.`, "bad");
     }
   }
+  // every zone gone: Casey Benton has no city to hold, and the campaign is over
+  if (!s.lost && !s.won && s.zones.every(z => z.lost)) {
+    s.lost = true;
+    M.note(s, "Every zone has fallen to Cal. There is no city left to hold: the campaign is lost.", "bad");
+    M.news(s, M.pickNews(s, M.NEWS.cityLost), "bad");
+  }
   // requisitioned pips go where control is weakest
   for (let q = 0; q < s.research.requisition; q++) {
     const z = s.zones.filter(z => !z.lost && !z.locked).sort((a, b) => a.C - b.C)[0];
@@ -636,6 +642,7 @@ M.hasTalker = s => M.squad(s).some(a => a.items.some(i => i.type === "purrsuader
 // can this offer be run now? (story steps need the zone at a level; talking jobs need a Purrsuader)
 M.canRun = (s, o) => {
   const z = M.zone(s, o.zone);
+  if (s.lost) return "the city is lost: the campaign is over";
   const need = o.kind === "story" && M.STORY[o.step].needs;
   if (o.kind === "siege" ? !z.lost : o.kind !== "cal" && z.lost) return z.lost ? `${M.zoneDef(z.id).name} is lost to Cal: a siege takes it back first` : `${M.zoneDef(z.id).name} is not lost: nothing to take back`;
   if (need && z.C < need) return `needs ${M.zoneDef(z.id).name} at ${Number.isInteger(need) ? `level ${need}` : `control ${need}`}`;
@@ -1047,6 +1054,7 @@ M.NEWS = {
   bloody: ["{n} dead in {zone} 'gas leak'", "{zone}: {n} lives lost to 'faulty wiring', officials say"],
   push: ["Unrest reported in {zone}", "{zone}: residents told to stay indoors after dark"],
   lostZone: ["{zone} 'temporarily closed' to visitors", "City Hall: {zone} 'not a priority right now'"],
+  cityLost: ["Casey Benton 'taking a break from public life'", "City Hall: 'no comment'"],
   takeControl: ["Casey Benton: 'PumaCity will be safe. All of it.'", "City Hall announces a 'new era of order'"],
   reads: {
     strike: ["Meteor showers over PumaCity: gang bosses 'keeping their distance'", "Astronomers baffled; street crews stop meeting in groups"],

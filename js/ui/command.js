@@ -367,6 +367,7 @@ W.Command = class {
   // the next move: the mission B briefs, and why it's the one; or what the squad needs when nothing's in reach
   nextHTML() {
     const s = this.s, M = W.M, o = this.recOffer();
+    if (s.lost) return `<article class="panel next none">${this.hx("THE CITY IS LOST", "sub-t", 2)}<p>Every zone has fallen to Cal, and Casey Benton has no city to hold. The campaign is over. Press <kbd>Esc</kbd> twice for the title and start a new one.</p></article>`;
     if (!o) {
       const t = s.offers.length ? Math.min(...s.offers.map(x => x.threat || 1)) : 0;
       return `<article class="panel next none">${this.hx("NEXT MOVE", "sub-t", 2)}
@@ -803,6 +804,7 @@ W.Command = class {
   }
   caseySays() {
     const s = this.s, M = W.M;
+    if (s.lost) return "You lost my city. Every street of it. We're done.";
     if (s.won) return "It's done. The city is quiet. Don't get used to it.";
     if (s.war) return "He's stopped pretending. So have I. Lock it down, zone by zone.";
     const lost = s.zones.find(z => z.lost);
@@ -951,7 +953,7 @@ W.Command = class {
   /* ---------------- waiting, and the dispatch ---------------- */
   snap() {
     const s = this.s;
-    return { day: s.day, cash: s.cash, points: s.research.points, war: s.war, won: s.won, cal: s.cal.zone, log: s.log.length,
+    return { day: s.day, cash: s.cash, points: s.research.points, war: s.war, won: s.won, lost: s.lost, cal: s.cal.zone, log: s.log.length,
       zones: Object.fromEntries(s.zones.map(z => [z.id, { C: z.C, lost: z.lost, locked: z.locked, L: W.M.level(z.C) }])) };
   }
   wait(mode) {
@@ -965,7 +967,7 @@ W.Command = class {
       const calNew = s.cal.zone && s.cal.zone !== before.cal;
       if (mode === 1) break;
       // what stops a longer wait before its time: said in the dispatch, unless it's what the wait was for
-      const halt = lostNow ? "a zone fell" : calNew ? "Cal moved in" : s.war !== before.war ? "the city is being taken" : s.won ? "the city is won" : days >= 30 ? "thirty days passed" : "";
+      const halt = s.lost && !before.lost ? "the city is lost" : lostNow ? "a zone fell" : calNew ? "Cal moved in" : s.war !== before.war ? "the city is being taken" : s.won ? "the city is won" : days >= 30 ? "thirty days passed" : "";
       if (halt) { if (!(mode === "cal" && calNew)) stopped = halt; break; }
       if (mode === "research" && s.research.running.map(p => p.id).join(",") !== runIds) break;
       if (mode === "cal" && (s.cal.zone || null) !== (before.cal || null)) break;
@@ -994,6 +996,7 @@ W.Command = class {
     if (s.cal.zone && s.cal.zone !== before.cal) this.banners.push({ tone: "red", big: "CAL MOVES", sub: `He's pushing ${M.zoneDef(s.cal.zone).name}${M.zone(s, s.cal.zone).lost ? ", which he already holds" : ""}. A mission against his crew ends it.`, sound: "alarm" });
     if (s.war && !before.war) this.banners.push({ tone: "gold", big: "TAKE CONTROL", sub: "Cal has committed. Decay runs faster everywhere.", sound: "alarm" });
     if (s.won && !before.won) this.banners.push({ tone: "gold", big: "PUMACITY IS HERS", sub: "Every zone is locked down. You win.", sound: "win" });
+    if (s.lost && !before.lost) this.banners = [{ tone: "red", big: "PUMACITY IS LOST", sub: "Every zone has fallen to Cal. The campaign is over: Esc twice for the title, and a new one.", sound: "lose" }];
     W.audio.play("order");
     W.M.save(s);
     // the map's sweep is the thing to watch: the banner lands after it

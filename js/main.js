@@ -762,7 +762,8 @@ const Game = W.game = {
     const v = this.view, ui = this.ui;
     const pos = ev => { const r = v.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; };
     v.addEventListener("contextmenu", ev => ev.preventDefault());
-    v.addEventListener("pointerenter", () => { ui.mouseIn = true; });
+    // the pointer's place comes with the enter event: a view that appears under a resting pointer must not read it as "at the top-left edge"
+    v.addEventListener("pointerenter", ev => { ui.mouseIn = true; [ui.x, ui.y] = pos(ev); });
     v.addEventListener("pointerleave", () => { ui.mouseIn = false; });
     v.addEventListener("pointermove", ev => {
       [ui.x, ui.y] = pos(ev); ui.mouseIn = true;

@@ -304,25 +304,22 @@
 .cx .lab-tree{grid-column:1/-1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:12px;align-content:start;padding-right:4px}
 .cx .lab-tree .panel.dark{background:#2a1a30;border-color:var(--dark) #120816 #120816 var(--dark)}
 .cx .tree{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
-.cx .tree li{display:grid;grid-template-columns:minmax(120px,1.3fr) repeat(3,minmax(84px,1fr));gap:6px;align-items:stretch;padding:5px 0;border-top:1px solid var(--divider)}
-.cx .tree li:has(> .node:nth-child(2):last-child){grid-template-columns:minmax(120px,1.3fr) minmax(84px,3fr)}
-.cx .ln{display:flex;flex-direction:column;justify-content:center}
+/* a purchase row, as the Office's: the name and what it does, the marks' state, the price button at the right */
+.cx .tree li.prow{display:grid;grid-template-columns:minmax(120px,1fr) auto auto;gap:6px 12px;align-items:center;padding:7px 0;border-top:1px solid var(--divider)}
+.cx .ln{display:flex;flex-direction:column;justify-content:center;min-width:0}
 .cx .ln b{color:var(--t1);font-size:13px}
 .cx .ln small{color:var(--t3);font-size:12px;line-height:1.3}
-.cx .node{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:4px 6px;font-size:12px;min-height:44px;position:relative}
-.cx .node b{font-size:12px;letter-spacing:.06em}
-.cx .node.done{background:#1c3236;color:#9fe8e0}
-.cx .node.done small{color:#cdeeea}
-.cx .node.run{background:#123038;color:var(--cyan)}
-.cx .node.run small{color:#bfefff}
-.cx .node.locked{background:#1c2230;color:#8f9ab0}
-.cx .node.locked small{color:#8f9ab0;line-height:1.25}
-.cx .node.open{padding:0}
-.cx .node.open button{width:100%;height:100%;min-height:44px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:4px 7px;text-align:left}
-.cx .node.open button small{font-weight:500;color:inherit;opacity:.85}
-.cx .node.open button:not(:disabled){background:#4a3a1c;border-color:#a8843a #1c1406 #1c1406 #a8843a;color:#ffe2b0}
-.cx .node.open .why{padding:0 6px 4px}
-.cx .node.none{background:transparent}
+.cx .lab-mks{display:inline-flex;gap:3px}
+.cx .lab-mks i{font:600 10px/1 var(--sans);letter-spacing:.06em;padding:3px 4px;border:1px solid #3a4458;color:var(--t3)}
+.cx .lab-mks i.done{background:#1c3236;border-color:#2a5a5a;color:#9fe8e0}
+.cx .lab-mks i.run{border-color:var(--cyan);color:var(--cyan)}
+.cx .buy{display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:150px;text-align:right}
+.cx .buy small{font-size:12px;color:var(--t3)}
+.cx .buy .why{text-align:right}
+.cx .buy.quiet{color:var(--t3);font-size:12px}
+.cx .buy.run{min-width:150px;color:var(--cyan)}
+.cx .buy.run .bar{width:150px}
+.cx .buy.run small{color:#bfefff}
 
 /* ---- the Clinic ---- */
 .cx-clinic{display:grid;grid-template-columns:minmax(240px,.7fr) minmax(480px,2fr);gap:12px;height:100%}
@@ -387,7 +384,8 @@
 .cx .arm-left{display:grid;grid-template-rows:auto minmax(0,1fr);gap:12px;min-height:0}
 .cx .arm-left>.racks-p{max-height:40vh}
 .cx .arm-left>.panel,.cx-armoury>.arm-card{min-height:0;overflow-y:auto}
-.cx .racks{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px}
+.cx .racks{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px}
+.cx .racks li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center}
 .cx .rk{width:100%;display:grid;grid-template-columns:48px 1fr auto;gap:8px;align-items:center;text-align:left;background:var(--face2);font-weight:400}
 .cx .rk b{display:block;color:var(--t1);font-weight:600}
 .cx .rk .loot{display:block;color:var(--t3);font-style:italic}
@@ -395,7 +393,8 @@
 .cx .rk .ct{font:700 16px/1 var(--sans);font-style:normal;color:var(--cyan)}
 .cx .racks-p .empty{margin:10px 0 0;max-width:52ch}
 .cx .deal{list-style:none;margin:8px 0 12px;padding:0}
-.cx .deal li{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:10px;align-items:center;padding:4px 0;border-top:1px solid var(--divider)}
+.cx .deal li{display:grid;grid-template-columns:48px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:4px 0;border-top:1px solid var(--divider)}
+.cx .arm-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .cx .deal li b{color:var(--t1);font-weight:600}
 .cx .deal canvas{width:44px;height:22px}
 .cx .mks{display:flex;gap:4px}

@@ -857,17 +857,18 @@ const Game = W.game = {
       }
       if (["w", "a", "s", "d", "arrowleft", "arrowright", "arrowup", "arrowdown"].includes(k)) { this.keys.add(k); ev.preventDefault(); return; }
       const w = this.world;
-      if (k >= "1" && k <= "4") {
-        const a = w.agents.find(x => x.slot === +k - 1);
+      // the number keys by their physical key (ev.code): with Shift held, ev.key is "!", "@" and so on
+      const num = /^Digit([1-4])$/.exec(ev.code || "") || (k >= "1" && k <= "4" ? [k, k] : null);
+      if (num) {
+        const a = w.agents.find(x => x.slot === +num[1] - 1);
         if (a) {
           const now = performance.now();
-          if (this.lastNum === k && now - this.lastNumT < 350) this.centerOn(a);
-          this.lastNum = k; this.lastNumT = now;
+          if (this.lastNum === num[1] && now - this.lastNumT < 350) this.centerOn(a);
+          this.lastNum = num[1]; this.lastNumT = now;
           this.selectAgent(a, ev.shiftKey);
         }
         return;
       }
-      if (ev.code === "Digit1" && ev.shiftKey) return;
       switch (k) {
         case "0": case "`": {
           // double-tap: look at the whole squad

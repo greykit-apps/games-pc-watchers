@@ -241,7 +241,7 @@ A fixed full-viewport console: top bar, screen bar, then one screen that fills t
 
 - **Top bar:** brand, LCD cluster, the city split slider, and "Wait a day" plus the Until menu pushed to the right.
 - **Screen bar:** five equal tabs (City, Office, Armoury, Clinic, Lab; keys 1 to 5), each with its key, a 9x9 pixel icon, a pixel label and an optional badge; then HELP (key ?), a narrower key outside the tablist. The order is the author's (user, 2026-10-13). It puts the Lab on the farthest key, so Wait a day warns whenever nothing is running there (see Components: Wait a day).
-- **City:** three columns: the map (near square, full height, at most 50vw) over a two-row key (territory, then the map's own marks); the middle column, the dossier or the overview (led by NEXT MOVE, the mission B briefs and why) over the dispatch; and the missions column. The dossier stops 220px short of the column's foot and scrolls, and the dispatch takes whatever is left. With a dossier open, its best mission is not repeated in the missions column; if the zone has nothing else, the column lists the rest of the city under ELSEWHERE rather than standing empty. Below 1180px the middle column sits over the missions: it takes what it needs up to 58% of the height, the missions always keep the rest, and inside it the dossier scrolls while the dispatch keeps 150px of its own.
+- **City:** three columns: the map (near square, full height, at most 50vw) over a two-row key (territory, then the map's own marks); the middle column, the dossier or NEXT MOVE (the mission B briefs and why) over TODAY; and the missions column. The dossier stops 220px short of the column's foot and scrolls, and Today takes whatever is left. With a dossier open, its best mission is not repeated in the missions column; if the zone has nothing else, the column lists the rest of the city under ELSEWHERE rather than standing empty. Below 1180px the middle column sits over the missions: it takes what it needs up to 58% of the height, the missions always keep the rest, and inside it the dossier scrolls while Today keeps 150px of its own.
 - **Help:** "How it works" floats over the right of whichever screen is open (the screen's grid cell, at most 460px or 42vw wide), with the floating-menu shadow. Esc or HELP closes it.
 - **Lab:** two columns, war footing and running research on top, the trees below in auto-fit columns of at least 420px.
 - **Clinic:** the roster, then the selected Watcher's figure with mod slots either side.
@@ -256,7 +256,7 @@ Desktop only, by the author's decision. Below 1180px wide the City folds to two 
 
 Depth is bevelled, not shadowed, and a bevel has to mean something. Not everything is bevelled (user, 2026-10-13: "Not everything needs to be beveled"). There are four tiers:
 
-- **Chassis.** Each screen is one steel body with a 2px raised edge (the top bar too). Its compartments (the map, the dossier, the missions, the dispatch, the Lab's trees, the roster) share its face. They are parted by a 2px cut in bevel-dark and nothing else. Nothing floats on a dark floor.
+- **Chassis.** Each screen is one steel body with a 2px raised edge (the top bar too). Its compartments (the map, the dossier, the missions, Today, the Lab's trees, the roster) share its face. They are parted by a 2px cut in bevel-dark and nothing else. Nothing floats on a dark floor.
 - **Controls, raised.** Only what can be pressed now: steel, go, armed and research-buy buttons with a 2px bevel; mini buttons and draggable kit (filled slots, racks, the dealer's marks) with a 1px bevel. Pressing flips the bevel and drops 1px.
 - **Wells, sunk.** Only readouts: LCDs, the Take Control well, gauge and slider tracks, selects, the map slot, the Clinic figure, the Office scene and the Armoury card's picture.
 - **Content, flat.** Missions, mod slots, roster rows, the squad's kit, flags, the dial, the tally and the Lab's marks sit on the face. They are parted by space and 1px divider rules, or by a tonal step: Cal's compartment warms red while he pushes, the urgent strip is tinted red, the dark corner violet, and a picked roster row or kit is lit steel with its name in cyan.
@@ -323,8 +323,10 @@ Steel plates you press in. Only a button that can be pressed now is a plate.
 ### Wait a day
 The go plate and Until… in the top bar's right end, over a line kept for what waiting would throw away. While the Lab has nothing running, research points can't be banked, so the line reads "Lab idle: 11.0 RP a day wasted" behind the caution square. It takes the buttons' width and wraps, never running under the city split. Otherwise the line is kept empty, so the bar doesn't jump.
 
-### The Dispatch
-The payoff of every wait, so bad news leads. Under its heading, one summary line in the colours of the One Meaning Rule: "2 zones fell · 3 zones rose · 9.0 RP wasted · +$7,000 · 9.0 RP". Then the lines, worst first: losses (red), warnings (orange), the dark corner (violet), the rest, then gains (green).
+### Today and the Dispatch
+TODAY, under the dossier or NEXT MOVE, is three rows, a line each, each opened on request (merged from the 2026-10-12 review): CAL (where he is and goes next), SLIPPING (the zones falling, a count tag; opened, each zone's name opens its dossier) and DISPATCH. A row's line lights orange on hover, as a way into more. A wait opens the Dispatch row.
+
+The dispatch is the payoff of every wait, so bad news leads. Its one line, open or shut, is the summary in the colours of the One Meaning Rule: "2 zones fell · 3 zones rose · 9.0 RP wasted · +$7,000 · 9.0 RP". Then the lines, worst first: losses (red), warnings (orange), the dark corner (violet), the rest, then gains (green).
 
 ### The Dealer
 Each line's marks: one researched is a draggable 1px plate with its price; one not yet researched is quiet text, "MK2 · Lab", as a locked mark is in the Lab.

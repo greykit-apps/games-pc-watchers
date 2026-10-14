@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- The share card: rendered to og.png by tools/render-icons.sh. Laid out
+       as the other Tactical games' cards are (games-meta STANDARD.md §9): a
+       cyan rule, the wordmark with the game's half in cyan, the description,
+       a tagline, the icon. Behind the words, the city the squad works in:
+       a dim isometric block grid and four cyan pips walking it, the scanner's
+       way of showing the Watchers. -->
+  <rect width="1200" height="630" fill="#05070f"/>
+  <defs><clipPath id="city"><path d="M560 630 L1200 310 L1200 630 Z"/></clipPath></defs>
+  <g clip-path="url(#city)">
+  <!-- the city, faint: an isometric street grid running off the right of the card -->
+  <g stroke="#111a2c" stroke-width="2" fill="none">
+    <path d="M560 630 L1200 310 M640 630 L1200 350 M720 630 L1200 390 M800 630 L1200 430 M880 630 L1200 470 M960 630 L1200 510"/>
+    <path d="M560 310 L1200 630 M640 270 L1200 550 M720 230 L1200 470 M800 190 L1200 390 M880 150 L1200 310 M960 110 L1200 230"/>
+  </g>
+  <!-- blocks between the streets, a step lighter -->
+  <g fill="#0b1222">
+    <path d="M800 470 L840 450 L880 470 L840 490 Z"/>
+    <path d="M880 430 L920 410 L960 430 L920 450 Z"/>
+    <path d="M960 470 L1000 450 L1040 470 L1000 490 Z"/>
+    <path d="M880 510 L920 490 L960 510 L920 530 Z"/>
+    <path d="M1040 430 L1080 410 L1120 430 L1080 450 Z"/>
+    <path d="M960 390 L1000 370 L1040 390 L1000 410 Z"/>
+  </g>
+  <!-- the squad: four pips walking the street, and one red one ahead of them -->
+  <g fill="#54f2ff">
+    <circle cx="868" cy="546" r="5"/><circle cx="888" cy="536" r="5"/><circle cx="908" cy="526" r="5"/><circle cx="928" cy="516" r="5"/>
+  </g>
+  <circle cx="1028" cy="466" r="5" fill="#ff5266"/>
+  </g>
+  <rect width="1200" height="8" fill="#54f2ff"/>
+  <text x="105" y="148" font-family="Menlo, ui-monospace, monospace" font-size="72" font-weight="700" fill="#e9e9f2">PumaCity: <tspan fill="#54f2ff">Watchers</tspan></text>
+  <svg x="1000" y="72" width="100" height="100" viewBox="0 0 64 64">
+    <rect width="64" height="64" rx="10" fill="#05070f"/>
+    <path d="M14 54 L20 30 L32 36 L44 30 L50 54 Z" fill="#1b2130"/>
+    <path d="M20 30 L26 46 L32 36 Z M44 30 L38 46 L32 36 Z" fill="#2c3550"/>
+    <ellipse cx="32" cy="26" rx="13" ry="12" fill="#b08a5a"/>
+    <path d="M20 22 L21 6 L29 16 Z M44 22 L43 6 L35 16 Z" fill="#b08a5a"/>
+    <rect x="19" y="21" width="26" height="6" fill="#0a0c14"/>
+    <rect x="20" y="22.5" width="24" height="2.5" fill="#54f2ff"/>
+  </svg>
+  <text y="256" font-family="Menlo, ui-monospace, monospace" font-size="38" fill="#9aa1ae">
+    <tspan x="105" dy="0">Four cyber-cats in long coats,</tspan>
+    <tspan x="105" dy="54">and Casey Benton's orders. A squad</tspan>
+    <tspan x="105" dy="54">tactics game in the spirit of</tspan>
+    <tspan x="105" dy="54">Syndicate, set in PumaCity.</tspan>
+  </text>
+  <text x="105" y="588" font-family="Menlo, ui-monospace, monospace" font-size="30" fill="#54f2ff">Squad tactics, Syndicate-style</text>
+</svg>

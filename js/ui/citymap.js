@@ -432,7 +432,8 @@
         rows.forEach(([l, col], i) => W.pix.draw(c, l, Math.round(cx - W.pix.width(l, pk) / 2), by + pk + i * lh, { scale: pk, color: col }));
         if (!z) continue;
         // offers: a count on the tag's top-right corner, red when one can't wait
-        const offers = s.offers.filter(o => o.zone === id), n = offers.length;
+        // (counted as the squad sees them: what it can take today; the rest wait in the list under "beyond the squad")
+        const offers = s.offers.filter(o => o.zone === id && W.M.inReach(s, o)), n = offers.length;
         if (n) {
           const urgent = offers.some(o => o.kind === "cal" || o.kind === "siege" || o.kind === "story" || o.expires <= s.day);   // as the list's Can't wait
           const txt = String(n), tw = W.pix.width(txt, pk) + 6 * pk, th = 11 * pk, rx = bx + bw - pk, ry = by - Math.round(th / 2);

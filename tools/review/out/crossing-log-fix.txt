@@ -1,0 +1,13 @@
+SMASH run 1 t=0 x- spd 0.53 light true tracks near -4.0,near -6.0
+STUCK run 1 t=91 x- at 123.9,5.0 ahead gap 4.4 spd 0.00 dead true tracks near 2.3,near 0.3
+STUCK run 3 t=764 y+ at 113.0,209.7 ahead none tracks 
+STUCK run 3 t=764 x- at 113.9,211.0 ahead none tracks near -7.7,near -9.7
+STUCK run 3 t=766 y- at 115.0,212.8 ahead none tracks 
+STUCK run 3 t=799 y+ at 113.0,207.3 ahead gap 0.5 spd 0.00 dead false tracks 
+STUCK run 3 t=813 y- at 115.0,215.2 ahead gap 0.5 spd 0.00 dead false tracks 
+STUCK run 3 t=818 x+ at 113.2,213.0 ahead none tracks near 3.2,near 5.2
+SMASH run 7 t=0 x+ spd 0.53 light true tracks near -6.0,near -4.0
+STUCK run 7 t=86 x+ at 116.1,7.0 ahead gap 4.4 spd 0.00 dead true tracks near 0.3,near 2.3
+STUCK run 7 t=96 y- at 115.0,8.8 ahead none tracks 
+STUCK run 7 t=137 y- at 115.0,11.2 ahead gap 0.5 spd 0.00 dead false tracks 
+16 x 900s: 2 smashed by trains, 10 stood still a full minute

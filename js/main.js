@@ -44,7 +44,7 @@ const Game = W.game = {
       name: "Watchers",
       primary: W.M.load() ? "resume" : "new",
       items: [
-        (c => c && { act: "resume", label: "Resume campaign", key: "R", meta: `Day ${c.day} · ${W.money(c.cash)}${c.war ? " · taking control" : ""}` })(W.M.load()),
+        (c => c && { act: "resume", label: "Resume campaign", key: "R", meta: `Day ${c.day} · ${W.money(c.cash)}${c.lost ? " · the city is lost" : c.won ? " · won" : c.stronghold ? " · in the stronghold" : c.war ? " · taking control" : ""}` })(W.M.load()),
         { act: "new", label: "New campaign", key: "N" },
         "gap",
         { act: "settings", label: "Settings", key: "S" },
@@ -107,7 +107,7 @@ const Game = W.game = {
       ["Tactics", `<p><b>Local security</b> (Plaza Security, Port Authority, ranch hands) do not know who you are. A gun in plain view earns one warning; keep it out and they open fire, and call their friends. Holster before you walk past them.</p>
         <p><b>The crew</b> in red spot an armed Watcher from far off, an unarmed one only up close. Walk in with your hands empty, and draw at the last moment.</p>
         <p>Once they make you, <b>the target runs</b>: for a car, or for a way out on foot (watch the scanner). If they get away, the mission is lost. A car takes a few rounds and then goes up, taking anyone beside it.</p>
-        <p><b>The Purrsuader</b> talks people into following you. Civilians come at once; security once you have 2 followers; the crew in red at 4, bodyguards in black at 6. Followers pick up guns the dead drop, and fight for you. The <b>Purrsuader II</b> reaches twice as far, works twice as fast, and talks round anyone who isn't already shooting at you, crowd or no crowd; those who are need half the crowd.</p>
+        <p><b>The Purrsuader</b> talks people into following you. Civilians come at once; security once you have 2 followers; the crew in red at 4, bodyguards in black at 6; the mark of a hit at 6 too, and talked round they count as the job done. Followers pick up guns the dead drop, and fight for you. The <b>Purrsuader II</b> reaches twice as far, works twice as fast, and talks round anyone who isn't already shooting at you, crowd or no crowd; those who are need half the crowd.</p>
         <p>Watchers <b>pick up</b> any weapon they walk over. Ammunition is finite; the pistol never runs dry.</p>`],
       ["Stims", `<p>Every Watcher carries three stims, on the bars under the portrait. Click or drag a bar to set the dose. With several Watchers selected, the dose goes to them all.</p>
         <table><tr><td><b>Zoomers</b></td><td>speed and rate of fire</td></tr>
@@ -121,7 +121,7 @@ const Game = W.game = {
         <p><b>Missions</b> take days, and the pips stand as you set them while the squad is away. They pay research, money or control. Each has a <b>threat</b>, T1 to T5; the squad has a <b>tier</b> from its guns and mods. Above the squad's tier, expect to lose Watchers. <b>Quiet</b> missions can be done without a shot fired.</p>
         <p>Finished research goes on sale: weapons in the <b>Armoury</b>, mods in the <b>Clinic</b>. Ammunition is topped up free before every mission; medikits are not.</p>
         <p>Watchers who die on a mission are gone, with whatever they carried. Hire replacements from the roster in the <b>Clinic</b>. Weapons a Watcher picks up in the field come home with them, researched or not: keep them or sell them in the Armoury.</p>
-        <p>On the command screens: <kbd>1</kbd>–<kbd>5</kbd> the City, the Lab, the Clinic, Casey's Office and the Armoury; <kbd>W</kbd> wait a day (or <b>Until…</b> for longer); <kbd>B</kbd> brief the mission marked B; arrow keys walk the map from zone to zone; <kbd>?</kbd> how it works, over any screen; <kbd>Esc</kbd> steps back, and twice from the City leaves for the title.</p>`],
+        <p>On the command screens: <kbd>1</kbd>–<kbd>5</kbd> the City, Casey's Office, the Armoury, the Clinic and the Lab; <kbd>W</kbd> wait a day (or <kbd>U</kbd>, <b>Until…</b>, for longer); <kbd>B</kbd> brief the mission marked B; arrow keys walk the map from zone to zone; <kbd>?</kbd> how it works, over any screen; <kbd>Esc</kbd> steps back, and twice from the City leaves for the title.</p>`],
       ["About", this.aboutHTML()],
     ];
   },
@@ -474,7 +474,7 @@ const Game = W.game = {
       else if (u.faction === "player") { h.mode = "move"; h.label = "Follower"; h.labelColor = "#54f2ff"; }
       else {
         const [lbl, col] = this.describe(u);
-        if (purr && u.kind !== "target") {
+        if (purr) {
           h.mode = "persuade";
           const ok = W.canPersuade(this.world, sel[0], u), mind = this.world.level.mission && this.world.level.mission.mindControl;
           const full = !u.subject && W.squadFollowers(this.world) >= W.followingCap(this.world);
@@ -741,7 +741,8 @@ const Game = W.game = {
     const v = this.view, ui = this.ui;
     const pos = ev => { const r = v.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; };
     v.addEventListener("contextmenu", ev => ev.preventDefault());
-    v.addEventListener("pointerenter", () => { ui.mouseIn = true; });
+    // the pointer's place comes with the enter event: a view that appears under a resting pointer must not read it as "at the top-left edge"
+    v.addEventListener("pointerenter", ev => { ui.mouseIn = true; [ui.x, ui.y] = pos(ev); });
     v.addEventListener("pointerleave", () => { ui.mouseIn = false; });
     v.addEventListener("pointermove", ev => {
       [ui.x, ui.y] = pos(ev); ui.mouseIn = true;
@@ -828,17 +829,18 @@ const Game = W.game = {
       }
       if (["w", "a", "s", "d", "arrowleft", "arrowright", "arrowup", "arrowdown"].includes(k)) { this.keys.add(k); ev.preventDefault(); return; }
       const w = this.world;
-      if (k >= "1" && k <= "4") {
-        const a = w.agents.find(x => x.slot === +k - 1);
+      // the number keys by their physical key (ev.code): with Shift held, ev.key is "!", "@" and so on
+      const num = /^Digit([1-4])$/.exec(ev.code || "") || (k >= "1" && k <= "4" ? [k, k] : null);
+      if (num) {
+        const a = w.agents.find(x => x.slot === +num[1] - 1);
         if (a) {
           const now = performance.now();
-          if (this.lastNum === k && now - this.lastNumT < 350) this.centerOn(a);
-          this.lastNum = k; this.lastNumT = now;
+          if (this.lastNum === num[1] && now - this.lastNumT < 350) this.centerOn(a);
+          this.lastNum = num[1]; this.lastNumT = now;
           this.selectAgent(a, ev.shiftKey);
         }
         return;
       }
-      if (ev.code === "Digit1" && ev.shiftKey) return;
       switch (k) {
         case "0": case "`": {
           // double-tap: look at the whole squad

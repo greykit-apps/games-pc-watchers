@@ -1,0 +1,7 @@
+===== baseline at 53b1815 (offer filter, no tax fix)
+ok    Offers on the board before Take Control        5.1 avg, 8 most        5 to 7 / 9
+      Watchers lost per mission at or under the tier 0.07                   0.15 to 0.3
+      Watchers lost per mission, all                 0.36                   
+      by threat minus tier:  -4: 4 taken, 100% won, 0.00 lost · -3: 14 taken, 100% won, 0.00 lost · -2: 237 taken, 100% won, 0.00 lost · -1: 272 taken, 98% won, 0.04 lost · 0: 444 taken, 99% won, 0.13 lost · +1: 101 taken, 90% won, 0.99 lost · +2: 40 taken, 68% won, 2.58 lost · +3: 44 taken, 27% won, 3.23 lost · +4: 1 taken, 0% won, 4.00 lost
+ok    Take Control at mission / won at mission       57 / 96 (day 247 / 483) 55 to 65 / 90 to 110
+ok    Campaigns won                                  12 of 12               all

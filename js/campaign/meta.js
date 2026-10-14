@@ -301,6 +301,12 @@ M.fitPolicy = (s, z) => {
   let sum = P.r + P.m + P.c;
   for (const k of ["r", "m", "c"]) while (sum > want && P[k] > 0) { P[k]--; sum--; }
   while (sum < want) { P.m++; sum++; }
+  // the dial is a tax: what the zone hands the city. A zone that gains or loses a pip keeps its tax, so the
+  // pips it keeps for control move with it (a zone dialled to "invest" goes on investing as it climbs)
+  if (z.tax != null && !z.locked && !z.lost) {
+    P.c = Math.max(0, Math.min(want, want - z.tax));
+    const rest = want - P.c; if (P.r > rest) P.r = rest; P.m = rest - P.r;
+  }
   if (z.locked) { P.r += P.c; P.c = 0; }
   return P;
 };
@@ -309,6 +315,7 @@ M.cyclePip = (s, z, from) => {
   const P = M.fitPolicy(s, z), next = { r: "m", m: z.locked ? "r" : "c", c: "r" }[from];
   if (P[from] <= 0) return;
   P[from]--; P[next]++;
+  z.tax = M.pips(s, z) - P.c;
 };
 /* The tax dial and the city balance (the command screen's controls). Each
  * zone's dial sets its pips on control; what's left of every zone's pips is
@@ -334,6 +341,7 @@ M.setDial = (s, z, c) => {
   if (z.lost || z.locked) return;
   P.c = Math.max(0, Math.min(p, Math.round(c)));
   P.m = p - P.c; P.r = 0;
+  z.tax = p - P.c;
   M.spread(s);
 };
 // zone works, once researched, are built where the player chooses: a pip more for good
@@ -532,6 +540,23 @@ M.advanceDay = (s, onMission = false) => {
       else if (now === 0 && was > 0) M.note(s, `${M.zoneDef(z.id).name} falls to level 0. It's close to lost.`, "bad");
     }
   }
+  // every zone but the Towers gone: Casey Benton retreats to her stronghold. Not the end: the Towers still make
+  // their pips, and the city can be taken back from there by siege. It lifts when any other zone is held again.
+  const held = s.zones.filter(z => !z.lost);
+  if (!s.won && !s.stronghold && held.length === 1 && held[0].id === "towers") {
+    s.stronghold = true; s.strongholdNew = true;
+    M.note(s, "Casey Benton has retreated to her stronghold. Every zone but the Towers is Cal's. Hold the Towers, rebuild the squad, and take the city back by siege.", "bad");
+    M.news(s, M.pickNews(s, M.NEWS.stronghold), "bad");
+  } else if (s.stronghold && held.length > 1) {
+    s.stronghold = false;
+    M.note(s, "Casey Benton comes down from the Towers: the city is being taken back.", "good");
+  }
+  // every zone gone: Casey Benton has no city to hold, and the campaign is over
+  if (!s.lost && !s.won && s.zones.every(z => z.lost)) {
+    s.lost = true;
+    M.note(s, "Every zone has fallen to Cal. There is no city left to hold: the campaign is lost.", "bad");
+    M.news(s, M.pickNews(s, M.NEWS.cityLost), "bad");
+  }
   // requisitioned pips go where control is weakest
   for (let q = 0; q < s.research.requisition; q++) {
     const z = s.zones.filter(z => !z.lost && !z.locked).sort((a, b) => a.C - b.C)[0];
@@ -578,7 +603,8 @@ M.storyReady = z => !z.lost && !z.locked && z.story < M.STORY.length && z.C >= M
 /* A day's change to the board (see M.BOARD). full: every roll succeeds, for a
  * new campaign's first board and the day the city is taken. */
 M.refreshOffers = (s, full = false) => {
-  s.offers = s.offers.filter(o => o.expires >= s.day && !(o.kind === "cal" && s.cal.zone !== o.zone) && !M.zone(s, o.zone).locked);
+  // an offer goes with its zone: a siege only while the zone is lost, anything else only while it isn't (Cal's crew either way)
+  s.offers = s.offers.filter(o => { const z = M.zone(s, o.zone); return o.expires >= s.day && !(o.kind === "cal" && s.cal.zone !== o.zone) && !z.locked && (o.kind === "siege" ? z.lost : o.kind === "cal" || !z.lost); });
   const has = (z, kind) => s.offers.some(o => o.zone === z.id && o.kind === kind);
   // the urgent ones: a siege for each lost zone, Cal's crew where he pushes
   for (const z of s.zones) {
@@ -627,12 +653,16 @@ M.hasTalker = s => M.squad(s).some(a => a.items.some(i => i.type === "purrsuader
 // can this offer be run now? (story steps need the zone at a level; talking jobs need a Purrsuader)
 M.canRun = (s, o) => {
   const z = M.zone(s, o.zone);
+  if (s.lost) return "the city is lost: the campaign is over";
   const need = o.kind === "story" && M.STORY[o.step].needs;
+  if (o.kind === "siege" ? !z.lost : o.kind !== "cal" && z.lost) return z.lost ? `${M.zoneDef(z.id).name} is lost to Cal: a siege takes it back first` : `${M.zoneDef(z.id).name} is not lost: nothing to take back`;
   if (need && z.C < need) return `needs ${M.zoneDef(z.id).name} at ${Number.isInteger(need) ? `level ${need}` : `control ${need}`}`;
   if (!M.squad(s).length) return "no Watchers in the squad: put one in at the Clinic";
   if (M.needsTalker(o) && !M.hasTalker(s)) return "needs a Purrsuader in the squad: buy one at the Clinic";
   return "";
 };
+// an offer the squad can take today: nothing stops it running, and it is at most one over the squad's tier
+M.inReach = (s, o) => !M.canRun(s, o) && (o.threat || 1) <= M.squadTier(s, o) + 1;
 // what a money reward is worth now: the dearest single purchase open to the squad
 M.moneyReward = s => {
   const best = Math.max(...M.CATALOGUE.filter(r => M.isDone(s, r.id)).map(r => r.kind === "weapon" ? M.PRICE.weapon[r.mk] : r.kind === "mod" ? M.PRICE.mod[r.mk] : r.line === "purrsuader" ? M.PRICE.purrsuader[r.mk] : 0), M.PRICE.mod[1]);
@@ -878,7 +908,7 @@ M.event = (s, e, z) => {
   if (e.id === "bribes") { s.cal.bribed = true; M.note(s, "City Hall has been paid. Cal's next push will be half-hearted.", "good"); }
   if (e.id === "martial") { z.martial = 3; M.note(s, `Martial law in ${name}.`); }
   if (e.id === "hired") { s.hired = true; M.note(s, "A hired crew is on the payroll for the next mission.", "good"); }
-  if (e.id === "amnesty") { z.lost = false; z.C = 0.5; z.policy = M.defaultPolicy(s, z); M.note(s, `An amnesty: ${name} is back, at level 0.`, "good"); }
+  if (e.id === "amnesty") { z.lost = false; z.C = 0.5; z.tax = null; z.policy = M.defaultPolicy(s, z); s.offers = s.offers.filter(o => !(o.kind === "siege" && o.zone === z.id)); M.note(s, `An amnesty: ${name} is back, at level 0.`, "good"); }
   if (e.floor) {
     z.floor = e.floor;
     M.note(s, e.floor === 1 ? `Propaganda in ${name}: PVN on every screen. The streets grow quieter. Nobody asks why.`
@@ -908,7 +938,7 @@ M.settle = (s, o, res) => {
     if (R.money) { s.cash += R.money; lines.push(["Paid", W.money(R.money)]); }
     if (R.untactic && z.tactic) { lines.push([`${D.name}: ${z.tactic}`, "gone with them"]); M.note(s, `${D.name}: ${z.tactic} is finished.`, "good"); z.tactic = null; M.cancel(s, `counter:${z.id}`); }
     if (R.endPush && s.cal.zone === z.id) { s.cal.left = 1; s.cal.broken = true; lines.push(["Cal's push", "broken"]); }
-    if (R.retake) { z.lost = false; z.C = 0.6; z.policy = M.defaultPolicy(s, z); lines.push([D.name, "taken back"]); M.note(s, `${D.name} is taken back.`, "good"); }
+    if (R.retake && z.lost) { z.lost = false; z.C = 0.6; z.tax = null; z.policy = M.defaultPolicy(s, z); lines.push([D.name, "taken back"]); M.note(s, `${D.name} is taken back.`, "good"); }
     if (R.story) {
       z.story++;
       if (z.story >= M.STORY.length) {
@@ -1012,6 +1042,8 @@ M.settle = (s, o, res) => {
   }
   const lostNow = s.zones.filter(q => q.lost).length;
   if (lostNow > lost0) lines.push(["While you were out", `${lostNow - lost0} zone${lostNow - lost0 > 1 ? "s" : ""} lost`]);
+  if (s.strongholdNew) lines.push(["Casey Benton", "has retreated to her stronghold: every zone but the Towers is Cal's"]);
+  if (s.lost) lines.push(["The city", "is lost. The campaign is over."]);
   return { lines };
 };
 
@@ -1037,6 +1069,8 @@ M.NEWS = {
   bloody: ["{n} dead in {zone} 'gas leak'", "{zone}: {n} lives lost to 'faulty wiring', officials say"],
   push: ["Unrest reported in {zone}", "{zone}: residents told to stay indoors after dark"],
   lostZone: ["{zone} 'temporarily closed' to visitors", "City Hall: {zone} 'not a priority right now'"],
+  cityLost: ["Casey Benton 'taking a break from public life'", "City Hall: 'no comment'"],
+  stronghold: ["PVN Tower 'closed for renovations'; Casey Benton 'working from home'", "City Hall: the Towers 'remain the heart of PumaCity'"],
   takeControl: ["Casey Benton: 'PumaCity will be safe. All of it.'", "City Hall announces a 'new era of order'"],
   reads: {
     strike: ["Meteor showers over PumaCity: gang bosses 'keeping their distance'", "Astronomers baffled; street crews stop meeting in groups"],

@@ -61,8 +61,10 @@ W.WEAPONS = {
 };
 
 /* How many followers a Watcher's squad needs before the Purrsuader works on
- * someone armed (Syndicate's persuasion threshold). */
-W.PERSUADE_NEED = { civ: 0, sec: 2, crew: 4, target: Infinity };
+ * someone armed (Syndicate's persuasion threshold). The target of a hit can
+ * be talked round too, with a bodyguard's crowd behind you whatever the
+ * Purrsuader's mark: taken off the board alive counts as the job done. */
+W.PERSUADE_NEED = { civ: 0, sec: 2, crew: 4, target: 6 };
 
 /* Draw a weapon's icon into a 2D context, centred at (cx, cy), about 28px wide. */
 W.drawWeaponIcon = (c, type, cx, cy, col = "#dbe4fb") => {

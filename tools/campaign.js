@@ -102,7 +102,7 @@ function play(opt = {}) {
     stats.boards.push({ war: s.war, n: s.offers.length, ordinary: ord.length, twice: new Set(kinds).size < kinds.length,
       training: s.offers.some(o => M.KINDS[o.kind].quiet && o.threat <= 2), fresh: s.offers.some(o => o.threat <= 1 || (M.KINDS[o.kind].quiet && o.threat <= 2)) });
   };
-  for (let i = 0; i < N && !s.won; i++) {
+  for (let i = 0; i < N && !s.won && !s.lost; i++) {
     // research: one weapon, mod or gear project on top; city projects underneath
     const avail = M.available(s), running = s.research.running;
     if (!running.some(p => !["works", "requisition", "overseers", "propaganda", "mindcontrol"].includes(p.id))) {
@@ -243,14 +243,14 @@ function play(opt = {}) {
     stats.reads = stats.reads || {}; if (s.cal.reads) stats.reads[s.cal.reads] = (stats.reads[s.cal.reads] || 0) + 1;
     M.settle(s, offer, res);
     check();
-    for (let d = 0; d < idle && !s.won; d++) { M.advanceDay(s); check(); }
+    for (let d = 0; d < idle && !s.won && !s.lost; d++) { M.advanceDay(s); check(); }
     if (s.war && stats.warAt == null) { stats.warAt = i + 1; stats.warDay = s.day; }
     if (s.won && stats.wonAt == null) { stats.wonAt = i + 1; stats.wonDay = s.day; }
     if ((i + 1) % 10 === 0) stats.cash.push(Math.round(s.cash));
     log(`day ${String(s.day).padStart(3)}  ${(res.won ? "won " : "LOST")} t${offer.threat}/${tierNow} x${res.agents.length} ${M.KINDS[offer.kind].name.padEnd(14)} ${M.zoneDef(offer.zone).name.padEnd(24)} cash ${W.money(s.cash).padStart(10)}  pts ${String(s.research.points).padStart(2)}${s.war ? " TC " : "    "}  levels ${s.zones.map(z => z.locked ? "X" : z.lost ? "-" : M.level(z.C)).join("")}  board ${String(s.offers.length).padStart(2)}  roster ${s.roster.length}`);
   }
   stats.missions = s.stats.missions; stats.won = s.stats.won; stats.day = s.day; stats.points = s.research.points;
-  stats.lockedAtEnd = s.zones.filter(z => z.locked).length; stats.lostAtEnd = s.zones.filter(z => z.lost).length; stats.win = !!s.won;
+  stats.lockedAtEnd = s.zones.filter(z => z.locked).length; stats.lostAtEnd = s.zones.filter(z => z.lost).length; stats.win = !!s.won; stats.cityLost = !!s.lost;
   stats.s = s;
   return stats;
 }
@@ -308,7 +308,7 @@ if (require.main === module) {
   try {
     const st = play({ seed, missions: N, fight, strategy, harsh, idle, debug: args.includes("--debug"), log: quiet ? null : console.log });
     const s = st.s;
-    console.log(`${st.missions} missions, ${st.won} won, day ${st.day}; research ${st.points} points${s.war ? `, taking control since mission ${st.warAt}` : ""}; zones ${s.zones.map(z => `${z.id}:${z.locked ? "locked" : z.lost ? "lost" : W_level(z.C)}`).join(" ")}; fallen ${st.fallen}${st.win ? `; WON at mission ${st.wonAt}` : ""}`);
+    console.log(`${st.missions} missions, ${st.won} won, day ${st.day}${st.cityLost ? "; THE CITY IS LOST" : ""}; research ${st.points} points${s.war ? `, taking control since mission ${st.warAt}` : ""}; zones ${s.zones.map(z => `${z.id}:${z.locked ? "locked" : z.lost ? "lost" : W_level(z.C)}`).join(" ")}; fallen ${st.fallen}${st.win ? `; WON at mission ${st.wonAt}` : ""}`);
   } catch (e) { console.error(`FAIL ${e.message}`); if (process.env.STACK) console.error(e.stack); process.exit(1); }
 }
 function W_level(C) { return C <= 0 ? -1 : Math.min(3, Math.floor(C)); }

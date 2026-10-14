@@ -1,15 +1,15 @@
-/* The command screens, in the manner of Syndicate (1993): bevelled steel
- * panels on a slate ground, orange for what you can press, Benton gold for
- * control, Cal red, Watcher cyan for what's selected. Pixel capitals (drawn
- * by js/ui/pixfont.js) for headings and readouts; a plain sans with tabular
- * figures for the data. Everything here is scoped to .cx. */
+/* The command screens, in the manner of Syndicate (1993): each screen one
+ * steel chassis cut into compartments, orange for what you can press, Benton
+ * gold for control, Cal red, Watcher cyan for what's selected. Pixel capitals
+ * (drawn by js/ui/pixfont.js) for headings and readouts; a plain sans with
+ * tabular figures for the data. Everything here is scoped to .cx. */
 .cx,.cx-layer{
-  --face:#2b3447; --face2:#232b3b; --hi:#5a6a88; --lo:#0c1018; --ground:#0b0f17; --inset:#121822;
+  --face:#2b3447; --face2:#1c2230; --hi:#5a6a88; --lo:#0c1018; --ground:#0b0f17; --inset:#121822; --groove:#36425a;
   --t1:#eef2f8; --t2:#c3cbdb; --t3:#9aa6bd;
   --orange:#ff9a2e; --orange-hi:#ffc27a; --orange-lo:#7a4008;
   --gold:#f2c230; --red:#ff4552; --red-t:#ff8a8f; --cyan:#5ff0ff; --green:#9be36a; --research:#6fd8ff;
   --l0:#8a6a3e; --l1:#b8862a; --l2:#dda21f; --l3:#f2c230; --lk:#ffd95a;
-  --well:#070a10; --chip:#151a24; --divider:#3a4558; --btn:#3a4660; --btn-bevel:#6d7d9c; --btn-hover:#46546f; --btn-off:#262e3e;
+  --well:#070a10; --chip:#151a24; --divider:#4a5770; --btn:#3a4660; --btn-bevel:#6d7d9c; --btn-hover:#46546f; --btn-off:#262e3e;
   --ink-orange:#1c0d00; --armed:#7a1a22; --dark:#6a4a78; --dark-t:#ffb0e8;
   --sans:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Roboto,sans-serif;
 }
@@ -29,9 +29,13 @@
 .cx .bad{color:var(--red-t)} .cx .good{color:var(--green)} .cx .warn{color:var(--orange)}
 .cx .quiet{color:var(--t3)}
 
-/* ---- the bevel: light from the top left ---- */
-.cx .panel,.cx-top,.cx-bar button{border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);background:var(--face)}
-.cx .panel{padding:12px 14px}
+/* ---- depth. A bevel says "press this" (raised) or "read this" (sunk), and the chassis has one round its edge;
+   nothing else is bevelled. Each screen is one steel chassis: its grid's 2px gaps show the dark cut between
+   compartments, and a compartment is the face itself, lit faintly at its top left edge. Content sits flat on it,
+   parted by space and 1px rules. ---- */
+.cx-top{border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);background:var(--face)}
+.cx-city,.cx-lab,.cx-clinic,.cx-armoury,.cx-office{background:var(--lo);border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi)}
+.cx .panel{background:var(--face);padding:12px 14px;box-shadow:inset 1px 1px 0 var(--groove)}
 
 /* ---- buttons: steel, pressed in when held; orange when it's the thing to do ---- */
 .cx button{font:600 13px/1.2 var(--sans);letter-spacing:.02em;color:var(--t1);background:var(--btn);
@@ -39,16 +43,21 @@
 .cx button:hover:not(:disabled){background:var(--btn-hover)}
 .cx button:active:not(:disabled){border-color:var(--lo) var(--btn-bevel) var(--btn-bevel) var(--lo);transform:translateY(1px)}
 .cx button:focus-visible,.cx input:focus-visible,.cx select:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-/* the mission screens' global button:disabled dims by opacity; here a disabled plate keeps its reason legible */
-.cx button:disabled{opacity:1;background:var(--btn-off);color:#949fb3;border-color:#3a4458 var(--chip) var(--chip) #3a4458;cursor:default}
+/* what can't be pressed has no plate: it reads as text, its reason under it. (The mission screens' global
+   button:disabled dims by opacity; here it stays legible.) */
+.cx button:disabled,.cx button.go:disabled{opacity:1;background:transparent;color:#949fb3;border-color:transparent;cursor:default}
+.cx .dealer>button:disabled,.cx .roster>button:disabled,.cx .dossier>button:disabled{padding-left:0}
 .cx button.go{background:var(--orange);color:var(--ink-orange);border-color:var(--orange-hi) var(--orange-lo) var(--orange-lo) var(--orange-hi)}
 .cx button.go:hover:not(:disabled){background:#ffab50}
-.cx button.go:disabled{background:var(--btn-off);color:#949fb3;border-color:#3a4458 var(--chip) var(--chip) #3a4458}
 .cx button.armed{background:var(--armed);color:#fff;border-color:#ff7a84 #3a060a #3a060a #ff7a84}
 .cx button.link{background:none;border:0;color:var(--orange);padding:4px 0;min-height:28px;text-decoration:underline;text-underline-offset:3px;font-weight:600}
 .cx button.link:hover{background:none;color:var(--orange-hi)}
-.cx button.mini{min-height:28px;padding:3px 8px;font-size:12px}
-.cx kbd{font:700 11px/1 var(--sans);color:inherit;opacity:.8;border:1px solid currentColor;padding:2px 4px;margin-right:7px;border-radius:0}
+.cx button.mini{min-height:28px;padding:3px 8px;font-size:12px;border-width:1px}
+/* a close or dismiss: words, no plate */
+.cx button.x{background:none;border-color:transparent;color:var(--t2);min-height:28px;padding:3px 0;font-size:12px;text-decoration:underline;text-underline-offset:3px}
+.cx button.x:hover:not(:disabled){background:none;color:var(--t1)}
+/* key hints sit in a shade, not a box */
+.cx kbd{font:700 11px/1 var(--sans);color:inherit;opacity:.8;background:rgba(0,0,0,.24);padding:2px 4px;margin-right:7px;border-radius:0}
 .cx .why{display:block;color:var(--t3);font-size:12px;margin-top:3px}
 .cx .why::before{content:"";display:inline-block;width:6px;height:6px;margin:0 6px 1px 0;background:var(--orange)}
 
@@ -95,24 +104,30 @@
 .cx select{font:600 13px var(--sans);color:var(--t1);background:var(--well);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo);padding:5px 8px;border-radius:0}
 
 /* ---- the screen bar ---- */
-.cx-bar{display:flex;gap:4px;padding:6px 16px;background:#161c28;border-bottom:2px solid var(--lo)}
-.cx-tabs{flex:1;min-width:0;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
-.cx-bar button{display:flex;align-items:center;gap:10px;padding:6px 12px;min-height:50px;text-align:left;color:var(--t2);background:var(--face)}
+/* one strip cut into segments, as the chassis is; the open screen's segment is pressed in and underlined in cyan */
+.cx-bar{display:flex;gap:2px;background:var(--lo);border-bottom:2px solid var(--lo)}
+.cx-tabs{flex:1;min-width:0;display:grid;grid-template-columns:repeat(5,1fr);gap:2px}
+.cx-bar button{display:flex;align-items:center;gap:10px;padding:4px 14px;min-height:40px;text-align:left;color:var(--t2);background:var(--face);border:0;box-shadow:inset 1px 1px 0 var(--groove)}
+.cx-bar button:hover:not(:disabled){background:#343f56}
+.cx-bar button:active:not(:disabled){transform:none}
 .cx-bar button canvas{width:18px;height:18px;flex:none;color:var(--t3);image-rendering:pixelated}
 .cx-bar .bl{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
 .cx-bar .px{color:var(--t1);--px-shadow:#0c1018}
-.cx-bar button[aria-selected=true],.cx-bar .help-b[aria-expanded=true]{background:#45536e;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.cx-bar button[aria-selected=true],.cx-bar .help-b[aria-expanded=true],
+.cx-bar button[aria-selected=true]:hover:not(:disabled),.cx-bar .help-b[aria-expanded=true]:hover:not(:disabled){background:var(--face2);box-shadow:inset 2px 2px 0 var(--lo),inset 0 -2px 0 var(--cyan)}
 .cx-bar .help-b{flex:none;gap:8px}
 .cx-bar .help-b[aria-expanded=true] .px{color:var(--cyan)}
 .cx-bar button[aria-selected=true] .px,.cx-bar button[aria-selected=true] canvas{color:var(--cyan)}   /* cyan is selection */
-.cx-bar button[aria-selected=true] kbd{color:var(--t1);opacity:1}
 .cx-bar .n{font:700 12px var(--sans);font-style:normal;background:var(--orange);color:var(--ink-orange);padding:2px 6px}
-.cx-bar .n.warn{background:#2a1a08;color:var(--orange);box-shadow:inset 0 0 0 1px var(--orange)}
-.cx-bar .n.soft{background:var(--chip);color:var(--t2)}
-.cx-bar kbd{margin:0;opacity:.8}
+.cx-bar .n.warn{background:none;color:var(--orange);padding:2px 0}
+.cx-bar .n.soft{background:none;color:var(--t3);padding:2px 0}
+/* the key, a quiet figure ahead of the icon */
+.cx-bar kbd{margin:0;padding:0;background:none;opacity:1;color:var(--t3);font:700 12px/1 var(--sans);min-width:8px}
+.cx-bar button[aria-selected=true] kbd{color:var(--t2)}
 
 /* ---- help: floats over the right of whichever screen is open ---- */
-.cx-help{grid-row:3;grid-column:1;justify-self:end;z-index:6;width:min(460px,42vw);min-height:0;margin:12px 16px 14px;display:flex;flex-direction:column;box-shadow:0 10px 24px rgba(0,0,0,.5)}
+.cx .cx-help{grid-row:3;grid-column:1;justify-self:end;z-index:6;width:min(460px,42vw);min-height:0;margin:12px 16px 14px;display:flex;flex-direction:column;
+  border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);box-shadow:0 10px 24px rgba(0,0,0,.5)}
 .cx-help header{flex:none;display:flex;align-items:center;gap:10px;margin-bottom:4px}
 .cx-help header .hx{flex:1}
 .cx-help .h-body{min-height:0;overflow-y:auto;padding-right:4px;font-size:13px;color:var(--t2)}
@@ -135,8 +150,8 @@
 .cx .hint{color:var(--t3);font-size:13px;margin:6px 0}
 
 /* ---- the City ---- */
-.cx-city{display:grid;grid-template-columns:auto minmax(300px,1fr) minmax(320px,1.1fr);gap:12px;height:100%}
-.cx-mapbox{display:flex;flex-direction:column;gap:6px;min-height:0;height:100%}
+.cx-city{display:grid;grid-template-columns:auto minmax(300px,1fr) minmax(320px,1.1fr);gap:2px;height:100%}
+.cx-mapbox{display:flex;flex-direction:column;gap:8px;min-height:0;height:100%;padding:10px;background:var(--face);box-shadow:inset 1px 1px 0 var(--groove)}
 .cx-slot{position:relative;height:calc(100% - 52px);aspect-ratio:1;max-width:50vw;background:#0a0d14;border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
 .cx-map{position:absolute;inset:0;width:100%;height:100%;display:block}
 /* zone labels are hit areas over the canvas, which draws their hover and selection; they must out-rank the steel
@@ -160,12 +175,13 @@
 .cx .sw.lk{background:repeating-linear-gradient(45deg,var(--lk) 0 2px,#8a6a10 2px 4px)}
 .cx .sw.ls{background:repeating-linear-gradient(45deg,var(--red) 0 2px,#3a0a10 2px 4px)}
 .cx .sw.cal{background:transparent;border:2px solid var(--red)}
-.cx-ops,.cx .mid-main{min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px}
-/* the middle column: the dossier (or the overview) over the dispatch. The dispatch keeps a home a long dossier
-   can't push off the screen: the dossier stops 170px short of the bottom and scrolls, the dispatch scrolls in what's left */
-.cx-mid{min-height:0;display:flex;flex-direction:column;gap:10px}
-.cx .mid-main{flex:0 0 auto;max-height:calc(100% - 170px)}
-.cx-mid>.dispatch{flex:0 1 auto;min-height:0;display:flex;flex-direction:column}
+.cx-ops{min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding:12px 14px;background:var(--face);box-shadow:inset 1px 1px 0 var(--groove)}
+/* the middle column: the dossier (or the overview) over the dispatch, compartments of one column. The dispatch keeps
+   a home a long dossier can't push off the screen: the dossier stops 220px short of the bottom and scrolls, and the
+   dispatch takes what's left, however much that is */
+.cx-mid{min-height:0;display:flex;flex-direction:column;gap:2px}
+.cx .mid-main{flex:0 0 auto;max-height:calc(100% - 220px);min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.cx-mid>.dispatch{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
 .cx .dispatch .d-body{min-height:0;overflow-y:auto;padding-right:4px}
 
 /* the dossier */
@@ -173,7 +189,6 @@
 .cx .dz-head>div{flex:1;display:flex;flex-direction:column;gap:6px}
 .cx .dz-t{color:var(--t1);--px-shadow:#0c1018}
 .cx .dz-head small{color:var(--t3)}
-.cx .dz-head .x{min-height:28px;padding:3px 10px;font-size:12px}
 .cx .lvl{font:700 12px var(--sans);letter-spacing:.06em;padding:3px 7px;color:#1a1204;white-space:nowrap}
 .cx .lvl.l0{background:var(--l0);color:#fff} .cx .lvl.l1{background:var(--l1)} .cx .lvl.l2{background:var(--l2)} .cx .lvl.l3{background:var(--l3)}
 .cx .lvl.lk{background:var(--lk)} .cx .lvl.ls{background:var(--red);color:var(--ink-orange)}
@@ -191,7 +206,8 @@
 .cx .fc{margin:4px 0 12px;font-size:14px}
 .cx .fc span{color:var(--t3);margin-left:6px;font-size:13px}
 .cx .fc.up b{color:var(--green)} .cx .fc.down b{color:var(--red-t)} .cx .fc.steady b{color:var(--t1)}
-.cx .dial{background:var(--face2);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo);padding:10px 12px}
+/* the dial sits on the face under a rule: its track is the only well it needs */
+.cx .dial{border-top:1px solid var(--divider);padding:12px 0 2px}
 .cx .dial-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .cx .dial-head label{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--t1);font-weight:700}
 .cx .dial-head b{color:var(--gold)}
@@ -206,21 +222,29 @@
 .cx .dial-out{display:flex;flex-wrap:wrap;gap:4px 14px;margin:8px 0 0;font-weight:700}
 .cx .dial-out small{color:var(--t3);font-weight:400}
 .cx .dial-out .kept{flex-basis:100%;margin-top:-2px}
-.cx .flags{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13px}
-.cx .flags li{padding:5px 8px;background:var(--face2)}
-.cx .flags li.bad{background:#3a1218;color:#ffd0d3} .cx .flags li.warn{background:#3a2a12;color:#ffe0bc}
-.cx .flags li.dark{background:#2e1530;color:#ffd0f2} .cx .flags li.good{background:#183018;color:#d8f5c8}
+/* what bears on the zone: a line each, keyed by a square in its colour */
+.cx .flags{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:2px;font-size:13px}
+.cx .flags li,.cx .flags li.bad,.cx .flags li.warn,.cx .flags li.dark,.cx .flags li.good{position:relative;padding:3px 0 3px 14px;color:var(--t2)}
+.cx .flags li::before{content:"";position:absolute;left:0;top:10px;width:6px;height:6px;background:var(--t3)}
+.cx .flags li b{color:var(--t1)}
+.cx .flags li.bad::before{background:var(--red)} .cx .flags li.bad b{color:var(--red-t)}
+.cx .flags li.warn::before{background:var(--orange)}
+.cx .flags li.dark::before{background:var(--dark-t)} .cx .flags li.dark b{color:var(--dark-t)}
+.cx .flags li.good::before{background:var(--green)} .cx .flags li.good b{color:var(--green)}
 
-/* Cal, and the zones slipping */
-.cx .cal{display:flex;flex-direction:column;gap:6px;border-color:#7a3a42 #200a0e #200a0e #7a3a42;background:#2e2230}
-.cx .cal.on{background:#3a1820}
+/* Cal, and the zones slipping: one compartment, warmed red while he pushes */
+.cx .cal{display:flex;flex-direction:column;gap:6px}
+.cx .cal.on{background:#341a22;box-shadow:inset 1px 1px 0 #5a2a34}
 .cx .cal-t{color:var(--red-t);--px-shadow:#200a0e}
 .cx .cal p{margin:0}
-.cx .cal button{align-self:flex-start}
-.cx .watch ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
-.cx .watch li button{width:100%;display:flex;justify-content:space-between;gap:8px;text-align:left;font-weight:600}
+.cx .cal .sub{margin:8px 0 0}
+.cx .watch{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.cx .watch li button{width:100%;display:flex;justify-content:space-between;gap:8px;text-align:left;font-weight:600;background:none;border:0;border-top:1px solid var(--divider);padding:6px 0;min-height:32px}
+.cx .cal.on .watch li button{border-top-color:#5a2a34}
+.cx .watch li button:hover:not(:disabled){background:none;color:var(--orange)}
+.cx .watch li button:active:not(:disabled){transform:none}
 .cx .watch li button span{font-weight:600}
-.cx .watch li .down,.cx .watch li .bad{color:#ffbdc0}   /* red-t is too dim on a steel plate */
+.cx .watch .down,.cx .watch .bad{color:var(--red-t)}
 
 /* the dispatch */
 .cx .dispatch header{flex:none;display:flex;align-items:center;gap:10px;margin-bottom:6px}
@@ -242,9 +266,7 @@
 .cx .urgent{background:#2e1a20;border-top:2px solid var(--red);padding:2px 10px 4px}
 .cx .urgent .offer{background:none;border:0;border-top:1px solid #5a2a32;padding:9px 0;margin:0}
 .cx .urgent .offer:first-of-type{border-top:0}
-.cx .dossier .offer,.cx .next .offer{background:none;border:0;border-top:1px solid var(--divider);padding:9px 0}
 /* the next move: the mission B briefs, at the head of the overview */
-.cx .next{border-color:var(--orange-hi) var(--orange-lo) var(--orange-lo) var(--orange-hi)}
 .cx .next .nx-why{margin:6px 0 8px;color:var(--t1)}
 .cx .next.none p{margin:6px 0 0}
 /* what can't wait but is beyond the squad: one row, opened on request */
@@ -256,8 +278,8 @@
 .cx .og-h{display:flex;align-items:center;gap:8px;margin:10px 0 0}
 .cx .og-h button{background:none;border:0;padding:3px 0;min-height:24px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--t1)}
 .cx .og-h button:hover{background:none;color:var(--orange)}
-.cx .offer{display:flex;gap:10px;align-items:flex-start;background:var(--face);border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);padding:8px 10px}
-.cx .offer.rec{border-color:var(--orange-hi) var(--orange-lo) var(--orange-lo) var(--orange-hi)}
+/* a mission is a row under a rule; the one to take says so with its orange Brief */
+.cx .offer{display:flex;gap:10px;align-items:flex-start;border-top:1px solid var(--divider);padding:10px 0}
 .cx .o-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .cx .o-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:1px 0}
 .cx .threat{display:inline-flex;align-items:center;gap:5px}
@@ -272,7 +294,7 @@
 .cx .offer>button{flex:none;align-self:center}
 
 /* ---- the Lab ---- */
-.cx-lab{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:12px;height:100%}
+.cx-lab{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:2px;height:100%}
 .cx .lab-war{display:flex;flex-direction:column;gap:8px}
 .cx .lab-war p{margin:6px 0 0}
 .cx .cells.big i{width:auto;flex:1;height:18px}
@@ -284,8 +306,13 @@
 .cx .lab-run .idle{font-weight:700;margin:10px 0 0}
 .cx .bar{display:block;height:10px;background:var(--well);border:1px solid var(--lo)}
 .cx .bar i{display:block;height:100%;background:var(--cyan)}
-.cx .lab-tree{grid-column:1/-1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:12px;align-content:start;padding-right:4px}
-.cx .lab-tree .panel.dark{background:#2a1a30;border-color:var(--dark) #120816 #120816 var(--dark)}
+/* the trees: one compartment, its lines in open columns; only what can be started is a plate */
+.cx .lab-tree{grid-column:1/-1;min-height:0;overflow-y:auto}
+.cx .tgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:6px 32px;align-items:start}
+.cx .tsec .sub{margin:12px 0 4px}
+.cx .tsec.dark{background:#2a1c30;padding:0 10px 4px;margin-top:8px}
+.cx .tsec.dark .sub{color:var(--dark-t)}
+.cx .tsec.dark .tree li{border-top-color:#4a3454}
 .cx .tree{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .cx .tree li{display:grid;grid-template-columns:minmax(120px,1.3fr) repeat(3,minmax(84px,1fr));gap:6px;align-items:stretch;padding:5px 0;border-top:1px solid var(--divider)}
 .cx .tree li:has(> .node:nth-child(2):last-child){grid-template-columns:minmax(120px,1.3fr) minmax(84px,3fr)}
@@ -294,12 +321,14 @@
 .cx .ln small{color:var(--t3);font-size:12px;line-height:1.3}
 .cx .node{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:4px 6px;font-size:12px;min-height:44px;position:relative}
 .cx .node b{font-size:12px;letter-spacing:.06em}
-.cx .node.done{background:#1c3236;color:#9fe8e0}
-.cx .node.done small{color:#cdeeea}
+.cx .node.done{color:var(--cyan)}
+.cx .node.done small{color:var(--t3)}
 .cx .node.run{background:#123038;color:var(--cyan)}
 .cx .node.run small{color:#bfefff}
-.cx .node.locked{background:#1c2230;color:#8f9ab0}
-.cx .node.locked small{color:#8f9ab0;line-height:1.25}
+.cx .node.locked,.cx .node.far{color:var(--t3)}
+.cx .node.locked b{font-weight:600}
+.cx .node.locked small,.cx .node.far small{color:var(--t3);line-height:1.25}
+.cx .node.far{font-size:12px}
 .cx .node.open{padding:0}
 .cx .node.open button{width:100%;height:100%;min-height:44px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:4px 7px;text-align:left}
 .cx .node.open button small{font-weight:500;color:inherit;opacity:.85}
@@ -308,34 +337,42 @@
 .cx .node.none{background:transparent}
 
 /* ---- the Clinic ---- */
-.cx-clinic{display:grid;grid-template-columns:minmax(240px,.7fr) minmax(480px,2fr);gap:12px;height:100%}
+.cx-clinic{display:grid;grid-template-columns:minmax(240px,.7fr) minmax(480px,2fr);gap:2px;height:100%}
 .cx-clinic>.panel{min-height:0;overflow-y:auto}
-.cx .roster ul{list-style:none;margin:8px 0 10px;padding:0;display:flex;flex-direction:column;gap:6px}
-.cx .roster li{display:flex;flex-direction:column;gap:4px;padding:6px;background:var(--face2)}
+/* the roster: rows under rules; the Watcher picked is lit, name in cyan */
+.cx .roster ul{list-style:none;margin:8px 0 12px;padding:0;display:flex;flex-direction:column}
+.cx .roster li{display:flex;flex-direction:column;gap:2px;padding:8px 8px 6px;border-top:1px solid var(--divider)}
 .cx .roster li.sel small{color:var(--t2)}
-.cx .roster li.sel{background:#33405a;outline:2px solid var(--cyan);outline-offset:-2px}
+.cx .roster li.sel{background:#33405a}
+.cx .roster li.sel .who b{color:var(--cyan)}
 .cx .roster .who{display:flex;align-items:center;gap:10px;text-align:left;background:none;border:0;padding:0;min-height:0;font-weight:400}
-.cx .roster .who:hover{background:none}
-.cx .roster .who canvas{width:44px;height:44px;flex:none;border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.cx .roster .who:hover:not(:disabled){background:none}
+.cx .roster .who:hover b{color:var(--orange)}
+.cx .roster .who:active:not(:disabled){transform:none}
+.cx .roster .who canvas{width:44px;height:44px;flex:none;background:var(--well)}
 .cx .roster .who span:not(.st){display:flex;flex-direction:column;flex:1;min-width:0}
 .cx .roster .who b{color:var(--t1);letter-spacing:.06em}
 .cx .roster .who small{color:var(--t3);font-size:12px}
-.cx .roster .st{font:700 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;background:var(--chip);color:var(--t3)}
-.cx .roster .st.in{background:var(--cyan);color:#062a2e}
-.cx .roster li .mini{align-self:flex-end}
-.cx .fallen{margin-top:12px;padding:8px;background:var(--chip);border-left:0}
+.cx .roster .st{font:700 11px var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--t3)}
+.cx .roster li .link{align-self:flex-end;min-height:24px;padding:2px 0;font-size:12px}
+.cx .fallen{margin-top:14px;padding:10px 0 0;border-top:1px solid var(--divider)}
 .cx .fallen h4{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--t3)}
 .cx .fallen p{margin:4px 0 0;color:var(--t2);letter-spacing:.08em}
 .cx .body header{display:flex;align-items:center;gap:12px}
 .cx .body header small{color:var(--t3)}
-.cx .figure{display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,1.1fr) minmax(150px,1fr);gap:10px;margin-top:10px;align-items:stretch}
+/* the figure stands the height of the compartment */
+.cx-clinic .body{display:flex;flex-direction:column}
+.cx .figure{flex:1 1 auto;max-height:760px;display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,1.1fr) minmax(150px,1fr);gap:10px;margin-top:10px;align-items:stretch}
 .cx .figure canvas{width:100%;height:100%;min-height:360px;background:radial-gradient(ellipse at 50% 40%,#2c3a52,#121822 70%);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
-.cx .slots{display:flex;flex-direction:column;gap:8px}
-.cx .slot{background:var(--face2);border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);padding:7px 8px;display:flex;flex-direction:column;gap:4px}
+/* the mod slots: open blocks under rules, tied to the figure by its leader lines; a button only where a mod can be fitted */
+.cx .slots{display:flex;flex-direction:column}
+.cx .slot{border-top:1px solid var(--divider);padding:9px 0 10px;display:flex;flex-direction:column;gap:4px}
 .cx .slot header{display:flex;justify-content:space-between;align-items:center}
 .cx .slot header b{color:var(--t1);letter-spacing:.08em;text-transform:uppercase;font-size:13px}
 .cx .slot>small{color:var(--t3);line-height:1.3}
-.cx .slot button{min-height:30px;padding:3px 8px;font-size:12px}
+.cx .slot button{align-self:flex-start;min-height:30px;padding:3px 10px;font-size:12px}
+.cx .slot .nofit{font-size:12px;font-weight:600;color:#949fb3}
+.cx .slot .nofit+.why{margin-top:0}
 .cx .slot .max{font-size:12px;font-weight:700;color:var(--cyan)}
 .cx .mk{display:flex;gap:3px}
 .cx .mk i{width:14px;height:10px;background:var(--chip);border:1px solid #4a5670}
@@ -347,31 +384,35 @@
 .cx .inv canvas{width:44px;height:22px}
 
 /* ---- the Armoury: the squad's kit across the top; the racks and the dealer; the card ---- */
-.cx-armoury{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(340px,1fr);grid-template-rows:auto minmax(0,1fr);gap:12px;height:100%}
+.cx-armoury{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(340px,1fr);grid-template-rows:auto minmax(0,1fr);gap:2px;height:100%}
 .cx-armoury .loadouts{grid-column:1/-1}
-.cx .loadouts ul{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-.cx .kit{display:flex;gap:8px;align-items:flex-start;padding:6px;background:var(--face2)}
-.cx .kit.sel{background:#33405a;outline:2px solid var(--cyan);outline-offset:-2px}
+/* the squad's kit: four Watchers side by side, parted by rules; what's in a slot is an object, raised to be picked up */
+.cx .loadouts ul{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.cx .kit{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-left:1px solid var(--divider)}
+.cx .kit:first-child{border-left:0}
+.cx .kit.sel{background:#33405a}
+.cx .kit.sel .who b{color:var(--cyan)}
 .cx .kit.res{opacity:.8}
 .cx .kit .who{display:flex;flex-direction:column;align-items:flex-start;gap:4px;background:none;border:0;padding:0;min-height:0;text-align:left;font-weight:400;min-width:72px}
-.cx .kit .who:hover{background:none}
-.cx .kit .who canvas{width:32px;height:32px;border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.cx .kit .who:hover:not(:disabled){background:none}
+.cx .kit .who:hover b{color:var(--orange)}
+.cx .kit .who:active:not(:disabled){transform:none}
+.cx .kit .who canvas{width:32px;height:32px;background:var(--well)}
 .cx .kit .who b{color:var(--t1);letter-spacing:.06em}
 .cx .kit .who small{color:var(--t3);display:block}
 .cx .kit.sel .who small{color:var(--t2)}
 .cx .slots8{display:grid;grid-template-columns:repeat(4,48px);gap:3px;margin-left:auto}
-.cx .tile{position:relative;width:48px;height:30px;padding:0;min-height:0;display:grid;place-items:center;background:var(--well);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
-.cx button.tile:hover:not(:disabled){background:#1c2433}
-.cx .tile.empty{opacity:.55}
+.cx .tile{position:relative;width:48px;height:30px;padding:0;min-height:0;display:grid;place-items:center;background:var(--btn);border:1px solid;border-color:var(--btn-bevel) var(--lo) var(--lo) var(--btn-bevel)}
+.cx .tile.empty{background:none;border:1px dashed #4a5670}
 .cx .tile canvas{width:44px;height:22px}
-.cx .tile em{position:absolute;left:2px;top:0;font:700 9px/1 var(--sans);font-style:normal;color:var(--cyan)}
+.cx .tile em{position:absolute;left:2px;top:1px;font:700 10px/1 var(--sans);font-style:normal;color:var(--cyan)}
 .cx .tile i{position:absolute;right:2px;bottom:0;font:700 10px/1 var(--sans);font-style:normal;color:var(--t1)}
 .cx .tile.on,.cx .rk.on,.cx .mkb.on{outline:2px solid var(--cyan);outline-offset:-2px;background:#1d3a48}
-.cx .arm-left{display:grid;grid-template-rows:auto minmax(0,1fr);gap:12px;min-height:0}
+.cx .arm-left{display:grid;grid-template-rows:auto minmax(0,1fr);gap:2px;min-height:0}
 .cx .arm-left>.racks-p{max-height:40vh}
 .cx .arm-left>.panel,.cx-armoury>.arm-card{min-height:0;overflow-y:auto}
 .cx .racks{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px}
-.cx .rk{width:100%;display:grid;grid-template-columns:48px 1fr auto;gap:8px;align-items:center;text-align:left;background:var(--face2);font-weight:400}
+.cx .rk{width:100%;display:grid;grid-template-columns:48px 1fr auto;gap:8px;align-items:center;text-align:left;background:var(--btn);font-weight:400}
 .cx .rk b{display:block;color:var(--t1);font-weight:600}
 .cx .rk .loot{display:block;color:var(--t3);font-style:italic}
 .cx .rk canvas{width:44px;height:22px}
@@ -385,7 +426,7 @@
 .cx .mkb{display:flex;flex-direction:column;align-items:center;min-width:62px;min-height:38px;padding:3px 6px;line-height:1.1}
 .cx .mkb small{font-weight:400;color:var(--t2)}
 .cx .mkb.wide{min-width:132px}
-.cx span.mkb{justify-content:center;font:600 13px/1.1 var(--sans);color:var(--t3);border:2px dashed #3a4458}
+.cx span.mkb{justify-content:center;font:600 13px/1.1 var(--sans);color:var(--t3);border:1px dashed #4a5670}
 .cx span.mkb small{color:var(--t3)}
 .cx .arm-card header{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
 .cx .arm-card header small{color:var(--t3)}
@@ -397,17 +438,18 @@
 .cx .stats .st i{height:8px;background:var(--well);border:1px solid #3a4458}
 .cx .stats .st i b{display:block;height:100%;background:var(--cyan)}
 .cx .stats .st em{font-style:normal;color:var(--t1);min-width:12ch;text-align:right}
-.cx .tally{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0}
-.cx .tally div{background:var(--well);padding:5px 8px;border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.cx .tally{display:grid;grid-template-columns:repeat(4,1fr);margin:12px 0;padding-top:10px;border-top:1px solid var(--divider)}
+.cx .tally div{padding:0 10px;border-left:1px solid var(--divider)}
+.cx .tally div:first-child{padding-left:0;border-left:0}
 .cx .tally dt{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em}
 .cx .tally dd{margin:2px 0 0;color:var(--t1);font-weight:700;font-size:15px}
 /* dragging: what can be dragged says so; drop targets light up for what they'd do */
 .cx [data-drag]{cursor:grab;user-select:none}
 .cx [data-drag]:active{cursor:grabbing}
 .cx [data-drag]:focus-visible{outline:2px solid var(--cyan);outline-offset:1px}
-.cx div.mkb{background:var(--btn);border:2px solid;border-color:var(--btn-bevel) var(--lo) var(--lo) var(--btn-bevel);font:600 13px/1.1 var(--sans);color:var(--t1)}
+.cx div.mkb{background:var(--btn);border:1px solid;border-color:var(--btn-bevel) var(--lo) var(--lo) var(--btn-bevel);font:600 13px/1.1 var(--sans);color:var(--t1)}
 .cx div.mkb:hover,.cx .rk:hover,.cx div.tile:hover{filter:brightness(1.15)}
-.cx .rk{border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);padding:6px 10px;min-height:44px}
+.cx .rk{border:1px solid;border-color:var(--btn-bevel) var(--lo) var(--lo) var(--btn-bevel);padding:6px 10px;min-height:44px}
 .cx-armoury.dragging [data-drop]{transition:background .12s}
 .cx-armoury.dragging [data-drop].drop-ok{outline:2px dashed var(--cyan);outline-offset:-2px}
 .cx-armoury.dragging [data-drop].drop-ok.over{outline-style:solid;background:#1d3a48}
@@ -421,7 +463,7 @@
 .cx-drag[hidden]{display:none}
 
 /* ---- Casey's Office ---- */
-.cx-office{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(360px,1fr);gap:12px;height:100%}
+.cx-office{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(360px,1fr);gap:2px;height:100%}
 .cx .scene{position:relative;min-height:0;border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo);background:#07060c;overflow:hidden}
 .cx .scene canvas{position:absolute;inset:0;width:100%;height:100%}
 .cx .scene blockquote{position:absolute;left:24px;right:24px;bottom:22px;margin:0;padding:12px 16px;background:rgba(7,6,12,.82);border-left:0}
@@ -481,18 +523,20 @@
   .cx .split-row{gap:6px;font-size:12px}
   .cx .split-row input{min-width:60px}
   .cx-wait .go{padding:6px 10px;font-size:13px}
-  .cx-city{grid-template-columns:auto minmax(0,1fr)}
+  /* the map beside a column of two: the dossier and dispatch over the missions. The dossier's half takes what it
+     needs up to 58% and scrolls as one past that; the missions always keep the rest */
+  .cx-city{grid-template-columns:auto minmax(0,1fr);grid-template-rows:fit-content(58%) minmax(0,1fr)}
   .cx-city .cx-ops{grid-column:2}
-  .cx-city{grid-template-rows:auto minmax(0,1fr)}
   .cx-city .cx-mapbox{grid-row:1/3}
-  /* too short to pin it: the column scrolls as one, the dispatch under the dossier at its own height */
-  .cx-city .cx-mid{overflow-y:auto;padding-right:4px}
-  .cx-city .mid-main{max-height:none;overflow:visible;padding-right:0}
-  .cx-city .cx-mid>.dispatch{flex:none}
+  .cx-city .cx-mid{overflow-y:auto}
+  .cx-city .mid-main{max-height:none;overflow:visible;flex:none}
+  .cx-city .cx-mid>.dispatch{flex:1 0 auto}
   .cx-city .dispatch .d-body{overflow:visible}
   .cx-clinic{grid-template-columns:minmax(220px,.8fr) minmax(0,1.8fr)}
   .cx-armoury{grid-template-columns:minmax(0,1fr) minmax(300px,.8fr);height:auto}
   .cx .loadouts ul{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cx .kit:nth-child(odd){border-left:0}
+  .cx .kit:nth-child(n+3){border-top:1px solid var(--divider)}
   .cx-clinic,.cx-lab,.cx-office{height:auto}
   .cx-screen{overflow-y:auto}
 }

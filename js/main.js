@@ -358,7 +358,7 @@ const Game = W.game = {
     this.hud.build(w);
     this.cursorMode = null; this.ui.aim = null; this.setCursor("move");
     this.bigScan = false; { const c = document.getElementById("bigscan"); if (c) c.hidden = true; }
-    W.audio.ambience(true);
+    W.audio.ambience(true, `${this.level.name}|${this.level.codename}`);
     for (const [t, col] of this.level.intro ? this.level.intro(w) : [["JOYEUSE: You're on, Watchers. Sly's at the cafe, north-east corner. Keep it quiet.", "#54f2ff"], ["Weapons are holstered. Plaza Security will warn anyone with a gun out.", "#94a0c4"]]) w.msg(t, col);
     // the title card names the job: the first objective, which follows the kind
     const job = w.objectives[0] ? w.objectives[0].text : `Eliminate ${w.names.target}`;
@@ -422,6 +422,15 @@ const Game = W.game = {
     }
     const [cx, cy] = this.renderer.viewCenter(w);
     W.audio.listen(cx, cy);
+    // the score's mood: trouble while the crew or security are after the squad close by
+    this.moodT = (this.moodT || 0) - dt;
+    if (this.moodT <= 0) {
+      this.moodT = 0.5;
+      const squad = w.agents.filter(a => a.alive);
+      W.audio.trouble(w.units.some(o => o.alive && !o.isAgent && !o.follower &&
+        (o.faction === "crew" ? o.hostile : o.kind === "sec" && o.angryAt && o.angryAt.player) &&
+        squad.some(a => W.dist(a.x, a.y, o.x, o.y) < 18)));
+    }
     this.updateHover();
     this.renderer.frame(w, this.paused ? 0 : dt);
     this.renderer.overlay(w, this.ui);

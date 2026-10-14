@@ -6,7 +6,6 @@ colors:
   steel-face-deep: "#1c2230"
   bevel-light: "#5a6a88"
   bevel-dark: "#0c1018"
-  groove: "#36425a"
   slate-ground: "#0b0f17"
   inset: "#121822"
   well: "#070a10"
@@ -173,7 +172,7 @@ The campaign command screens are an operator's console from 1993, rebuilt in the
 
 The display voice is a 5x7 pixel face drawn from a bitmap in code. It carries the brand, panel headings, the screen bar and the LCD readouts, where unlit 8s sit behind every digit like a segment display. Data, prose and controls are in a plain system sans with tabular figures, so numbers line up and long text stays readable. Density is high and deliberate: the target player is a Syndicate veteran who is at home in tight tactical UI, on a desktop, with a mouse and keyboard.
 
-Scope. This system governs the command screens (City, Lab, Clinic and Armoury, Casey's Office, the top bar, banners and toast), scoped under `.cx` and `.cx-layer` in `css/command.css`. It is the game's design direction. The mission HUD, title, briefing and debrief screens are pre-existing and still use the older greykit Tactical tokens (`css/gk-tokens.css`, `css/watchers.css`: monospace, navy, cyan); they have not been moved to this system yet, and nothing here describes them.
+Scope. This system governs the command screens (City, Casey's Office, the Armoury, the Clinic, the Lab, the top bar, banners and toast), scoped under `.cx` and `.cx-layer` in `css/command.css`. It is the game's design direction. The mission HUD, title, briefing and debrief screens are pre-existing and still use the older greykit Tactical tokens (`css/gk-tokens.css`, `css/watchers.css`: monospace, navy, cyan); they have not been moved to this system yet, and nothing here describes them.
 
 **Key Characteristics:**
 - Bevel, not shadow, and only where it means something: raised is "press this", sunk is "read this", and the chassis has one round its edge. Everything else is flat on the face.
@@ -201,7 +200,7 @@ A cold steel-and-slate ground carrying four hot signal colors, each with exactly
 
 ### Neutral
 - **Steel Face** (steel-face): the chassis face every compartment shares. **Steel Face Deep** (steel-face-deep): a clear step darker, for what is pressed in (the open screen's tab).
-- **Bevel Light / Bevel Dark** (bevel-light, bevel-dark): the two edges of a bevel. Bevel dark is also the 2px cut between compartments. **Groove** (groove): the faint 1px light along a compartment's top and left edge, the lit side of the cut.
+- **Bevel Light / Bevel Dark** (bevel-light, bevel-dark): the two edges of a bevel. Bevel dark is also the 2px cut between compartments.
 - **Slate Ground** (slate-ground): the screen behind the panels.
 - **Well** (well): the black of sunk readouts: LCDs, gauge tracks, slider tracks, selects, progress bars.
 - **Inset** (inset): scrollbar track and the figure's backdrop.
@@ -241,8 +240,8 @@ A cold steel-and-slate ground carrying four hot signal colors, each with exactly
 A fixed full-viewport console: top bar, screen bar, then one screen that fills the remaining height (`grid-template-rows: auto auto minmax(0,1fr)`). Screens do not scroll as a page at full desktop width; their columns scroll internally.
 
 - **Top bar:** brand, LCD cluster, the city split slider, and "Wait a day" plus the Until menu pushed to the right.
-- **Screen bar:** five equal tabs (City, Office, Armoury, Clinic, Lab; keys 1 to 5, user 2026-10-13), each with a 9x9 pixel icon, a pixel label, an optional badge and its key; then HELP (key ?), a narrower segment outside the tablist.
-- **City:** three columns: the map (near square, full height, at most 50vw) over a two-row key (territory, then the map's own marks); the middle column, the dossier or the overview (led by NEXT MOVE, the mission B briefs and why) over the dispatch; and the missions column. The dossier stops 220px short of the column's foot and scrolls, and the dispatch takes whatever is left. Below 1180px the middle column sits over the missions: it takes what it needs up to 58% of the height and scrolls as one past that, and the missions always keep the rest.
+- **Screen bar:** five equal tabs (City, Office, Armoury, Clinic, Lab; keys 1 to 5), each with its key, a 9x9 pixel icon, a pixel label and an optional badge; then HELP (key ?), a narrower key outside the tablist. The order is the author's (user, 2026-10-13). It puts the Lab on the farthest key, so Wait a day warns whenever nothing is running there (see Components: Wait a day).
+- **City:** three columns: the map (near square, full height, at most 50vw) over a two-row key (territory, then the map's own marks); the middle column, the dossier or the overview (led by NEXT MOVE, the mission B briefs and why) over the dispatch; and the missions column. The dossier stops 220px short of the column's foot and scrolls, and the dispatch takes whatever is left. With a dossier open, its best mission is not repeated in the missions column; if the zone has nothing else, the column lists the rest of the city under ELSEWHERE rather than standing empty. Below 1180px the middle column sits over the missions: it takes what it needs up to 58% of the height, the missions always keep the rest, and inside it the dossier scrolls while the dispatch keeps 150px of its own.
 - **Help:** "How it works" floats over the right of whichever screen is open (the screen's grid cell, at most 460px or 42vw wide), with the floating-menu shadow. Esc or HELP closes it.
 - **Lab:** two columns, war footing and running research on top, the trees below in auto-fit columns of at least 420px.
 - **Clinic:** the roster, then the selected Watcher's figure with mod slots either side.
@@ -257,7 +256,7 @@ Desktop only, by the author's decision. Below 1180px wide the City folds to two 
 
 Depth is bevelled, not shadowed, and a bevel has to mean something. Not everything is bevelled (user, 2026-10-13: "Not everything needs to be beveled"). There are four tiers:
 
-- **Chassis.** Each screen is one steel body with a 2px raised edge (the top bar too). Its compartments (the map, the dossier, the missions, the dispatch, the Lab's trees, the roster) share its face. They are parted by a 2px cut in bevel-dark, with a faint 1px groove light along each compartment's top and left. Nothing floats on a dark floor.
+- **Chassis.** Each screen is one steel body with a 2px raised edge (the top bar too). Its compartments (the map, the dossier, the missions, the dispatch, the Lab's trees, the roster) share its face. They are parted by a 2px cut in bevel-dark and nothing else. Nothing floats on a dark floor.
 - **Controls, raised.** Only what can be pressed now: steel, go, armed and research-buy buttons with a 2px bevel; mini buttons and draggable kit (filled slots, racks, the dealer's marks) with a 1px bevel. Pressing flips the bevel and drops 1px.
 - **Wells, sunk.** Only readouts: LCDs, the Take Control well, gauge and slider tracks, selects, the map slot, the Clinic figure, the Office scene and the Armoury card's picture.
 - **Content, flat.** Missions, mod slots, roster rows, the squad's kit, flags, the dial, the tally and the Lab's marks sit on the face. They are parted by space and 1px divider rules, or by a tonal step: Cal's compartment warms red while he pushes, the urgent strip is tinted red, the dark corner violet, and a picked roster row or kit is lit steel with its name in cyan.
@@ -270,6 +269,13 @@ A control that can't be pressed has no plate. It reads as text in #949fb3 with i
 
 ### Named Rules
 **The Bevel Means Something Rule.** Raised means "press this" and sunk means "read this", and the chassis has one edge round it. Anything else gets no bevel: no plates for rows, cards, slots, panels or disabled buttons, and no box inside a box. Reach for space, a 1px rule or a tonal step first.
+
+**The Three Pressables Rule.** Anything that can be pressed looks like one of three things, and each means one thing:
+- **A plate** (steel, go, armed, mini) does something: brief, wait, start, fit, buy, send to reserve.
+- **Orange text** goes somewhere: links, a zone's name that opens its dossier (the missions list's zone headings, the zones slipping under Cal), "Kit in the Armoury". It underlines on hover.
+- **A lit row** picks something: a Watcher in the roster or the squad's kit. It lightens on hover and stays lit, name in cyan, once picked.
+
+Nothing pressable is bare text that only shows itself on hover.
 
 **The Light From Top-Left Rule.** Raised is light top-left, dark bottom-right; sunk is the reverse; pressed flips a raised control to sunk. Never mix the directions on one screen.
 
@@ -286,10 +292,10 @@ Steel plates you press in. Only a button that can be pressed now is a plate.
 - **Shape:** square (0px), 2px bevel, minimum 34px tall, 6x12px padding.
 - **Steel (default):** steel-button with a steel-button-bevel top-left edge and text-bright label.
 - **Go:** live-orange with its own orange bevel and ink-on-orange label. One per panel: the thing to do next ("Wait a day", "Brief", the recommended action).
-- **Armed:** armed-red with a red bevel, for a destructive action awaiting confirm.
-- **Link:** no plate, orange underlined text, for secondary navigation inside panels.
+- **Armed:** armed-red with a red bevel, for a destructive action awaiting confirm. Briefing a mission beyond the squad is one: its Brief carries a pale red label (#ffb3b7, legible on steel), and the first press, by click or B, arms it as "Brief anyway". Esc or any other click disarms.
+- **Link:** no plate, orange underlined text, for secondary navigation inside panels. Zone names that open a dossier are the same orange, underlined on hover.
 - **Mini:** 28px tall, 12px text, 1px bevel, for row actions.
-- **Research buy:** in the Lab trees, an open node is a dark bronze plate with a bronze bevel and pale gold text, the price of control made into a button. It is the only plate in the trees: finished marks are cyan text, locked marks quiet text that names only a need from another line, and a line with nothing open yet folds to one note ("MK1 to MK3 · needs Uzi MK1").
+- **Research start:** in the Lab trees, an open mark is its name and points as text ("MK2 · 72 RP") over a mini steel plate, "Start · $12k". It is the only plate in the trees: finished marks are cyan text, locked marks quiet text that names only a need from another line, and a line with nothing open yet folds to one note ("MK1 to MK3 · needs Uzi MK1").
 - **Hover / Focus / Active:** hover lightens the plate one step; focus-visible is a 2px watcher-cyan outline offset 2px; active flips the bevel to sunk and drops 1px (no drop under reduced motion). Disabled has no plate: transparent, no bevel, #949fb3 text at full opacity (the mission screens' global `button:disabled` opacity is reset under `.cx`). Where a disabled action would only be a plate with a price on it (fitting a mod), it is written as text instead, the price and then the reason. The map's zone labels are bare hit areas: no plate, no hover fill, no press drop; the canvas draws their hover.
 - **Reason:** why a control can't be pressed sits under it in text-quiet, 12px, behind a 6px live-orange caution square; never orange text, which would read as pressable.
 
@@ -297,7 +303,7 @@ Steel plates you press in. Only a button that can be pressed now is a plate.
 - **Level chip:** solid control-l0 to control-l3 (control-locked when locked, cal-red when lost), dark ink, 12px bold, slight tracking.
 - **Screen-bar badge:** solid orange count; "IDLE" as bare orange caution text; a soft count as bare text-quiet figures.
 - **Map tags (and the key):** orange mission count (cal-red when one can't wait), green or red tags for what the last wait moved, in the pixel face on solid plates with dark ink.
-- **Squad state:** no chip for the usual case. A Watcher in reserve says RESERVE in quiet uppercase text.
+- **Squad state:** no chip for the usual case. A Watcher in reserve says RESERVE in quiet uppercase text. Sending a Watcher to the reserve, or back, is a mini plate in the picked Watcher's header, not a link on every roster row.
 
 ### Cards / Containers
 - **Corner Style:** square (0px).
@@ -312,7 +318,16 @@ Steel plates you press in. Only a button that can be pressed now is a plate.
 - **Focus:** 2px watcher-cyan outline, offset 2px.
 
 ### Navigation
-- **Screen bar:** one strip cut into five equal segments, 40px tall, and a HELP segment after them. The segments are parted by 2px cuts, like the chassis. Default: steel-face with a text-bright pixel label and a quiet icon. Selected: pressed in to steel-face-deep, with a 2px cyan underline and the label and icon in watcher-cyan. Each segment leads with its number key (and HELP its ?) as a quiet figure, not a boxed key cap; it is aria-hidden and named as `aria-keyshortcuts` instead. Key hints elsewhere sit in a dark shade, never a bordered box.
+- **Screen bar:** Syndicate's menu: five equal raised steel keys, 40px tall, 4px apart on the slate ground, and a HELP key after them. Default: steel-face with the 2px raised bevel, a text-bright pixel label and a quiet icon. Selected: pressed in (the bevel flipped) to steel-face-deep, with the label and icon in watcher-cyan. It is the one place outside buttons proper where the chrome stays raised. Each key leads with its number (and HELP its ?) as a quiet figure, not a boxed key cap; it is aria-hidden and named as `aria-keyshortcuts` instead. Key hints elsewhere sit in a dark shade, never a bordered box.
+
+### Wait a day
+The go plate and Until… in the top bar's right end, over a line kept for what waiting would throw away. While the Lab has nothing running, research points can't be banked, so the line reads "Lab idle: 11.0 RP a day wasted" behind the caution square. It takes the buttons' width and wraps, never running under the city split. Otherwise the line is kept empty, so the bar doesn't jump.
+
+### The Dispatch
+The payoff of every wait, so bad news leads. Under its heading, one summary line in the colours of the One Meaning Rule: "2 zones fell · 3 zones rose · 9.0 RP wasted · +$7,000 · 9.0 RP". Then the lines, worst first: losses (red), warnings (orange), the dark corner (violet), the rest, then gains (green).
+
+### The Dealer
+Each line's marks: one researched is a draggable 1px plate with its price; one not yet researched is quiet text, "MK2 · Lab", as a locked mark is in the Lab.
 
 ### LCD Readout (signature)
 A sunk black well, 48px tall, with an 11px uppercase caption in text-quiet over pixel digits in live-orange (money in green, research in blue). Unlit 8s are drawn behind every digit in a dark tint of the digit colour, as on a segment display.

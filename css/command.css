@@ -4,7 +4,7 @@
  * (drawn by js/ui/pixfont.js) for headings and readouts; a plain sans with
  * tabular figures for the data. Everything here is scoped to .cx. */
 .cx,.cx-layer{
-  --face:#2b3447; --face2:#1c2230; --hi:#5a6a88; --lo:#0c1018; --ground:#0b0f17; --inset:#121822; --groove:#36425a;
+  --face:#2b3447; --face2:#1c2230; --hi:#5a6a88; --lo:#0c1018; --ground:#0b0f17; --inset:#121822;
   --t1:#eef2f8; --t2:#c3cbdb; --t3:#9aa6bd;
   --orange:#ff9a2e; --orange-hi:#ffc27a; --orange-lo:#7a4008;
   --gold:#f2c230; --red:#ff4552; --red-t:#ff8a8f; --cyan:#5ff0ff; --green:#9be36a; --research:#6fd8ff;
@@ -31,11 +31,11 @@
 
 /* ---- depth. A bevel says "press this" (raised) or "read this" (sunk), and the chassis has one round its edge;
    nothing else is bevelled. Each screen is one steel chassis: its grid's 2px gaps show the dark cut between
-   compartments, and a compartment is the face itself, lit faintly at its top left edge. Content sits flat on it,
+   compartments, and a compartment is the face itself. Content sits flat on it,
    parted by space and 1px rules. ---- */
 .cx-top{border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);background:var(--face)}
 .cx-city,.cx-lab,.cx-clinic,.cx-armoury,.cx-office{background:var(--lo);border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi)}
-.cx .panel{background:var(--face);padding:12px 14px;box-shadow:inset 1px 1px 0 var(--groove)}
+.cx .panel{background:var(--face);padding:12px 14px}
 
 /* ---- buttons: steel, pressed in when held; orange when it's the thing to do ---- */
 .cx button{font:600 13px/1.2 var(--sans);letter-spacing:.02em;color:var(--t1);background:var(--btn);
@@ -53,11 +53,14 @@
 .cx button.link{background:none;border:0;color:var(--orange);padding:4px 0;min-height:28px;text-decoration:underline;text-underline-offset:3px;font-weight:600}
 .cx button.link:hover{background:none;color:var(--orange-hi)}
 .cx button.mini{min-height:28px;padding:3px 8px;font-size:12px;border-width:1px}
-/* a close or dismiss: words, no plate */
-.cx button.x{background:none;border-color:transparent;color:var(--t2);min-height:28px;padding:3px 0;font-size:12px;text-decoration:underline;text-underline-offset:3px}
-.cx button.x:hover:not(:disabled){background:none;color:var(--t1)}
+/* a close: it takes you back, so it reads as a way to somewhere, as a link does */
+.cx button.x{background:none;border-color:transparent;color:var(--orange);min-height:28px;padding:3px 0;font-size:12px;text-decoration:underline;text-underline-offset:3px}
+.cx button.x:hover:not(:disabled){background:none;color:var(--orange-hi)}
+.cx button.x:active:not(:disabled),.cx button.link:active:not(:disabled){transform:none}
+/* a Brief that would cost Watchers says so before it's pressed */
+.cx button.deadly{color:#ffb3b7}   /* red-t is under 4.5:1 on the steel plate */
 /* key hints sit in a shade, not a box */
-.cx kbd{font:700 11px/1 var(--sans);color:inherit;opacity:.8;background:rgba(0,0,0,.24);padding:2px 4px;margin-right:7px;border-radius:0}
+.cx kbd{font:700 11px/1 var(--sans);color:inherit;background:rgba(0,0,0,.2);padding:2px 4px;margin-right:7px;border-radius:0}
 .cx .why{display:block;color:var(--t3);font-size:12px;margin-top:3px}
 .cx .why::before{content:"";display:inline-block;width:6px;height:6px;margin:0 6px 1px 0;background:var(--orange)}
 
@@ -85,10 +88,15 @@
 .cx-split{display:flex;flex-direction:column;gap:2px;min-width:250px;flex:1;max-width:380px}
 .cx-split label{font-size:12px;font-weight:600;color:var(--t1)}
 .cx .split-row{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;white-space:nowrap}
-.cx-wait{display:flex;gap:6px;margin-left:auto;position:relative}
-.cx-wait .go{min-height:42px;padding:6px 16px;font-size:14px}
+/* Wait a day and Until, with a line under them for what waiting would throw away (kept in the layout when empty) */
+.cx-wait{display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin-left:auto;position:relative}
+.cx-wait .w-row{display:flex;gap:6px}
+.cx-wait .go{min-height:36px;padding:5px 16px;font-size:14px}
 .cx .until{position:relative}
-.cx .until>button{min-height:42px}
+.cx .until>button{min-height:36px}
+/* the line takes the buttons' width, never its own: it wraps rather than run under the city split */
+.cx-wait .w-idle{margin:0;align-self:stretch;contain:inline-size;text-align:right;line-height:1.3}
+.cx-wait .w-idle.off{visibility:hidden}
 .cx .until-menu{position:absolute;right:0;top:calc(100% + 4px);z-index:5;display:flex;flex-direction:column;gap:4px;width:230px;padding:8px;background:var(--face);border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);box-shadow:0 10px 24px rgba(0,0,0,.5)}
 .cx .until-menu button{text-align:left}
 .cx .until-menu button small{display:block;font-weight:400;color:var(--t2)}
@@ -104,17 +112,17 @@
 .cx select{font:600 13px var(--sans);color:var(--t1);background:var(--well);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo);padding:5px 8px;border-radius:0}
 
 /* ---- the screen bar ---- */
-/* one strip cut into segments, as the chassis is; the open screen's segment is pressed in and underlined in cyan */
-.cx-bar{display:flex;gap:2px;background:var(--lo);border-bottom:2px solid var(--lo)}
-.cx-tabs{flex:1;min-width:0;display:grid;grid-template-columns:repeat(5,1fr);gap:2px}
-.cx-bar button{display:flex;align-items:center;gap:10px;padding:4px 14px;min-height:40px;text-align:left;color:var(--t2);background:var(--face);border:0;box-shadow:inset 1px 1px 0 var(--groove)}
+/* Syndicate's menu: a row of raised steel keys; the open screen's key is pressed in, its label in cyan */
+.cx-bar{display:flex;gap:4px;padding:5px 16px;background:var(--ground);border-bottom:2px solid var(--lo)}
+.cx-tabs{flex:1;min-width:0;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.cx-bar button{display:flex;align-items:center;gap:10px;padding:4px 14px;min-height:40px;text-align:left;color:var(--t2);background:var(--face);border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi)}
 .cx-bar button:hover:not(:disabled){background:#343f56}
-.cx-bar button:active:not(:disabled){transform:none}
+.cx-bar button:active:not(:disabled){border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
 .cx-bar button canvas{width:18px;height:18px;flex:none;color:var(--t3);image-rendering:pixelated}
 .cx-bar .bl{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
 .cx-bar .px{color:var(--t1);--px-shadow:#0c1018}
 .cx-bar button[aria-selected=true],.cx-bar .help-b[aria-expanded=true],
-.cx-bar button[aria-selected=true]:hover:not(:disabled),.cx-bar .help-b[aria-expanded=true]:hover:not(:disabled){background:var(--face2);box-shadow:inset 2px 2px 0 var(--lo),inset 0 -2px 0 var(--cyan)}
+.cx-bar button[aria-selected=true]:hover:not(:disabled),.cx-bar .help-b[aria-expanded=true]:hover:not(:disabled){background:var(--face2);border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
 .cx-bar .help-b{flex:none;gap:8px}
 .cx-bar .help-b[aria-expanded=true] .px{color:var(--cyan)}
 .cx-bar button[aria-selected=true] .px,.cx-bar button[aria-selected=true] canvas{color:var(--cyan)}   /* cyan is selection */
@@ -151,7 +159,7 @@
 
 /* ---- the City ---- */
 .cx-city{display:grid;grid-template-columns:auto minmax(300px,1fr) minmax(320px,1.1fr);gap:2px;height:100%}
-.cx-mapbox{display:flex;flex-direction:column;gap:8px;min-height:0;height:100%;padding:10px;background:var(--face);box-shadow:inset 1px 1px 0 var(--groove)}
+.cx-mapbox{display:flex;flex-direction:column;gap:8px;min-height:0;height:100%;padding:10px;background:var(--face)}
 .cx-slot{position:relative;height:calc(100% - 52px);aspect-ratio:1;max-width:50vw;background:#0a0d14;border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
 .cx-map{position:absolute;inset:0;width:100%;height:100%;display:block}
 /* zone labels are hit areas over the canvas, which draws their hover and selection; they must out-rank the steel
@@ -175,7 +183,7 @@
 .cx .sw.lk{background:repeating-linear-gradient(45deg,var(--lk) 0 2px,#8a6a10 2px 4px)}
 .cx .sw.ls{background:repeating-linear-gradient(45deg,var(--red) 0 2px,#3a0a10 2px 4px)}
 .cx .sw.cal{background:transparent;border:2px solid var(--red)}
-.cx-ops{min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding:12px 14px;background:var(--face);box-shadow:inset 1px 1px 0 var(--groove)}
+.cx-ops{min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding:12px 14px;background:var(--face)}
 /* the middle column: the dossier (or the overview) over the dispatch, compartments of one column. The dispatch keeps
    a home a long dossier can't push off the screen: the dossier stops 220px short of the bottom and scrolls, and the
    dispatch takes what's left, however much that is */
@@ -234,14 +242,17 @@
 
 /* Cal, and the zones slipping: one compartment, warmed red while he pushes */
 .cx .cal{display:flex;flex-direction:column;gap:6px}
-.cx .cal.on{background:#341a22;box-shadow:inset 1px 1px 0 #5a2a34}
+.cx .cal.on{background:#341a22}
 .cx .cal-t{color:var(--red-t);--px-shadow:#200a0e}
 .cx .cal p{margin:0}
 .cx .cal .sub{margin:8px 0 0}
 .cx .watch{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .cx .watch li button{width:100%;display:flex;justify-content:space-between;gap:8px;text-align:left;font-weight:600;background:none;border:0;border-top:1px solid var(--divider);padding:6px 0;min-height:32px}
 .cx .cal.on .watch li button{border-top-color:#5a2a34}
-.cx .watch li button:hover:not(:disabled){background:none;color:var(--orange)}
+/* a zone's name that opens its dossier is orange, as every way to somewhere else is */
+.cx .watch li button b{color:var(--orange)}
+.cx .watch li button:hover:not(:disabled){background:none}
+.cx .watch li button:hover b{color:var(--orange-hi);text-decoration:underline;text-underline-offset:3px}
 .cx .watch li button:active:not(:disabled){transform:none}
 .cx .watch li button span{font-weight:600}
 .cx .watch .down,.cx .watch .bad{color:var(--red-t)}
@@ -252,6 +263,10 @@
 .cx .dispatch ul{list-style:none;margin:0;padding:0;font-size:13px}
 .cx .dispatch li{padding:4px 0;border-top:1px solid var(--divider);color:var(--t2)}
 .cx .dispatch li.good{color:var(--green)} .cx .dispatch li.bad{color:var(--red-t)}
+.cx .dispatch li.warn{color:var(--orange)} .cx .dispatch li.dark{color:var(--dark-t)}
+/* the last wait in one line, over the lines themselves */
+.cx .d-sum{flex:none;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;margin:0 0 6px;font-size:13px;color:var(--t2)}
+.cx .d-sum i{font-style:normal;color:var(--t3)}
 .cx .dispatch h4{font-size:12px;color:var(--t3);margin:8px 0 2px;letter-spacing:.08em;text-transform:uppercase}
 .cx .dispatch .old li{color:var(--t3)}
 
@@ -276,8 +291,10 @@
 .cx .urgent .sub{color:#ffd0d3}
 .cx .og{display:flex;flex-direction:column;gap:6px}
 .cx .og-h{display:flex;align-items:center;gap:8px;margin:10px 0 0}
-.cx .og-h button{background:none;border:0;padding:3px 0;min-height:24px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--t1)}
-.cx .og-h button:hover{background:none;color:var(--orange)}
+.cx .og-h button{background:none;border:0;padding:3px 0;min-height:24px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--orange)}
+.cx .og-h button:hover:not(:disabled){background:none;color:var(--orange-hi);text-decoration:underline;text-underline-offset:3px}
+.cx .og-h button:active:not(:disabled){transform:none}
+.cx .sub.elsewhere{margin-top:16px}
 /* a mission is a row under a rule; the one to take says so with its orange Brief */
 .cx .offer{display:flex;gap:10px;align-items:flex-start;border-top:1px solid var(--divider);padding:10px 0}
 .cx .o-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
@@ -329,37 +346,40 @@
 .cx .node.locked b{font-weight:600}
 .cx .node.locked small,.cx .node.far small{color:var(--t3);line-height:1.25}
 .cx .node.far{font-size:12px}
-.cx .node.open{padding:0}
-.cx .node.open button{width:100%;height:100%;min-height:44px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:4px 7px;text-align:left}
-.cx .node.open button small{font-weight:500;color:inherit;opacity:.85}
-.cx .node.open button:not(:disabled){background:#4a3a1c;border-color:#a8843a #1c1406 #1c1406 #a8843a;color:#ffe2b0}
-.cx .node.open .why{padding:0 6px 4px}
+/* open: the mark and its points as text, and a small steel plate that starts it, as any other button */
+.cx .node.open{gap:3px;align-items:flex-start}
+.cx .node.open .nl{color:var(--t2)}
+.cx .node.open .nl b{color:var(--t1)}
+.cx .node.open button{min-height:26px;padding:2px 8px;white-space:nowrap}
+.cx .node.open button:disabled{padding-left:0}
+.cx .node.open .why{margin-top:0}
 .cx .node.none{background:transparent}
 
 /* ---- the Clinic ---- */
 .cx-clinic{display:grid;grid-template-columns:minmax(240px,.7fr) minmax(480px,2fr);gap:2px;height:100%}
 .cx-clinic>.panel{min-height:0;overflow-y:auto}
-/* the roster: rows under rules; the Watcher picked is lit, name in cyan */
+/* the roster: rows under rules. A row you can pick lights on hover; the one picked stays lit, its name in cyan
+   (the same as the squad's kit in the Armoury) */
 .cx .roster ul{list-style:none;margin:8px 0 12px;padding:0;display:flex;flex-direction:column}
-.cx .roster li{display:flex;flex-direction:column;gap:2px;padding:8px 8px 6px;border-top:1px solid var(--divider)}
+.cx .roster li{display:flex;flex-direction:column;border-top:1px solid var(--divider)}
+.cx .roster li:hover,.cx .kit:hover{background:#313b52}
 .cx .roster li.sel small{color:var(--t2)}
-.cx .roster li.sel{background:#33405a}
+.cx .roster li.sel,.cx .roster li.sel:hover{background:#33405a}
 .cx .roster li.sel .who b{color:var(--cyan)}
-.cx .roster .who{display:flex;align-items:center;gap:10px;text-align:left;background:none;border:0;padding:0;min-height:0;font-weight:400}
+.cx .roster .who{width:100%;display:flex;align-items:center;gap:10px;text-align:left;background:none;border:0;padding:8px;min-height:0;font-weight:400}
 .cx .roster .who:hover:not(:disabled){background:none}
-.cx .roster .who:hover b{color:var(--orange)}
 .cx .roster .who:active:not(:disabled){transform:none}
 .cx .roster .who canvas{width:44px;height:44px;flex:none;background:var(--well)}
 .cx .roster .who span:not(.st){display:flex;flex-direction:column;flex:1;min-width:0}
 .cx .roster .who b{color:var(--t1);letter-spacing:.06em}
 .cx .roster .who small{color:var(--t3);font-size:12px}
 .cx .roster .st{font:700 11px var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--t3)}
-.cx .roster li .link{align-self:flex-end;min-height:24px;padding:2px 0;font-size:12px}
 .cx .fallen{margin-top:14px;padding:10px 0 0;border-top:1px solid var(--divider)}
 .cx .fallen h4{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--t3)}
 .cx .fallen p{margin:4px 0 0;color:var(--t2);letter-spacing:.08em}
-.cx .body header{display:flex;align-items:center;gap:12px}
+.cx .body header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .cx .body header small{color:var(--t3)}
+.cx .body header .mini{margin-left:auto}
 /* the figure stands the height of the compartment */
 .cx-clinic .body{display:flex;flex-direction:column}
 .cx .figure{flex:1 1 auto;max-height:760px;display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,1.1fr) minmax(150px,1fr);gap:10px;margin-top:10px;align-items:stretch}
@@ -390,12 +410,11 @@
 .cx .loadouts ul{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
 .cx .kit{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-left:1px solid var(--divider)}
 .cx .kit:first-child{border-left:0}
-.cx .kit.sel{background:#33405a}
+.cx .kit.sel,.cx .kit.sel:hover{background:#33405a}
 .cx .kit.sel .who b{color:var(--cyan)}
 .cx .kit.res{opacity:.8}
 .cx .kit .who{display:flex;flex-direction:column;align-items:flex-start;gap:4px;background:none;border:0;padding:0;min-height:0;text-align:left;font-weight:400;min-width:72px}
 .cx .kit .who:hover:not(:disabled){background:none}
-.cx .kit .who:hover b{color:var(--orange)}
 .cx .kit .who:active:not(:disabled){transform:none}
 .cx .kit .who canvas{width:32px;height:32px;background:var(--well)}
 .cx .kit .who b{color:var(--t1);letter-spacing:.06em}
@@ -426,7 +445,8 @@
 .cx .mkb{display:flex;flex-direction:column;align-items:center;min-width:62px;min-height:38px;padding:3px 6px;line-height:1.1}
 .cx .mkb small{font-weight:400;color:var(--t2)}
 .cx .mkb.wide{min-width:132px}
-.cx span.mkb{justify-content:center;font:600 13px/1.1 var(--sans);color:var(--t3);border:1px dashed #4a5670}
+/* a mark not yet researched is quiet text, as a locked mark is in the Lab */
+.cx span.mkb{justify-content:center;font:600 13px/1.1 var(--sans);color:var(--t3);border:1px solid transparent}
 .cx span.mkb small{color:var(--t3)}
 .cx .arm-card header{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
 .cx .arm-card header small{color:var(--t3)}
@@ -523,15 +543,13 @@
   .cx .split-row{gap:6px;font-size:12px}
   .cx .split-row input{min-width:60px}
   .cx-wait .go{padding:6px 10px;font-size:13px}
-  /* the map beside a column of two: the dossier and dispatch over the missions. The dossier's half takes what it
-     needs up to 58% and scrolls as one past that; the missions always keep the rest */
+  /* the map beside a column of two: the dossier and dispatch over the missions. That half takes what it needs up
+     to 58%, the missions always keep the rest; inside it the dossier scrolls and the dispatch keeps 150px of its own */
   .cx-city{grid-template-columns:auto minmax(0,1fr);grid-template-rows:fit-content(58%) minmax(0,1fr)}
   .cx-city .cx-ops{grid-column:2}
   .cx-city .cx-mapbox{grid-row:1/3}
-  .cx-city .cx-mid{overflow-y:auto}
-  .cx-city .mid-main{max-height:none;overflow:visible;flex:none}
-  .cx-city .cx-mid>.dispatch{flex:1 0 auto}
-  .cx-city .dispatch .d-body{overflow:visible}
+  .cx-city .mid-main{max-height:none;flex:0 1 auto}
+  .cx-city .cx-mid>.dispatch{flex:1 0 150px}
   .cx-clinic{grid-template-columns:minmax(220px,.8fr) minmax(0,1.8fr)}
   .cx-armoury{grid-template-columns:minmax(0,1fr) minmax(300px,.8fr);height:auto}
   .cx .loadouts ul{grid-template-columns:repeat(2,minmax(0,1fr))}

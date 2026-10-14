@@ -145,6 +145,8 @@ W.Command = class {
   }
 
   px(text, cls = "", k = 2) { return W.pix.html(text, cls, k); }
+  // a price short enough for a small plate: $4k, $12.5k
+  k$(n) { return n >= 1000 ? `$${n % 1000 ? (n / 1000).toFixed(1) : n / 1000}k` : W.money(n); }
   // a pixel title that is also a heading
   hx(text, cls = "", k = 2, level = 2) { return `<h${level} class="hx">${this.px(text, cls, k)}</h${level}>`; }
 
@@ -156,6 +158,8 @@ W.Command = class {
     const cells = Array.from({ length: war }, (_, i) => `<i class="${i < pts ? "on" : ""} ${i >= was && i < pts ? "new" : ""}"></i>`).join("");
     const bal = this.balanceParts();
     const running = s.research.running.length;
+    // research can't be banked: with nothing running, waiting throws the day's points away, and Wait says so
+    const idleRp = running ? 0 : take.rp > 0.05 ? take.rp : 0;
     return `<header class="cx-top">
       <div class="cx-brand">${this.hx("WATCHERS", "brand", 3, 1)}</div>
       <div class="cx-read">
@@ -172,7 +176,8 @@ W.Command = class {
           <span class="c-m">Money <b>${bal.rest - bal.r}</b></span></div>
       </div>
       <div class="cx-wait">
-        <button class="go" data-a="wait" data-fk="wait" aria-keyshortcuts="W"><kbd aria-hidden="true">W</kbd>Wait a day</button>
+        <div class="w-row">
+        <button class="go" data-a="wait" data-fk="wait" aria-keyshortcuts="W" ${idleRp ? `aria-describedby="w-idle"` : ""}><kbd aria-hidden="true">W</kbd>Wait a day</button>
         <div class="until">
           <button data-a="until" data-fk="until" aria-expanded="${!!this.untilOpen}" aria-haspopup="true">Until…</button>
           ${this.untilOpen ? `<div class="until-menu" role="menu" aria-label="Wait until"><small class="mh">Wait until</small>
@@ -180,7 +185,8 @@ W.Command = class {
             <button role="menuitem" data-a="waituntil" data-u="cal" data-fk="u-cal">Cal moves</button>
             <button role="menuitem" data-a="waituntil" data-u="week" data-fk="u-week">A week has passed</button>
             <small>It stops early if a zone is lost or Cal moves in.</small></div>` : ""}
-        </div>
+        </div></div>
+        <small class="why w-idle ${idleRp ? "" : "off"}" id="w-idle">Lab idle: ${idleRp.toFixed(1)} RP a day wasted</small>
       </div>
     </header>`;
   }
@@ -402,12 +408,15 @@ W.Command = class {
     const s = this.s, d = s.dispatch && s.dispatch.to <= s.day ? s.dispatch : null;
     const span = (a, b) => a === b ? `Day ${a}` : `Days ${a}–${b}`;
     const li = (l, cls = l.cls || l.kind || "") => `<li class="${cls}">${W.esc(l.text)}</li>`;
+    // bad news first: what fell, then what to watch, then the rest, then what went well
+    const RANK = { bad: 0, warn: 1, dark: 2, good: 4 }, rank = l => RANK[l.cls || l.kind] ?? 3;
+    const worstFirst = ls => ls.map((l, i) => [l, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(x => x[0]);
     const logDays = [...new Set(s.log.map(l => l.day))];
     // since the wait: a mission, its days away, the Office; newest first, as the log runs
     const since = d ? logDays.filter(day => day >= d.to) : [];
     let body, from, to;
     if (d) {
-      const waitList = `<ul>${d.lines.map(l => li(l)).join("") || `<li class="quiet">A quiet day. Nothing changed.</li>`}</ul>`;
+      const waitList = `<ul>${worstFirst(d.lines).map(l => li(l)).join("") || `<li class="quiet">A quiet day. Nothing changed.</li>`}</ul>`;
       body = since.length
         ? since.map(day => `<h4>Day ${day}</h4><ul>${this.logDay(day).map(l => li(l)).join("")}</ul>`).join("") + `<h4>${span(d.from, d.to - 1)}</h4>${waitList}`
         : waitList;
@@ -421,10 +430,22 @@ W.Command = class {
     const days = logDays.filter(day => !shown.has(day)).slice(0, 8);
     return `<section class="panel dispatch" aria-label="Dispatch">
       <header>${this.hx("DISPATCH", "sub-t", 2)}<small>${span(from, to)}${to < s.day ? ` · now Day ${s.day}` : ""}</small></header>
+      ${d && d.sum ? this.dispatchSum(d.sum) : ""}
       <div class="d-body" data-scroll="dispatch">${body}
       ${days.length ? `<button class="link" data-a="log" data-fk="log" aria-expanded="${this.showLog}">${this.showLog ? "Hide" : "Show"} earlier days</button>` : ""}
       ${this.showLog ? days.map(day => `<h4>Day ${day}</h4><ul class="old">${this.logDay(day).map(l => li(l)).join("")}</ul>`).join("") : ""}</div>
     </section>`;
+  }
+  // the last wait in one line: zones fallen and risen, research thrown away, what came in
+  dispatchSum(m) {
+    const n = (k, verb) => `${k} zone${k === 1 ? "" : "s"} ${verb}`;
+    const parts = [
+      m.fell ? `<b class="bad">${n(m.fell, "fell")}</b>` : "",
+      m.rose ? `<b class="good">${n(m.rose, "rose")}</b>` : "",
+      m.wasted > 0.05 ? `<b class="warn">${m.wasted.toFixed(1)} RP wasted</b>` : "",
+      `<span>${m.cash >= 0 ? "+" : ""}${W.money(m.cash)} · ${m.rp.toFixed(1)} RP</span>`,
+    ].filter(Boolean);
+    return `<p class="d-sum">${parts.join(`<i aria-hidden="true">·</i>`)}</p>`;
   }
   // a day's log, with the same line said twice said once
   logDay(day) {
@@ -446,9 +467,16 @@ W.Command = class {
     const beyond = o => (o.threat || 1) > M.squadTier(s, o) + 1;
     const urgentNear = urgent.filter(o => !beyond(o) && shown(o)), urgentFar = urgent.filter(beyond);
     const rest = pool.filter(o => !urgentOf(o) && shown(o));
-    const byZone = {};
-    for (const o of rest) (byZone[o.zone] = byZone[o.zone] || []).push(o);
-    const order = Object.keys(byZone).sort((a, b) => M.zone(s, a).C - M.zone(s, b).C);
+    // missions in groups by zone, the weakest zone first
+    const groups = list => {
+      const byZone = {};
+      for (const o of list) (byZone[o.zone] = byZone[o.zone] || []).push(o);
+      return Object.keys(byZone).sort((a, b) => M.zone(s, a).C - M.zone(s, b).C).map(id => { const z = M.zone(s, id), L = M.level(z.C);
+        return `<section class="og"><h3 class="og-h"><button data-a="zone" data-z="${id}" data-fk="og-${id}">${W.esc(M.zoneDef(id).name)}</button><span class="lvl ${z.lost ? "ls" : "l" + Math.max(0, L)}">${z.lost ? "LOST" : "L" + L}</span></h3>
+          ${byZone[id].sort((a, b) => (a.threat || 1) - (b.threat || 1)).map(o => this.offerHTML(o)).join("")}</section>`; }).join("");
+    };
+    // a dossier whose zone has nothing left to list: the rest of the city's work, rather than an empty column
+    const elsewhere = this.zoneId && !this.allOffers && !rest.length ? s.offers.filter(o => !urgentOf(o) && shown(o) && o.zone !== this.zoneId) : [];
     return `<header class="ops-head">${this.hx("MISSIONS", "sub-t", 2)}
         <p class="squadline"><span title="Missions above the squad's tier cost Watchers. Quiet ones can be done without a shot fired.">Squad tier <b>${tier}</b><span class="sr">: missions above it cost Watchers; quiet ones can be done without a shot fired</span></span> <span class="dots t-ok" aria-hidden="true">${this.dots(tier, tier)}</span> · ${squad.map(a => W.esc(a.name)).join(", ")}
           <button class="link" data-a="screen" data-screen="clinic" data-fk="to-clinic">Clinic</button></p>
@@ -457,11 +485,10 @@ W.Command = class {
         ${urgentFar.length ? `<div class="far"><p><b>${urgentFar.length} beyond the squad:</b> ${urgentFar.map(o => `${W.esc(M.KINDS[o.kind].name)} in ${W.esc(M.zoneDef(o.zone).name)} (T${o.threat || 1})`).join(", ")}. Within reach at squad tier ${Math.min(...urgentFar.map(o => o.threat || 1))}.</p>
           <button class="link" data-a="showfar" data-fk="showfar" aria-expanded="${!!this.showFar}">${this.showFar ? "Hide them" : "Show them"}</button></div>
           ${this.showFar ? urgentFar.map(o => this.offerHTML(o, true)).join("") : ""}` : ""}</section>` : ""}
-      ${this.zoneId && !this.allOffers ? `<button class="link" data-a="alloffers" data-fk="alloffers">Show missions in every zone (${s.offers.length - urgent.length})</button>` : this.zoneId ? `<button class="link" data-a="alloffers" data-fk="alloffers">Only ${W.esc(M.zoneDef(this.zoneId).name)}</button>` : ""}
-      ${order.map(id => { const z = M.zone(s, id), L = M.level(z.C);
-        return `<section class="og"><h3 class="og-h"><button data-a="zone" data-z="${id}" data-fk="og-${id}">${W.esc(M.zoneDef(id).name)}</button><span class="lvl ${z.lost ? "ls" : "l" + Math.max(0, L)}">${z.lost ? "LOST" : "L" + L}</span></h3>
-          ${byZone[id].sort((a, b) => (a.threat || 1) - (b.threat || 1)).map(o => this.offerHTML(o)).join("")}</section>`; }).join("")}
-      ${!s.offers.length ? `<p class="quiet">Nothing on offer. Wait a day.</p>` : this.zoneId && !this.allOffers && !order.length && inMid ? `<p class="quiet">Its one mission is in the dossier, under Best here.</p>` : ""}`;
+      ${elsewhere.length ? "" : this.zoneId && !this.allOffers ? `<button class="link" data-a="alloffers" data-fk="alloffers">Show missions in every zone (${s.offers.length - urgent.length})</button>` : this.zoneId ? `<button class="link" data-a="alloffers" data-fk="alloffers">Only ${W.esc(M.zoneDef(this.zoneId).name)}</button>` : ""}
+      ${groups(rest)}
+      ${elsewhere.length ? `<h3 class="sub elsewhere">Elsewhere <span>${inMid ? `${W.esc(M.zoneDef(this.zoneId).name)}'s one mission is in the dossier` : `nothing in ${W.esc(M.zoneDef(this.zoneId).name)} today`}</span></h3>${groups(elsewhere)}` : ""}
+      ${!s.offers.length ? `<p class="quiet">Nothing on offer. Wait a day.</p>` : ""}`;
   }
   dots(threat) {
     return Array.from({ length: 5 }, (_, i) => `<i class="${i < threat ? "on" : ""}"></i>`).join("");
@@ -483,7 +510,10 @@ W.Command = class {
         ${M.bigGun(o) ? `<p class="o-gun">${M.carriesBanhammer(s) ? "A BanHammer strike goes with the squad: it counts here. X calls it down; a strike not fired comes home." : "A BanHammer strike would count here, if the squad carried one."}</p>` : ""}
         ${why ? `<p class="why">${W.esc(why)}</p>` : ""}
       </div>
-      ${(k => `<button class="${fkp && (this.rec === o.id || risk === "ok") ? "go" : ""}" data-a="deploy" data-o="${o.id}" aria-label="Brief: ${W.esc(title)}, ${W.esc(K.name)}${title !== D.name ? ` in ${W.esc(D.name)}` : ""}"${k ? ` aria-keyshortcuts="B"` : ""} data-fk="${fkp}deploy-${o.id}" ${why ? "disabled" : ""}>${k ? `<kbd aria-hidden="true">B</kbd>` : ""}Brief</button>`)(!why && this.briefKey === o.id + fkp)}
+      ${(k => { const armed = this.armed === "brief-" + o.id;
+        // beyond the squad, Brief says so in red, and the first press only arms it: the dead stay dead
+        const cls = armed ? "armed" : fkp && (this.rec === o.id || risk === "ok") ? "go" : risk === "deadly" ? "deadly" : "";
+        return `<button class="${cls}" data-a="deploy" data-o="${o.id}" data-risk="${risk}" aria-label="${armed ? "Confirm brief, beyond the squad" : "Brief"}: ${W.esc(title)}, ${W.esc(K.name)}${title !== D.name ? ` in ${W.esc(D.name)}` : ""}${risk === "deadly" && !armed ? ", beyond the squad" : ""}"${k ? ` aria-keyshortcuts="B"` : ""} data-fk="${fkp}deploy-${o.id}" ${why ? "disabled" : ""}>${k ? `<kbd aria-hidden="true">B</kbd>` : ""}${armed ? "Brief anyway" : "Brief"}</button>`; })(!why && this.briefKey === o.id + fkp)}
     </div>`;
   }
 
@@ -502,7 +532,8 @@ W.Command = class {
       const far = unmet(r).filter(n => !r.line || !n.startsWith(r.line + ":"));
       if (unmet(r).length) return `<span class="node locked"><b>MK${r.mk || 1}</b>${far.length ? `<small>needs ${W.esc(far.map(n => M.item(n).name).join(", "))}</small>` : ""}</span>`;
       const why = M.canStart(s, r);
-      return `<span class="node open"><button data-a="start" data-r="${r.id}" data-fk="start-${r.id}" ${why ? "disabled" : ""} title="${W.esc(this.what(r))}" aria-label="Start ${W.esc(r.name)}: ${W.money(r.cost[0])}, then ${r.cost[1]} RP${r.points === 2 ? ", counts 2" : ""}${why ? `. ${W.esc(why)}` : ""}"><b>MK${r.mk || 1}</b><small>Start: ${W.money(r.cost[0])}</small><small>then ${r.cost[1]} RP${r.points === 2 ? " · counts 2" : ""}</small></button>${why ? `<small class="why">${W.esc(why)}</small>` : ""}</span>`;
+      // open: the mark and what it takes in points, over a small plate that starts it for its price
+      return `<span class="node open"><small class="nl"><b>MK${r.mk || 1}</b> · ${r.cost[1]} RP${r.points === 2 ? " · counts 2" : ""}</small><button class="mini" data-a="start" data-r="${r.id}" data-fk="start-${r.id}" ${why ? "disabled" : ""} title="${W.esc(this.what(r))}" aria-label="Start ${W.esc(r.name)}: ${W.money(r.cost[0])}, then ${r.cost[1]} RP${r.points === 2 ? ", counts 2" : ""}${why ? `. ${W.esc(why)}` : ""}">Start · ${this.k$(r.cost[0])}</button>${why ? `<small class="why">${W.esc(why)}</small>` : ""}</span>`;
     };
     const lineRow = (lineId, name, what) => {
       const marks = [1, 2, 3].map(k => M.item(`${lineId}:${k}`));
@@ -515,7 +546,7 @@ W.Command = class {
     const single = r => { const a = avail.find(x => x.id === r.id) || r; return `<li><span class="ln"><b>${W.esc(r.name)}</b><small>${W.esc(this.what(r))}</small></span>${node(a)}</li>`; };
     const repeat = id => { const a = avail.find(x => x.id === id), p = run.find(x => x.id === id);
       const name = id === "works" ? "Zone works" : "Requisition", n = s.research[id];
-      return `<li><span class="ln"><b>${name}${n ? ` <small>×${n} done</small>` : ""}</b><small>${W.esc(this.what({ id }))}</small></span>${p ? node({ id, mk: n + 1, needs: [] }) : a ? `<span class="node open"><button data-a="start" data-r="${id}" data-fk="start-${id}" ${M.canStart(s, a) ? "disabled" : ""} aria-label="Start ${name} number ${n + 1}: ${W.money(a.cost[0])}, then ${a.cost[1]} RP"><b>#${n + 1}</b><small>Start: ${W.money(a.cost[0])}</small><small>then ${a.cost[1]} RP</small></button>${M.canStart(s, a) ? `<small class="why">${W.esc(M.canStart(s, a))}</small>` : ""}</span>` : ""}</li>`; };
+      return `<li><span class="ln"><b>${name}${n ? ` <small>×${n} done</small>` : ""}</b><small>${W.esc(this.what({ id }))}</small></span>${p ? node({ id, mk: n + 1, needs: [] }) : a ? `<span class="node open"><small class="nl"><b>#${n + 1}</b> · ${a.cost[1]} RP</small><button class="mini" data-a="start" data-r="${id}" data-fk="start-${id}" ${M.canStart(s, a) ? "disabled" : ""} aria-label="Start ${name} number ${n + 1}: ${W.money(a.cost[0])}, then ${a.cost[1]} RP">Start · ${this.k$(a.cost[0])}</button>${M.canStart(s, a) ? `<small class="why">${W.esc(M.canStart(s, a))}</small>` : ""}</span>` : ""}</li>`; };
     const counters = avail.filter(r => r.kind === "counter");
     const runCounters = run.filter(p => p.id.startsWith("counter:"));
     return `<section class="panel lab-war">
@@ -561,8 +592,7 @@ W.Command = class {
       <ul>${s.roster.map(x => `<li class="${x.id === this.agentId ? "sel" : ""} ${x.deployed ? "on" : ""}">
           <button class="who" data-a="agent" data-id="${x.id}" data-fk="agent-${x.id}" aria-pressed="${x.id === this.agentId}"><canvas width="44" height="44" data-port="${x.id}"></canvas>
             <span><b>${W.esc(x.name)}</b><small>${W.RANK.names[M.rank(x)]} · ${x.missions} mission${x.missions === 1 ? "" : "s"} · ${x.kills} down</small><small>worth ${W.money(M.worth(x))}</small></span>
-            ${x.deployed ? "" : `<span class="st">Reserve</span>`}</button>
-          <button class="link" data-a="deploytoggle" data-id="${x.id}" data-fk="dt-${x.id}" aria-label="${x.deployed ? `Send ${W.esc(x.name)} to reserve` : `Put ${W.esc(x.name)} in the squad`}">${x.deployed ? "Send to reserve" : "Put in the squad"}</button></li>`).join("")}</ul>
+            ${x.deployed ? "" : `<span class="st">Reserve</span>`}</button></li>`).join("")}</ul>
       <button data-a="hire" data-fk="hire" ${why ? "disabled" : ""}>Recruit · ${W.money(M.PRICE.recruit)}</button>${why ? `<small class="why">${W.esc(why)}</small>` : ""}
       ${s.fallen.length ? `<div class="fallen"><h4>Fallen</h4><p>${s.fallen.map(W.esc).join(" · ")}</p></div>` : ""}
     </section>`;
@@ -578,6 +608,7 @@ W.Command = class {
     const left = ["brain", "eyes", "arms"], right = ["heart", "chest", "legs"];
     const body = `<section class="panel body">
       <header>${this.hx(a.name, "sub-t", 3)}<small>${a.deployed ? "In the squad" : "In reserve"} · ${W.RANK.names[M.rank(a)]} · ${a.missions} mission${a.missions === 1 ? "" : "s"}${M.rank(a) < M.RANKS.length ? `, ${M.RANKS[M.rank(a)] - a.missions} more to ${W.RANK.names[M.rank(a) + 1]}` : ""}</small>
+        <button class="mini" data-a="deploytoggle" data-id="${a.id}" data-fk="dt-${a.id}" aria-label="${a.deployed ? `Send ${W.esc(a.name)} to reserve` : `Put ${W.esc(a.name)} in the squad`}">${a.deployed ? "Send to reserve" : "Put in the squad"}</button>
         <button class="link" data-a="screen" data-screen="armoury" data-fk="to-armoury">Kit in the Armoury</button></header>
       <div class="figure"><div class="slots">${left.map(id => slot(W.MODS.find(m => m.id === id))).join("")}</div>
         <canvas data-figure="${a.id}"></canvas>
@@ -616,7 +647,7 @@ W.Command = class {
   armouryHTML() {
     const s = this.s, M = W.M, a = M.agentById(s, this.agentId);
     const icon = it => it.type === "purrsuader" && (it.mk || 1) >= 2 ? "purr2" : it.type;
-    const k$ = n => n >= 1000 ? `$${n % 1000 ? (n / 1000).toFixed(1) : n / 1000}k` : W.money(n);
+    const k$ = n => this.k$(n);
     const sel = this.armPick();
     const drag = (from, key, label, extra = "") => `role="button" tabindex="0" draggable="true" data-drag="${from}" data-k="${key}" aria-label="${W.esc(label)}" ${extra}`;
     // the squad's loadouts: eight slots each, and BanHammer strikes, which take none; each card takes a drop
@@ -830,8 +861,8 @@ W.Command = class {
     if (!b || b.disabled || b.tagName === "INPUT" || b.tagName === "SELECT") return;
     const s = this.s, M = W.M, d = b.dataset, a = M.agentById(s, this.agentId);
     // a second click confirms what loses money; any other click disarms
-    const armKey = d.a === "declare" ? "war" : d.a === "cancel" ? "cancel-" + d.r : d.a === "event" ? "event-" + d.e : null;
-    const needsArm = armKey && (d.a === "declare" || d.a === "cancel" || (d.a === "event" && (M.EVENTS.find(x => x.id === d.e) || {}).price >= 100000));
+    const armKey = d.a === "declare" ? "war" : d.a === "cancel" ? "cancel-" + d.r : d.a === "event" ? "event-" + d.e : d.a === "deploy" ? "brief-" + d.o : null;
+    const needsArm = armKey && (d.a === "declare" || d.a === "cancel" || (d.a === "deploy" && d.risk === "deadly") || (d.a === "event" && (M.EVENTS.find(x => x.id === d.e) || {}).price >= 100000));
     if (needsArm && this.armed !== armKey) { this.armed = armKey; W.audio.play("click"); return this.draw(); }
     this.armed = null;
     switch (d.a) {
@@ -997,8 +1028,11 @@ W.Command = class {
       if (/falls to level 0|is pacified|slips from level 3/.test(l.text) || said.has(l.text)) continue;
       said.add(l.text); lines.push({ cls: l.kind, text: l.text });
     }
+    // the wait in one line, for the head of the dispatch: what fell, what rose, what was thrown away
+    let fell = 0, rose = 0;
+    for (const z of s.zones) { const b = before.zones[z.id]; if ((z.lost && !b.lost) || (!z.lost && !z.locked && M.level(z.C) < b.L)) fell++; else if (!z.lost && !z.locked && M.level(z.C) > b.L) rose++; }
     // kept in the campaign, so a briefing or a reload doesn't lose what the last wait did
-    s.dispatch = { from: before.day, to: s.day, days, lines };
+    s.dispatch = { from: before.day, to: s.day, days, lines, sum: { fell, rose, wasted, cash: after.cash - before.cash, rp } };
     // the banners: what nobody should miss
     for (const z of s.zones) if (z.lost && !before.zones[z.id].lost) this.banners.push({ tone: "red", big: "ZONE LOST", sub: `${M.zoneDef(z.id).name} has fallen to Cal. A siege takes it back.`, sound: "lose" });
     if (s.cal.zone && s.cal.zone !== before.cal) this.banners.push({ tone: "red", big: "CAL MOVES", sub: `He's pushing ${M.zoneDef(s.cal.zone).name}${M.zone(s, s.cal.zone).lost ? ", which he already holds" : ""}. A mission against his crew ends it.`, sound: "alarm" });
@@ -1101,7 +1135,11 @@ W.Command = class {
     // B is also the Konami code's second-last key: mid-code, it waits for the A
     if (k === "b" && this.screen === "city" && this.konami !== KONAMI.length - 1) {
       const o = this.briefTarget(), why = o ? W.M.canRun(this.s, o) : "no mission to brief here";
-      if (why) { W.audio.play("deny"); this.toast(why[0].toUpperCase() + why.slice(1) + "."); } else this.game.toBriefing(o.id);
+      if (why) { W.audio.play("deny"); this.toast(why[0].toUpperCase() + why.slice(1) + "."); return true; }
+      // beyond the squad, B arms the briefing as a click would; B again confirms
+      const deadly = (o.threat || 1) > W.M.squadTier(this.s, o) + 1;
+      if (deadly && this.armed !== "brief-" + o.id) { this.armed = "brief-" + o.id; W.audio.play("click"); this.draw(); this.toast("Beyond the squad. Press B again to brief it."); return true; }
+      this.armed = null; this.game.toBriefing(o.id);
       return true;
     }
     return false;

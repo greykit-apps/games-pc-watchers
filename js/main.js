@@ -34,8 +34,6 @@ const Game = W.game = {
   toTitle(reveal = true) {
     this.mode = "title";
     this.closeSheets();
-    if (this.mr) { this.mr.close(); this.mr = null; }
-    this.fromMapRoom = false;
     if (this.ow) { this.ow.close(); this.ow = null; }
     document.getElementById("game").hidden = true;
     W.audio.ambience(false);
@@ -48,7 +46,6 @@ const Game = W.game = {
       items: [
         (c => c && { act: "resume", label: "Resume campaign", key: "R", meta: `Day ${c.day} · ${W.money(c.cash)}${c.war ? " · taking control" : ""}` })(W.M.load()),
         { act: "new", label: "New campaign", key: "N" },
-        { act: "skirmish", label: "Skirmish", key: "K" },
         "gap",
         { act: "settings", label: "Settings", key: "S" },
         { act: "help", label: "Help", key: "?" },
@@ -64,7 +61,6 @@ const Game = W.game = {
           if (W.M.load() && !(await ui.confirm("Start a new campaign? The one in progress, its squad, its city and its research, is lost.", "Start a new campaign"))) return;
           this.campaign = W.M.fresh(); W.M.save(this.campaign); this.toOverworld();
         }
-        if (act === "skirmish") { this.campaign = null; this.toMapRoom(); }
       },
     });
     // a line under the name: whose city this is
@@ -175,28 +171,14 @@ const Game = W.game = {
     this.ow.open();
   },
 
-  /* ---------------- the map room: skirmishes in any district ---------------- */
-  toMapRoom() {
-    this.closeSheets();
-    if (this.titleUI) { this.titleUI.unmount(); this.titleUI = null; }
-    const host = document.getElementById("title-host");
-    host.hidden = true; host.innerHTML = ""; this.attract = null;
-    document.getElementById("game").hidden = true;
-    W.audio.ambience(false);
-    this.mode = "maproom";
-    if (this.mr) this.mr.close();
-    this.mr = new W.MapRoom(this);
-    this.mr.open();
-  },
-
   /* ---------------- the briefing ----------------
-   * offerId: a mission on offer in the campaign, or null for a skirmish
-   * with the standard kit. */
-  toBriefing(offerId, level) {
-    const c = offerId && this.campaign && this.campaign.offers.find(x => x.id === offerId);
-    this.run = { contract: c || null, opts: { roster: c ? W.M.missionRoster(this.campaign) : undefined } };
-    this.level = level || (c ? W.M.missionFor(this.campaign, c) : W.LEVELS.plaza);
-    if (this.mr) { this.mr.close(); this.mr = null; }
+   * offerId: a mission on offer in the campaign. Every mission is the
+   * campaign's: there is no skirmish. */
+  toBriefing(offerId) {
+    const c = this.campaign && this.campaign.offers.find(x => x.id === offerId);
+    if (!c) return;
+    this.run = { contract: c, opts: { roster: W.M.missionRoster(this.campaign) } };
+    this.level = W.M.missionFor(this.campaign, c);
     const L = this.level;
     this.world = new W.World(L, this.run.opts);
     if (this.ow) { this.ow.close(); this.ow = null; }
@@ -213,7 +195,7 @@ const Game = W.game = {
     const plan = L.options && (L.options.spawn.length > 1 || L.options.pickup.length > 1);
     el.innerHTML = `<div class="wrap">
       <div class="col">
-        <div class="tag">${c ? `Day ${this.campaign.day} · ` : "Skirmish · "}${W.esc(L.district)}</div>
+        <div class="tag">Day ${this.campaign.day} · ${W.esc(L.district)}</div>
         <h1>${W.esc(L.name)}</h1>
         <div class="code">OPERATION ${W.esc(L.codename)}</div>
         <div class="from">From: ${W.esc(L.briefing.from)}</div>
@@ -226,12 +208,12 @@ const Game = W.game = {
         ${plan ? `<div class="panel plan"><h3>The plan: where you go in, and where the car waits</h3><div data-plan></div></div>` : ""}
       </div>
       <div class="col">
-        ${c ? (z => `<div class="panel"><h3>${W.esc(W.M.KINDS[c.kind].name)} in ${W.esc(W.M.zoneDef(c.zone).name)}</h3><table>
+        ${(z => `<div class="panel"><h3>${W.esc(W.M.KINDS[c.kind].name)} in ${W.esc(W.M.zoneDef(c.zone).name)}</h3><table>
           <tr><td>Reward</td><td>${W.esc(W.M.describeReward(this.campaign, c))}</td></tr>
           <tr><td>The streets</td><td>${z.lost ? "lost to Cal: the enemy is dug in" : `control level ${W.M.level(z.C)}`}</td></tr>
           <tr><td>Time</td><td>${c.days} days away; the zones' pips stand as set</td></tr>
           <tr><td>Losses</td><td>the dead are gone for good, with all spent on them</td></tr>
-          ${this.campaign.cal.reads ? `<tr><td>Cal's answer</td><td>He has heard about ${W.esc(W.M.CAL_ANSWER[this.campaign.cal.reads].heard)}: ${W.esc(W.M.CAL_ANSWER[this.campaign.cal.reads].answer)}</td></tr>` : ""}</table></div>`)(W.M.zone(this.campaign, c.zone)) : ""}
+          ${this.campaign.cal.reads ? `<tr><td>Cal's answer</td><td>He has heard about ${W.esc(W.M.CAL_ANSWER[this.campaign.cal.reads].heard)}: ${W.esc(W.M.CAL_ANSWER[this.campaign.cal.reads].answer)}</td></tr>` : ""}</table></div>`)(W.M.zone(this.campaign, c.zone))}
         <div class="panel"><h3>Intel</h3><table data-intel>${this.intelRows(L)}</table></div>
       </div>
       <div class="acts"><button class="primary" data-go><kbd>Enter</kbd>Begin mission</button><button data-back><kbd>Esc</kbd>Back</button></div>
@@ -318,7 +300,7 @@ const Game = W.game = {
     return L.briefing.intel.filter(([a]) => !(plan && a === "Pickup")).map(([a, b]) => `<tr><td>${W.esc(a)}</td><td>${W.esc(b)}</td></tr>`).join("");
   },
 
-  backFromBrief() { if (this.run && this.run.contract) this.toOverworld(); else if (this.fromMapRoom) this.toMapRoom(); else this.toTitle(); },
+  backFromBrief() { this.toOverworld(); },
 
   /* ---------------- the mission ---------------- */
   beginMission() {
@@ -345,9 +327,6 @@ const Game = W.game = {
     this.hint(true);
     this.view.focus && this.view.focus();
   },
-  /* a skirmish can be replayed at once; a contract cannot (the dead stay dead) */
-  restartMission() { if (this.run && this.run.contract) return; this.world = null; this.beginMission(); },
-
   banner(text, sub, color) {
     const b = document.getElementById("banner");
     b.style.color = color;
@@ -825,11 +804,6 @@ const Game = W.game = {
         if (document.querySelector(".gk-sheet")) return;
         this.toggleSound(); return;
       }
-      if (this.mode === "maproom") {
-        if (document.querySelector(".gk-sheet")) return;
-        if (this.mr && this.mr.onKey(k, ev)) ev.preventDefault();
-        return;
-      }
       if (this.mode === "world") {
         if (document.querySelector(".gk-sheet")) return;
         if (this.ow && this.ow.onKey(k, ev)) ev.preventDefault();
@@ -843,16 +817,13 @@ const Game = W.game = {
         return;
       }
       if (this.mode === "debrief") {
-        if (this.run && this.run.contract) { if (k === "enter" || k === "escape") { ev.preventDefault(); this.toOverworld(); } return; }
-        if (k === "r" || k === "enter") { ev.preventDefault(); this.restartMission(); }
-        if (k === "escape" || k === "t") { ev.preventDefault(); this.backFromBrief(); }
+        if (k === "enter" || k === "escape") { ev.preventDefault(); this.toOverworld(); }
         return;
       }
       if (this.mode !== "play") return;
       if (document.querySelector(".gk-sheet")) return;
       if (this.menuEl) {
         if (k === "escape") { ev.preventDefault(); this.closeMenu(); }
-        if (k === "r" && !(this.run && this.run.contract)) { ev.preventDefault(); this.closeMenu(); this.restartMission(); }
         return;
       }
       if (["w", "a", "s", "d", "arrowleft", "arrowright", "arrowup", "arrowdown"].includes(k)) { this.keys.add(k); ev.preventDefault(); return; }
@@ -920,11 +891,10 @@ const Game = W.game = {
       <p class="note">${W.esc(this.level.name)} · ${this.hud.clock.textContent} on the clock · ${w.agents.filter(a => a.alive).length} of ${w.agents.length} Watchers standing</p>
       <div class="col">
         <button class="primary" data-a="resume"><kbd>Esc</kbd>Resume</button>
-        ${this.run && this.run.contract ? "" : `<button data-a="restart"><kbd>R</kbd>Restart mission</button>`}
         <button data-a="help"><kbd>?</kbd>Controls</button>
         <button data-a="sound" aria-label="Sound" aria-pressed="${!W.prefs.muted}"><kbd>M</kbd>Sound ${W.prefs.muted ? "off" : "on"}</button>
         <button data-a="rain" aria-pressed="${W.prefs.rain}">Rain ${W.prefs.rain ? "on" : "off"}</button>
-        <button class="danger" data-a="abort">${this.run && this.run.contract ? "Abort mission" : "Abort to title"}</button>
+        <button class="danger" data-a="abort">Abort mission</button>
       </div>
       <div data-help hidden><h3>Controls</h3>${this.helpTabs()[0][1]}</div></div>`;
     el.addEventListener("click", async ev => {
@@ -932,17 +902,13 @@ const Game = W.game = {
       const b = ev.target.closest("button"); if (!b) return;
       const a = b.dataset.a;
       if (a === "resume") this.closeMenu();
-      if (a === "restart") { this.closeMenu(); this.restartMission(); }
       if (a === "help") el.querySelector("[data-help]").hidden = !el.querySelector("[data-help]").hidden;
       if (a === "sound") { this.toggleSound(); b.setAttribute("aria-pressed", String(!W.prefs.muted)); b.innerHTML = `<kbd>M</kbd>Sound ${W.prefs.muted ? "off" : "on"}`; }
       if (a === "rain") { W.prefs.rain = !W.prefs.rain; W.savePrefs(); W.audio.setRain(W.prefs.rain); b.setAttribute("aria-pressed", String(W.prefs.rain)); b.textContent = `Rain ${W.prefs.rain ? "on" : "off"}`; }
       if (a === "abort") {
-        const contract = this.run && this.run.contract;
-        const q = contract ? "Abort the mission? It counts as a failed mission: no reward, the zone loses control, and anyone already down stays down." : "Abort the mission and go back to the title?";
-        if (!(await confirmSheet(q, "Abort mission"))) return;
+        if (!(await confirmSheet("Abort the mission? It counts as a failed mission: no reward, the zone loses control, and anyone already down stays down.", "Abort mission"))) return;
         this.closeMenu();
-        if (contract) { this.world.end("lost", "Mission aborted."); this.toDebrief(); }
-        else this.toTitle();
+        this.world.end("lost", "Mission aborted."); this.toDebrief();
       }
     });
     document.body.appendChild(el);
@@ -1017,13 +983,10 @@ const Game = W.game = {
       ${slip ? `<h3>Back at command</h3><table class="payslip">${slip.lines.map(([k, v]) => `<tr><td>${W.esc(k)}</td><td>${W.esc(typeof v === "number" ? W.money(v) : v)}</td></tr>`).join("")}
         <tr class="total"><td>Cash now</td><td>${W.money(this.campaign.cash)}</td></tr></table>` : ""}
       <p class="quote">${W.esc(quote)}</p>
-      <div class="acts">${camp ? `<button class="primary" data-a="world"><kbd>Enter</kbd>Back to command</button>`
-        : `<button class="primary" data-a="again"><kbd>R</kbd>${won ? "Play it again" : "Try again"}</button><button data-a="title"><kbd>Esc</kbd>${this.fromMapRoom ? "Back to the map room" : "Back to title"}</button>`}</div>
+      <div class="acts"><button class="primary" data-a="world"><kbd>Enter</kbd>Back to command</button></div>
     </div>`;
     el.addEventListener("click", ev => {
       const b = ev.target.closest("button"); if (!b) return;
-      if (b.dataset.a === "again") this.restartMission();
-      if (b.dataset.a === "title") this.backFromBrief();
       if (b.dataset.a === "world") this.toOverworld();
     });
     document.body.appendChild(el);

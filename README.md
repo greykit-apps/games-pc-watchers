@@ -54,12 +54,10 @@ The rules, and the numbers behind them, are in [docs/meta.md](docs/meta.md);
 - **Take Control**, Casey Benton's order once there are 30 upgrade points:
   decay rises by 30%, Cal commits, and each zone gets a story chain whose last
   step locks it down. Lock every zone down to win.
-- **Skirmish** on the title plays any district with the standard kit and saves
-  nothing.
 
 The campaign saves under `pcwatchers_campaign_v2` after every change.
 
-### Districts and the Map Room
+### Districts
 
 Each district of PumaCity is **one map**, far bigger than any one mission
 needs, and every mission is played on all of it: the squad can walk from
@@ -147,11 +145,6 @@ What makes them play:
   houses of varied shapes (some with garages, every driveway reaching the
   street, sidewalks on both sides), and fenced backyards and alleys behind
   every row for the slow way round.
-
-**Skirmish** on the title opens the **Map Room**: every district, top-down,
-with its landmarks listed. Pick one to put the target there, or leave it to
-chance; *Shuffle* rolls another mission; *Fly over* shows the district live
-with a free camera (and `R` takes every roof off); *Brief & play* runs it.
 
 ### The scanner
 
@@ -287,7 +280,6 @@ js/districts/*.js     Downtown, Suburbs, Convention Center, The Ranch, Starport
 js/campaign/meta.js   the campaign: zones, Cal, research, missions, squad (no DOM)
 js/ui/hud.js          the mission's left panel
 js/ui/command.js      Watchers command: the board, missions, research, squad, events
-js/ui/maproom.js      the Map Room: districts, sections, missions, fly-overs
 js/main.js            screens, input, loop
 tools/sim.js          headless bot runs of the mission
 tools/bench.js        the tactics bench: a mission by level, threat and tactic

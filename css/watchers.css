@@ -165,43 +165,8 @@ h1,h2,h3{font-weight:600;margin:0}
 .gk-title>.scene canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
 .gk-title .gk-tag{margin-top:8px;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--dim)}
 
-/* ---- page headers (the map room), the debrief's objectives and payslip ---- */
-.ow-head{max-width:1240px;margin:0 auto 16px;display:flex;flex-wrap:wrap;align-items:center;gap:16px 28px;border-bottom:1px solid var(--line);padding-bottom:14px}
-.ow-brand .tag{font-size:10px;letter-spacing:.24em;color:var(--dim);text-transform:uppercase}
-.ow-brand h1{font-size:18px;letter-spacing:.22em;color:var(--accent);text-transform:uppercase}
-.ow-acts{display:flex;gap:8px}
+/* ---- the debrief's objectives and payslip ---- */
 .done{color:var(--good);font-size:11px;margin:8px 0 0}
 .payslip{width:100%;margin-top:6px}
 .payslip td:last-child{text-align:right;color:var(--text)}
 .payslip tr.total td{border-top:1px solid var(--line);color:var(--amber);font-weight:600}
-
-/* ---- the map room ---- */
-.mr{position:fixed;inset:0;z-index:20;overflow-y:auto;background:radial-gradient(ellipse at 50% 0%,#0d1424 0%,var(--bg) 55%);padding:18px 20px 32px}
-.mr-body{max-width:1300px;margin:0 auto;display:grid;grid-template-columns:220px minmax(0,560px) minmax(0,1fr);gap:20px;align-items:start}
-@media (max-width:1100px){.mr-body{grid-template-columns:200px minmax(0,1fr)}.mr-info{grid-column:1/-1}}
-@media (max-width:700px){.mr-body{grid-template-columns:1fr}}
-.mr-list{display:flex;flex-direction:column;gap:6px}
-.mr-d{display:flex;flex-direction:column;gap:3px}
-.mr-list button{text-align:left;display:flex;flex-direction:column;gap:0;padding:6px 10px}
-.mr-list button b{color:var(--text);font-weight:600;letter-spacing:.06em}
-.mr-list small{color:var(--dim);font-size:10px}
-.mr-list .sec{margin-left:14px;font-size:12px;padding:4px 10px}
-.mr-d.on>button:first-child{border-color:var(--lit)}
-.mr-map canvas{display:block;width:100%;max-width:560px;aspect-ratio:1;border:1px solid var(--line);background:#03050b;image-rendering:pixelated}
-.mr-map .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--dim);margin-top:6px}
-.mr-map .legend i{display:inline-block;width:9px;height:9px;margin-right:5px;vertical-align:0}
-.mr-info{background:var(--panel);border:1px solid var(--line);padding:14px 16px}
-.mr-info h2{font-size:14px;letter-spacing:.18em;color:var(--accent);text-transform:uppercase;margin:0 0 6px}
-.mr-info h3{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:14px 0 6px}
-.mr-info p{color:var(--ink);margin:0 0 10px}
-.mr-info table{border-collapse:collapse;width:100%;font-size:12px}
-.mr-info td{padding:2px 8px 2px 0;vertical-align:top;color:var(--text)}
-.mr-info td:first-child{color:var(--dim);white-space:nowrap}
-.mr-info .col{display:flex;flex-direction:column;gap:6px;margin-top:14px}
-.mr-info .col button{text-align:left}
-.fly{position:fixed;inset:0;z-index:30;background:var(--bg)}
-.fly>canvas[data-v]{position:absolute;inset:0;image-rendering:pixelated;cursor:grab}
-.fly-scan{position:absolute;right:14px;top:14px;width:220px;height:220px;border:1px solid var(--line);image-rendering:pixelated;cursor:crosshair}
-.fly-bar{position:absolute;left:14px;right:250px;top:14px;display:flex;gap:14px;align-items:center;background:rgba(5,7,15,.85);border:1px solid var(--line);padding:6px 10px;font-size:12px;color:var(--dim)}
-.fly-bar b{color:var(--accent);letter-spacing:.14em;text-transform:uppercase}
-.fly-bar button{margin-left:auto}

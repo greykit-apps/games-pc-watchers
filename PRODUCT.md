@@ -30,7 +30,7 @@ It is Syndicate's mechanics rebuilt for the browser and set in PumaCity's shared
 
 - Desktop browser, mouse and keyboard, and nothing else: no phone or tablet layout, by the author's decision (2026-10-10). Controls follow Syndicate: number keys select Watchers, left-click moves, right-click fires or persuades, the scanner sits top-down.
 - Sessions alternate between the **command board** (zones, pips, research, squad, events), which is a read-and-decide screen, and **missions**, which are fast and real-time. The board is the operating screen. Missions are where the player is inside the work.
-- **Skirmish** from the title opens the **Map Room**, where the player picks any district and a target spot and plays with no persistence.
+- There is no skirmish mode: every mission is the campaign's, briefed from the City (author's decision, 2026-10-13).
 - Opened from disk or served statically. Nothing is fetched at play time.
 
 ## Capabilities and Constraints
@@ -39,7 +39,7 @@ It is Syndicate's mechanics rebuilt for the browser and set in PumaCity's shared
 - The city renders as isometric pixel art at a low internal resolution (2× or 3×, adjustable in Settings), drawn in painter's order. A crisp full-resolution overlay carries the text, speech bubbles and labels.
 - Procedural art and Web Audio synthesis only. No image or audio assets ship.
 - The campaign saves to `localStorage` under the key `pcwatchers_campaign_v2`. Every storage key starts with `pcwatchers_`, and Settings has *Forget everything*.
-- Terms to use as written: Watchers, Casey Benton (the Boss), Watch-Captain Joyeuse, Cal, zones, pips, control levels 0 to 3, siege, war, lockdown, the Purrsuader, stims (Zoomers, Red Dot, Silvervine), the scanner, the Map Room, the Clinic, the BanHammer.
+- Terms to use as written: Watchers, Casey Benton (the Boss), Watch-Captain Joyeuse, Cal, zones, pips, control levels 0 to 3, siege, war, lockdown, the Purrsuader, stims (Zoomers, Red Dot, Silvervine), the scanner, the Clinic, the BanHammer.
 - Districts: Downtown, the Suburbs, the Convention Center, the Ranch and the Starport. The Vault is planned.
 - Undecided: touch controls, enterable vehicles, and mission types beyond assassination (persuade, evacuate, retrieve). All are on the roadmap.
 - Headless checks in `tools/` (`sim.js`, `campaign.js`, `metasim.js`, `maps.js`) are part of the workflow.

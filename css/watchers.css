@@ -92,6 +92,16 @@ h1,h2,h3{font-weight:600;margin:0}
 #hint{position:absolute;right:12px;bottom:10px;pointer-events:none;font-size:11px;color:var(--dim);background:rgba(5,7,15,.7);padding:3px 8px;max-width:60%}
 #hint b{color:var(--steel);font-weight:400}
 
+/* ---- help: key tables, in the title's Help and the pause menu's Controls ---- */
+table.keys{width:100%;border-collapse:collapse}
+table.keys td{padding:4px 0;vertical-align:baseline;border-top:1px solid rgba(255,255,255,.05)}
+table.keys tr:first-child td,table.keys tr:has(th)+tr td{border-top:0}
+table.keys th{padding:16px 0 6px;text-align:left;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600}
+table.keys tr:first-child th{padding-top:0}
+table.keys td:first-child{white-space:nowrap;width:1%;padding-right:16px;color:var(--text)}
+table.keys kbd{margin-right:2px}
+.gk-sheet .gk-body h3{color:var(--accent)}
+
 /* ---- sheets over the game: pause, briefing, debrief ---- */
 .sheet{position:fixed;inset:0;z-index:40;display:grid;place-items:center;background:rgba(3,5,10,.86);padding:16px}
 .sheet .box{width:min(560px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;background:var(--panel);border:1px solid var(--lit);border-radius:2px;padding:18px 20px}

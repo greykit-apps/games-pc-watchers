@@ -80,55 +80,94 @@ const Game = W.game = {
     this.attractT = 0;
   },
   helpTabs() {
+    // rows of [key, what it does]; a lone string is a heading, so one table
+    // keeps the key column one width down the whole tab
+    const keys = rows => `<table class="keys">${rows.map(r => typeof r === "string" ? `<tr><th colspan="2">${r}</th></tr>` : `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("")}</table>`;
     return [
-      ["Controls", `<h3>The squad</h3><table>
-        <tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>select a Watcher; <kbd>Shift</kbd> adds or drops one</td></tr>
-        <tr><td><kbd>\`</kbd> or <kbd>0</kbd></td><td>select the whole squad; tap twice to look at them</td></tr>
-        <tr><td>Left click</td><td>move there (or select a Watcher); drag a box to select several</td></tr>
-        <tr><td><kbd>Alt</kbd> + left click</td><td>move there the quiet way: round the armed crew the scanner shows, through the warrens if need be</td></tr>
-        <tr><td>Right click</td><td>fire at someone or a car; at the ground, fire at that spot. With the Purrsuader out, right click someone to talk them round</td></tr>
-        <tr><td><kbd>E</kbd></td><td>go: every stim to full, guns out, and the crew shot on sight</td></tr>
-        <tr><td><kbd>C</kbd></td><td>calm: stims to nothing, guns away, nobody shoots first. Lets the dependency wear off</td></tr>
-        <tr><td><kbd>R</kbd></td><td>guns out (the one each last had) or away; <kbd>H</kbd> also holsters</td></tr>
-        <tr><td><kbd>F</kbd></td><td>first aid: a medikit for each Watcher at half health or worse</td></tr>
-        <tr><td><kbd>Q</kbd></td><td>the Purrsuader, out or away</td></tr>
-        <tr><td><kbd>Z</kbd></td><td>followers of the selected Watchers hold where they stand (still firing), or come again</td></tr>
-        <tr><td><kbd>V</kbd></td><td>the scanner view, over the city: the better the scanner, the more ground it covers and the more it shows</td></tr>
-        <tr><td><kbd>X</kbd></td><td>the BanHammer: click a spot a Watcher can see, and a few seconds later the orbital platform clears it. Everything in the circle dies. <kbd>Esc</kbd> stands it down</td></tr>
-        <tr><td>Weapon panel</td><td>click a weapon to draw it</td></tr>
-        <tr><td>Left click a car</td><td>take it: the driver stops for a Watcher close by, gets out and runs. Inside, the squad is out of sight, unless the crew or the police saw them get in; then the car is a target. If it goes up, the blast kills a Watcher with the stock body; a Chest mod gets them out alive. Left click to drive: by the roads, keeping to the rules of the road. Left click the car (or <kbd>G</kbd>) to get out</td></tr>
-        </table><h3>The view</h3><table>
-        <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>, arrows</td><td>scroll; or push the pointer to an edge, or drag with the middle button</td></tr>
-        <tr><td>Double-tap <kbd>1</kbd>–<kbd>4</kbd></td><td>look at that Watcher; or double-click their card</td></tr>
-        <tr><td>Scanner</td><td>click to look there; <kbd>Shift</kbd>-click to send the selection</td></tr>
-        <tr><td><kbd>Space</kbd></td><td>pause</td></tr>
-        <tr><td><kbd>Esc</kbd></td><td>menu</td></tr>
-        <tr><td><kbd>M</kbd></td><td>sound on and off</td></tr></table>`],
-      ["Tactics", `<p><b>Local security</b> (Plaza Security, Port Authority, ranch hands) do not know who you are. A gun in plain view earns one warning; keep it out and they open fire, and call their friends. Holster before you walk past them.</p>
-        <p><b>The crew</b> in red spot an armed Watcher from far off, an unarmed one only up close. Walk in with your hands empty, and draw at the last moment.</p>
-        <p>Once they make you, <b>the target runs</b>: for a car, or for a way out on foot (watch the scanner). If they get away, the mission is lost. A car takes a few rounds and then goes up, taking anyone beside it.</p>
-        <p><b>The Purrsuader</b> talks people into following you. Civilians come at once; security once you have 2 followers; the crew in red at 4, bodyguards in black at 6; the mark of a hit at 6 too, and talked round they count as the job done. Followers pick up guns the dead drop, and fight for you. The <b>Purrsuader II</b> reaches twice as far, works twice as fast, and talks round anyone who isn't already shooting at you, crowd or no crowd; those who are need half the crowd.</p>
-        <p>Watchers <b>pick up</b> any weapon they walk over. Ammunition is finite; the pistol never runs dry.</p>`],
-      ["Stims", `<p>Every Watcher carries three stims, on the bars under the portrait. Click or drag a bar to set the dose. With several Watchers selected, the dose goes to them all.</p>
-        <table><tr><td><b>Zoomers</b></td><td>speed and rate of fire</td></tr>
-        <tr><td><b>Red Dot</b></td><td>aim, and how far a Watcher looks for trouble</td></tr>
-        <tr><td><b>Silvervine</b></td><td>reflexes and initiative. Too little and a Watcher will not fire unless ordered; a heavy dose also uses a medikit by itself when badly hurt</td></tr></table>
-        <p>Above the white midpoint a dose burns off slowly and builds a <b>dependency</b> (the red hatching), which eats into the effect until it fades. Dose for the fight, not the walk.</p>`],
-      ["Campaign", `<p>Casey Benton has given the Watchers her city to hold: <b>eight zones</b>. Each makes whole <b>pips</b> a day. On the <b>City</b> map, pick a zone and set its <b>tax</b>, as in Syndicate: what it hands the city, the rest kept for control. The HOLD mark is the tax that keeps it where it is: tax under it to <b>invest</b>, and control climbs; over it to <b>milk</b>, and the city takes more while control slips. The <b>city split</b> in the top bar shares what the zones hand over between <b>research</b> and <b>money</b>.</p>
-        <p><b>Control</b> decays every day and must be kept up. Each level of it adds a pip, and a calm zone's pips are worth more; level 3 is hard to reach and, once there, holds itself for a while. If control runs out altogether, the zone is <b>lost</b> until a siege takes it back.</p>
-        <p><b>Cal</b> pushes one zone at a time, and his push is harder the better you are doing. Intel missions show where he goes next. Fight his crew where he is pushing to end it.</p>
-        <p><b>Research</b> costs money to start and research points to finish. Points can't be banked, and split between the projects running. After 30 upgrade points Casey Benton can <b>take control</b> of the city on your order: each zone then has a story to finish, and the last step locks it down. Lock down every zone to win.</p>
-        <p><b>Missions</b> take days, and the pips stand as you set them while the squad is away. They pay research, money or control. Each has a <b>threat</b>, T1 to T5; the squad has a <b>tier</b> from its guns and mods. Above the squad's tier, expect to lose Watchers. <b>Quiet</b> missions can be done without a shot fired.</p>
-        <p>Finished research goes on sale: weapons in the <b>Armoury</b>, mods in the <b>Clinic</b>. Ammunition is topped up free before every mission; medikits are not.</p>
-        <p>Watchers who die on a mission are gone, with whatever they carried. Hire replacements from the roster in the <b>Clinic</b>. Weapons a Watcher picks up in the field come home with them, researched or not: keep them or sell them in the Armoury.</p>
-        <p>On the command screens: <kbd>1</kbd>–<kbd>5</kbd> the City, Casey's Office, the Armoury, the Clinic and the Lab; <kbd>W</kbd> wait a day (or <kbd>U</kbd>, <b>Until…</b>, for longer); <kbd>B</kbd> brief the mission marked B; arrow keys walk the map from zone to zone; <kbd>?</kbd> how it works, over any screen; <kbd>Esc</kbd> steps back, and twice from the City leaves for the title.</p>`],
+      ["Controls", keys([
+          "The squad",
+          ["<kbd>1</kbd>–<kbd>4</kbd>", "select a Watcher; <kbd>Shift</kbd> adds or drops one"],
+          ["<kbd>\`</kbd> <kbd>0</kbd>", "select the whole squad"],
+          ["<kbd>Tab</kbd>", "the next Watcher"],
+          ["Left click", "move there, or select a Watcher; drag a box to select several"],
+          ["<kbd>Alt</kbd> + left click", "move there the quiet way, round the crew"],
+          ["Right click", "fire at someone, a car, or a spot on the ground"],
+          ["Weapon panel", "click a weapon to draw it"],
+          "Orders",
+          ["<kbd>E</kbd>", "go: stims full, guns out, the crew shot on sight"],
+          ["<kbd>C</kbd>", "calm: stims off, guns away, nobody shoots first"],
+          ["<kbd>R</kbd>", "guns out or away; <kbd>H</kbd> holsters"],
+          ["<kbd>F</kbd>", "first aid for anyone at half health or worse"],
+          ["<kbd>Q</kbd>", "the Purrsuader, out or away; then right click someone to talk them round"],
+          ["<kbd>Z</kbd>", "followers hold where they stand, or come again"],
+          ["<kbd>X</kbd>", "the BanHammer: click a spot a Watcher can see; <kbd>Esc</kbd> stands it down"],
+          ["<kbd>V</kbd>", "the scanner view"],
+          "Cars",
+          ["Left click a car", "take it, with a Watcher close by"],
+          ["Left click", "drive there, by the roads"],
+          ["Click the car, <kbd>G</kbd>", "get out"],
+          "The view",
+          ["<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>, arrows", "scroll; or push the pointer to an edge, or drag with the middle button"],
+          ["Double-tap <kbd>1</kbd>–<kbd>4</kbd>", "look at that Watcher (or double-click their card); <kbd>\`</kbd> or <kbd>0</kbd> the squad"],
+          ["Scanner", "click to look there; <kbd>Shift</kbd>-click to send the selection"],
+          ["<kbd>Space</kbd>", "pause"],
+          ["<kbd>Esc</kbd>", "menu"],
+          ["<kbd>M</kbd>", "sound on or off"],
+        ])],
+      ["Tactics", `<h3>Local security</h3>
+        <p>Plaza Security, Port Authority and ranch hands do not know who you are. A gun in plain view earns one warning; keep it out and they open fire, and call their friends. Holster before you walk past them.</p>
+        <h3>The crew</h3>
+        <p>Cal's crew, in red, spot an armed Watcher from far off and an unarmed one only up close. Walk in with your hands empty, and draw at the last moment.</p>
+        <h3>The target</h3>
+        <p>Once they make you, the target <b>runs</b>: for a car, or for a way out on foot (watch the scanner). If they get away, the mission is lost.</p>
+        <h3>Cars</h3>
+        <p>The driver stops for a Watcher close by, gets out and runs. Inside, the squad is out of sight, unless the crew or the police saw them get in; then the car is a target. A car takes a few rounds and then goes up, taking anyone beside it. It kills a Watcher inside with the stock body; a <b>Chest</b> mod gets them out alive.</p>
+        <h3>The Purrsuader</h3>
+        <p>Talks people into following you. Who it works on depends on how many already follow:</p>
+        ${keys([["Civilians", "at once"], ["Security", "2 followers"], ["The crew in red", "4 followers"], ["Bodyguards in black", "6 followers"], ["The mark of a hit", "6 followers; talked round, the job is done"]])}
+        <p>Followers pick up guns the dead drop, and fight for you. The <b>Purrsuader II</b> reaches twice as far, works twice as fast, and talks round anyone not already shooting at you, crowd or no crowd; those who are need half the crowd.</p>
+        <h3>The BanHammer</h3>
+        <p>A few seconds after you mark the spot, the orbital platform clears it. Everything in the circle dies.</p>
+        <h3>The scanner</h3>
+        <p>The better the scanner, the more ground it covers and the more it shows. <kbd>Alt</kbd>-click routes round the armed crew it shows, through the warrens if need be.</p>
+        <h3>Weapons</h3>
+        <p>Watchers pick up any weapon they walk over. Ammunition is finite; the pistol never runs dry.</p>`],
+      ["Stims", `<p>Every Watcher carries three stims, on the bars under the portrait. Click or drag a bar to set the dose; with several Watchers selected, the dose goes to them all.</p>
+        ${keys([["<b>Zoomers</b>", "speed and rate of fire"],
+          ["<b>Red Dot</b>", "aim, and how far a Watcher looks for trouble"],
+          ["<b>Silvervine</b>", "reflexes and initiative. Too little and a Watcher will not fire unless ordered; a heavy dose uses a medikit by itself when badly hurt"]])}
+        <h3>Dependency</h3>
+        <p>Above the white midpoint a dose burns off slowly and builds a <b>dependency</b> (the red hatching), which eats into the effect until it fades. <kbd>C</kbd> sets every stim to nothing and lets it wear off. Dose for the fight, not the walk.</p>`],
+      ["Campaign", `<h3>The city</h3>
+        <p>Casey Benton has given the Watchers her city to hold: <b>eight zones</b>, each making whole <b>pips</b> a day.</p>
+        <h3>Tax</h3>
+        <p>On the <b>City</b> map, pick a zone and set its tax, as in Syndicate: what it hands the city, the rest kept for control. The <b>HOLD</b> mark keeps control where it is. Tax under it to <b>invest</b> and control climbs; over it to <b>milk</b>, and the city takes more while control slips. The <b>city split</b> in the top bar shares the take between research and money.</p>
+        <h3>Control</h3>
+        <p>Control decays every day. Each level adds a pip, and a calm zone's pips are worth more. Level 3 is hard to reach and, once there, holds itself for a while. If control runs out, the zone is <b>lost</b> until a siege takes it back.</p>
+        <h3>Cal</h3>
+        <p>Cal pushes one zone at a time, harder the better you are doing. Intel missions show where he goes next. Fight his crew where he is pushing to end it.</p>
+        <h3>Missions</h3>
+        <p>Missions take days, and the pips stand as you set them while the squad is away. They pay research, money or control. Each has a <b>threat</b>, T1 to T5; the squad's <b>tier</b> comes from its guns and mods. Above the squad's tier, expect to lose Watchers. <b>Quiet</b> missions can be done without a shot fired.</p>
+        <h3>Research</h3>
+        <p>Research costs money to start and research points to finish. Points can't be banked, and are split between the projects running. Finished research goes on sale: weapons in the <b>Armoury</b>, mods in the <b>Clinic</b>.</p>
+        <h3>The squad</h3>
+        <p>Ammunition is topped up free before every mission; medikits are not. Watchers who die are gone, with whatever they carried: hire replacements in the Clinic. Weapons picked up in the field come home, researched or not, to keep or sell in the Armoury.</p>
+        <h3>Taking control</h3>
+        <p>After 30 upgrade points Casey Benton can <b>take control</b> of the city on your order. Each zone then has a story to finish, and the last step locks it down. Lock down every zone to win.</p>
+        <h3>Keys</h3>${keys([
+          ["<kbd>1</kbd>–<kbd>5</kbd>", "the City, Casey's Office, the Armoury, the Clinic, the Lab"],
+          ["<kbd>W</kbd> / <kbd>U</kbd>", "wait a day / wait until…"],
+          ["<kbd>B</kbd>", "brief the mission marked B"],
+          ["Arrows", "walk the map from zone to zone"],
+          ["<kbd>?</kbd>", "how it works, over any screen"],
+          ["<kbd>Esc</kbd>", "step back; twice from the City leaves for the title"],
+        ])}`],
       ["About", this.aboutHTML()],
     ];
   },
   aboutHTML() {
-    return `<p><b>PumaCity: Watchers</b>. Casey Benton owns PumaCity, and the Watchers are how she keeps it. Four cyber-cats in long coats, a city of rival crews, and the Boss's orders.</p>
-      <p>A squad tactics game in the spirit of <i>Syndicate</i> (Bullfrog Productions, 1993). Everything here is original: code, maps, art and sound are drawn and synthesised in the page.</p>
-      <p>Contracts pay for research; research puts new weapons and cyber-mods in the squad's hands, as in <i>Syndicate Wars</i>. One district so far: more are coming.</p>
+    return `<p><b>PumaCity:Watchers</b>. An alternate-universe Casey Benton runs a dawn-of-cyberpunk sprawl with an iron paw. Manage the city while building an elite team of enforcers to push out a new rival.</p>
+      <p>A squad tactics game heavily inspired by Bullfrog's <i>Syndicate</i> (1993). It was a pioneer in isometric real time strategy. I spent many hours just staring at the city in wonderment.</p>
       <p class="gk-credit">Built by <a href="https://greykit.com/" target="_blank" rel="noopener">greykit.com</a></p>`;
   },
   settingsSheet() {
@@ -139,10 +178,10 @@ const Game = W.game = {
         <h3>Edge scrolling</h3>${onOff("edge", W.prefs.edge)}
         <h3>Pixel size</h3><div class="gk-row">${[[0, "Auto"], [2, "2×"], [3, "3×"], [4, "4×"]].map(([v, l]) => `<button data-set="scale" data-v="${v}" aria-pressed="${W.prefs.scale === v}">${l}</button>`).join("")}</div>
         <h3>This browser</h3><div class="gk-row"><button data-forget>Forget everything</button></div>
-        <p class="gk-note">Clears what Watchers keeps in this browser: your settings and your best mission results.</p>`,
+        <p class="gk-note">Clears what Watchers keeps in this browser: your campaign, your settings and your best mission results.</p>`,
       onClick: async (b, sheet) => {
         if (b.hasAttribute("data-forget")) {
-          if (await confirmSheet("Forget everything PumaCity: Watchers has saved in this browser: settings and best results? This cannot be undone.", "Forget everything")) { W.store.forget(); location.reload(); }
+          if (await confirmSheet("Forget everything PumaCity: Watchers has saved in this browser: the campaign, settings and best results? This cannot be undone.", "Forget everything")) { W.store.forget(); location.reload(); }
           return;
         }
         const k = b.dataset.set, v = +b.dataset.v;

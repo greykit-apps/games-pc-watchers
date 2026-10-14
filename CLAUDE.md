@@ -1,7 +1,9 @@
 # Notes for Claude
 
-PumaCity: Watchers. Start with `README.md`, then `docs/meta.md` (campaign rules)
-and `docs/missions.md` (mission engine). `PRODUCT.md` and `DESIGN.md` hold the
+PumaCity: Watchers. `README.md` is for players. Start with
+`docs/development.md` (how it's built, the checks), then `docs/gameplay.md`
+(the rules in full), `docs/meta.md` (campaign rules) and `docs/missions.md`
+(mission engine). `PRODUCT.md` and `DESIGN.md` hold the
 product and visual direction.
 
 ## Running it

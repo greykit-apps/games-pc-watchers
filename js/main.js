@@ -88,6 +88,7 @@ const Game = W.game = {
           "The squad",
           ["<kbd>1</kbd>–<kbd>4</kbd>", "select a Watcher; <kbd>Shift</kbd> adds or drops one"],
           ["<kbd>\`</kbd> <kbd>0</kbd>", "select the whole squad"],
+          ["<kbd>Tab</kbd>", "the next Watcher"],
           ["Left click", "move there, or select a Watcher; drag a box to select several"],
           ["<kbd>Alt</kbd> + left click", "move there the quiet way, round the crew"],
           ["Right click", "fire at someone, a car, or a spot on the ground"],
@@ -177,10 +178,10 @@ const Game = W.game = {
         <h3>Edge scrolling</h3>${onOff("edge", W.prefs.edge)}
         <h3>Pixel size</h3><div class="gk-row">${[[0, "Auto"], [2, "2×"], [3, "3×"], [4, "4×"]].map(([v, l]) => `<button data-set="scale" data-v="${v}" aria-pressed="${W.prefs.scale === v}">${l}</button>`).join("")}</div>
         <h3>This browser</h3><div class="gk-row"><button data-forget>Forget everything</button></div>
-        <p class="gk-note">Clears what Watchers keeps in this browser: your settings and your best mission results.</p>`,
+        <p class="gk-note">Clears what Watchers keeps in this browser: your campaign, your settings and your best mission results.</p>`,
       onClick: async (b, sheet) => {
         if (b.hasAttribute("data-forget")) {
-          if (await confirmSheet("Forget everything PumaCity: Watchers has saved in this browser: settings and best results? This cannot be undone.", "Forget everything")) { W.store.forget(); location.reload(); }
+          if (await confirmSheet("Forget everything PumaCity: Watchers has saved in this browser: the campaign, settings and best results? This cannot be undone.", "Forget everything")) { W.store.forget(); location.reload(); }
           return;
         }
         const k = b.dataset.set, v = +b.dataset.v;

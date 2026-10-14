@@ -109,6 +109,7 @@ W.World = class {
     u.hp -= dmg;
     this.blood(u, 4);
     W.audio.at("hit", u.x, u.y, 0.7);
+    if (u.isAgent) W.audio.fight();
     if (src && src.faction) {
       if (u.kind === "civ" && !u.follower) this.panic(u, src.x, src.y);
       if (u.kind === "sec" && !u.follower) { if (src.faction === "player") W.secCall(this, u, "player"); else if (src.faction === "crew") W.secCall(this, u, "crew"); }

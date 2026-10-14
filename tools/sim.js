@@ -26,7 +26,7 @@ function load() {
   vm.createContext(ctx);
   const districts = ["js/districts/kit.js", ...fs.readdirSync(path.join(ROOT, "js/districts")).filter(f => f !== "kit.js" && f.endsWith(".js")).sort().map(f => "js/districts/" + f)];
   for (const f of FILES.concat(districts)) vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), ctx, { filename: f });
-  ctx.W.audio = { play() {}, at() {}, ambience() {}, setRain() {}, setMuted() {}, listen() {} };
+  ctx.W.audio = { play() {}, at() {}, ambience() {}, setRain() {}, setMuted() {}, listen() {}, fight() {}, trouble() {} };
   return ctx.W;
 }
 

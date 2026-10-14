@@ -422,6 +422,15 @@ const Game = W.game = {
     }
     const [cx, cy] = this.renderer.viewCenter(w);
     W.audio.listen(cx, cy);
+    // the score's mood: trouble while the crew or security are after the squad close by
+    this.moodT = (this.moodT || 0) - dt;
+    if (this.moodT <= 0) {
+      this.moodT = 0.5;
+      const squad = w.agents.filter(a => a.alive);
+      W.audio.trouble(w.units.some(o => o.alive && !o.isAgent && !o.follower &&
+        (o.faction === "crew" ? o.hostile : o.kind === "sec" && o.angryAt && o.angryAt.player) &&
+        squad.some(a => W.dist(a.x, a.y, o.x, o.y) < 18)));
+    }
     this.updateHover();
     this.renderer.frame(w, this.paused ? 0 : dt);
     this.renderer.overlay(w, this.ui);

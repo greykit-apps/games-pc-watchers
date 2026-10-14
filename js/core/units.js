@@ -352,6 +352,7 @@ W.tryFire = (world, u, tx, ty, victim) => {
   u.flash = 0.07;
   world.stats.shots += u.isAgent ? 1 : 0;
   W.audio.at(def.sound, u.x, u.y);
+  if (u.isAgent || (victim && victim.isAgent)) W.audio.fight();
   const d = W.dist(u.x, u.y, tx, ty);
   let acc = def.acc * u.acc;
   if (u.isAgent) acc *= (0.8 + 0.4 * W.eff(u, "dot")) * (1 + 0.06 * W.mod(u, "eyes"));

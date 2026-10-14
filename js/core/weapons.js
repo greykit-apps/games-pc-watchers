@@ -25,11 +25,11 @@ W.WEAPONS = {
   },
   minigun: {
     name: "Minigun", short: "MINI", gun: true, dmg: 1.6, range: 7, cd: 0.05, acc: 0.5, pellets: 1, heavy: true,
-    ammo: 300, sound: "uzi", tracer: "#ffe08a", desc: "A wall of lead. Slows whoever carries it, unless their arms are modded."
+    ammo: 300, sound: "minigun", tracer: "#ffe08a", desc: "A wall of lead. Slows whoever carries it, unless their arms are modded."
   },
   longrange: {
     name: "Longwhisker", short: "LONG", gun: true, dmg: 7, range: 11.5, cd: 1.3, acc: 0.95, pellets: 1, silenced: true, surprise: true,
-    ammo: 30, sound: "silenced", tracer: "#e8f4ff", desc: "A silenced rifle for the far side of the plaza. Heard only up close, by the shooter or the one hit."
+    ammo: 30, sound: "rifle_s", tracer: "#e8f4ff", desc: "A silenced rifle for the far side of the plaza. Heard only up close, by the shooter or the one hit."
   },
   laser: {
     name: "Laser", short: "LASR", gun: true, dmg: 13, range: 10, cd: 1.6, acc: 0.96, pellets: 1, beam: true,
@@ -37,7 +37,7 @@ W.WEAPONS = {
   },
   gauss: {
     name: "Gauss Gun", short: "GAUS", gun: true, dmg: 6, range: 9, cd: 2.0, acc: 0.9, pellets: 1, blast: { r: 2.2, dmg: 14 },
-    ammo: 6, sound: "shotgun", tracer: "#b47dff", desc: "Explosive rounds. Mind the crowd."
+    ammo: 6, sound: "gauss", tracer: "#b47dff", desc: "Explosive rounds. Mind the crowd."
   },
   purrsuader: {
     name: "Purrsuader", short: "PURR", gun: false, persuade: 1, range: 2.8, cd: 1.1, ammo: null,

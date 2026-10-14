@@ -141,14 +141,14 @@ components:
     padding: "5px 10px"
     height: "48px"
   screen-tab:
-    backgroundColor: "{colors.steel-face}"
+    backgroundColor: "{colors.steel-face-deep}"
     textColor: "{colors.text-body}"
     typography: "{typography.headline}"
     rounded: "{rounded.none}"
     padding: "4px 14px"
     height: "40px"
   screen-tab-selected:
-    backgroundColor: "{colors.steel-face-deep}"
+    backgroundColor: "#4a5876"
     textColor: "{colors.watcher-cyan}"
   level-chip:
     textColor: "#1a1204"
@@ -318,7 +318,7 @@ Steel plates you press in. Only a button that can be pressed now is a plate.
 - **Focus:** 2px watcher-cyan outline, offset 2px.
 
 ### Navigation
-- **Screen bar:** Syndicate's menu: five equal raised steel keys, 40px tall, 4px apart on the slate ground, and a HELP key after them. Default: steel-face with the 2px raised bevel, a text-bright pixel label and a quiet icon. Selected: pressed in (the bevel flipped) to steel-face-deep, with the label and icon in watcher-cyan. It is the one place outside buttons proper where the chrome stays raised. Each key leads with its number (and HELP its ?) as a quiet figure, not a boxed key cap; it is aria-hidden and named as `aria-keyshortcuts` instead. Key hints elsewhere sit in a dark shade, never a bordered box.
+- **Screen bar:** Syndicate's menu: five equal steel keys, 40px tall, 4px apart on the slate ground, and a HELP key after them. The keys sit dark and the open one is lit (user, 2026-10-13). Default: steel-face-deep with a dim raised bevel (steel-button on its lit edges), a text-body pixel label and a quiet icon. Selected: bright steel #4a5876, pressed in (the bevel flipped), with the label and icon in watcher-cyan (about 5.5:1). It is the one place outside buttons proper where the chrome stays raised. Each key leads with its number (and HELP its ?) as a quiet figure, not a boxed key cap; it is aria-hidden and named as `aria-keyshortcuts` instead. Key hints elsewhere sit in a dark shade, never a bordered box.
 
 ### Wait a day
 The go plate and Until… in the top bar's right end, over a line kept for what waiting would throw away. While the Lab has nothing running, research points can't be banked, so the line reads "Lab idle: 11.0 RP a day wasted" behind the caution square. It takes the buttons' width and wraps, never running under the city split. Otherwise the line is kept empty, so the bar doesn't jump.

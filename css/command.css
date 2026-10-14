@@ -112,17 +112,17 @@
 .cx select{font:600 13px var(--sans);color:var(--t1);background:var(--well);border:2px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo);padding:5px 8px;border-radius:0}
 
 /* ---- the screen bar ---- */
-/* Syndicate's menu: a row of raised steel keys; the open screen's key is pressed in, its label in cyan */
+/* Syndicate's menu: a row of dark steel keys; the open screen's key is lit, bright steel pressed in, its label in cyan */
 .cx-bar{display:flex;gap:4px;padding:5px 16px;background:var(--ground);border-bottom:2px solid var(--lo)}
 .cx-tabs{flex:1;min-width:0;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
-.cx-bar button{display:flex;align-items:center;gap:10px;padding:4px 14px;min-height:40px;text-align:left;color:var(--t2);background:var(--face);border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi)}
-.cx-bar button:hover:not(:disabled){background:#343f56}
+.cx-bar button{display:flex;align-items:center;gap:10px;padding:4px 14px;min-height:40px;text-align:left;color:var(--t2);background:var(--face2);border:2px solid;border-color:#3a4660 var(--lo) var(--lo) #3a4660}
+.cx-bar button:hover:not(:disabled){background:#283044}
 .cx-bar button:active:not(:disabled){border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
 .cx-bar button canvas{width:18px;height:18px;flex:none;color:var(--t3);image-rendering:pixelated}
 .cx-bar .bl{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
-.cx-bar .px{color:var(--t1);--px-shadow:#0c1018}
+.cx-bar .px{color:var(--t2);--px-shadow:#0c1018}
 .cx-bar button[aria-selected=true],.cx-bar .help-b[aria-expanded=true],
-.cx-bar button[aria-selected=true]:hover:not(:disabled),.cx-bar .help-b[aria-expanded=true]:hover:not(:disabled){background:var(--face2);border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.cx-bar button[aria-selected=true]:hover:not(:disabled),.cx-bar .help-b[aria-expanded=true]:hover:not(:disabled){background:#4a5876;border-color:var(--lo) #7d8dac #7d8dac var(--lo)}
 .cx-bar .help-b{flex:none;gap:8px}
 .cx-bar .help-b[aria-expanded=true] .px{color:var(--cyan)}
 .cx-bar button[aria-selected=true] .px,.cx-bar button[aria-selected=true] canvas{color:var(--cyan)}   /* cyan is selection */
@@ -131,7 +131,8 @@
 .cx-bar .n.soft{background:none;color:var(--t3);padding:2px 0}
 /* the key, a quiet figure ahead of the icon */
 .cx-bar kbd{margin:0;padding:0;background:none;opacity:1;color:var(--t3);font:700 12px/1 var(--sans);min-width:8px}
-.cx-bar button[aria-selected=true] kbd{color:var(--t2)}
+.cx-bar button[aria-selected=true] kbd{color:var(--t1)}
+.cx-bar button[aria-selected=true] .n.soft{color:var(--t1)}
 
 /* ---- help: floats over the right of whichever screen is open ---- */
 .cx .cx-help{grid-row:3;grid-column:1;justify-self:end;z-index:6;width:min(460px,42vw);min-height:0;margin:12px 16px 14px;display:flex;flex-direction:column;

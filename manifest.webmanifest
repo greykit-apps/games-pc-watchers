@@ -1,7 +1,7 @@
 {
   "name": "PumaCity: Watchers",
   "short_name": "Watchers",
-  "description": "Four cyber-cats in long coats, and Casey Benton's orders. A squad tactics game in the spirit of Syndicate, set in PumaCity.",
+  "description": "An alternate-universe Casey Benton runs a dawn-of-cyberpunk sprawl with an iron paw. Manage the city while building an elite team of enforcers to push out a new rival.",
   "start_url": ".",
   "scope": "./",
   "display": "standalone",

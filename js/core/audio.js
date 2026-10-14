@@ -161,43 +161,76 @@ W.audio = (() => {
    *   2 the fight    140 bpm: a Watcher shooting or shot at, these 7 seconds
    * The patterns change on the next beat; the tempo glides there over a bar
    * or two, so the city winds up as the fight starts and down after it.
+   *
+   * The piece is sixteen bars: four sections of four, A (Dm Bb Gm A) and
+   * B (Gm Eb Bb A) in an order the mission picks. Over the chords, now and
+   * then, a slow tune of a few notes (never in a fight). The last bar of a
+   * section has a drum fill; now and then a bar drops its drums, or on the
+   * walk its bass. Each mission seeds its own version (key, form, which of
+   * the patterns, which notes of the tune), so the same mission always
+   * sounds the same and no two sound quite alike.
    * Notes are scheduled a little ahead of the clock (the usual Web Audio
    * look-ahead), from a timer the music owns. */
   const BPM = [86, 104, 140];
   const _ = null;
-  // D minor: Dm, Bb, Gm, A. Roots for the bass, three voices for the pad
-  const ROOT = [38, 34, 43, 45];
-  const PAD = [[50, 53, 57], [46, 50, 53], [50, 55, 58], [49, 52, 57]];
+  const SONG = {
+    A: { root: [38, 34, 43, 45], pad: [[50, 53, 57], [46, 50, 53], [50, 55, 58], [49, 52, 57]],
+      // the tune: [step, note, length in steps], a bar at a time
+      tune: [[[0, 69, 7], [8, 65, 7]], [[0, 70, 12]], [[0, 67, 6], [8, 70, 6]], [[0, 69, 14]]] },
+    B: { root: [43, 39, 34, 45], pad: [[50, 55, 58], [51, 55, 58], [50, 53, 58], [49, 52, 57]],
+      tune: [[[0, 74, 10]], [[0, 70, 7], [8, 67, 7]], [[0, 65, 12]], [[0, 64, 7], [8, 61, 7]]] },
+  };
+  const FORMS = [["A", "A", "B", "A"], ["A", "B", "A", "B"], ["A", "A", "B", "B"], ["A", "B", "B", "A"]];
+  // the bass, three ways for each mood: semitones over the chord's root
   const BASS = [
-    [0, _, _, _, _, _, 0, _, 12, _, _, _, _, _, 7, _],
-    [0, _, 0, _, 12, _, 0, _, 0, _, 0, _, 7, _, 12, _],
-    [0, 0, 12, 0, 0, 7, 12, 0, 0, 0, 12, 0, 7, 0, 12, 10],
+    [[0, _, _, _, _, _, 0, _, 12, _, _, _, _, _, 7, _],
+     [0, _, _, _, _, _, _, _, 0, _, _, 7, _, _, _, _],
+     [0, _, _, 0, _, _, _, _, 12, _, _, _, 7, _, _, _]],
+    [[0, _, 0, _, 12, _, 0, _, 0, _, 0, _, 7, _, 12, _],
+     [0, _, _, 0, _, _, 0, _, 12, _, _, 0, _, _, 7, _],
+     [0, _, 0, 0, 12, _, 0, _, 0, _, 0, 0, 7, _, 10, _]],
+    [[0, 0, 12, 0, 0, 7, 12, 0, 0, 0, 12, 0, 7, 0, 12, 10],
+     [0, 12, 0, 12, 0, 12, 7, 12, 0, 12, 0, 12, 10, 12, 7, 12],
+     [0, 0, 0, 12, 0, 0, 7, 0, 0, 0, 0, 12, 0, 10, 7, 5]],
   ];
-  const KICK = [
-    [],
-    [0, 8],
-    [0, 4, 7, 8, 12, 14],
-  ];
+  const KICK = [[], [0, 8], [0, 4, 7, 8, 12, 14]];
   const SNARE = [[], [12], [4, 12]];
   const HAT = [
     [2, 6, 10, 14],
     [2, 4, 6, 10, 12, 14],
     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
   ];
-  // the fight's arpeggio: chord voices, up an octave, one per sixteenth
-  const ARP = [0, 1, 2, 1, 2, 0, 1, 2, 0, 2, 1, 2, 0, 1, 2, 1];
+  // the fight's arpeggio: which chord voice on each sixteenth, three ways
+  const ARPS = [
+    [0, 1, 2, 1, 2, 0, 1, 2, 0, 2, 1, 2, 0, 1, 2, 1],
+    [0, 2, 1, 2, 0, 2, 1, 2, 1, 2, 0, 2, 1, 2, 0, 1],
+    [2, 1, 0, 1, 2, 1, 0, 2, 2, 1, 0, 1, 0, 1, 2, 1],
+  ];
+  const KEYS = [0, -2, 1, 3];   // D, C, Eb or F minor
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+  // a small seeded generator, so a mission's choices are its own
+  const seeded = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const hash = s => { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };
 
   const mus = { bus: null, timer: null, step: 0, bar: 0, next: 0, bpm: BPM[0], mood: 0, want: 0, fightT: -1e9, filt: null };
 
-  function musicStart() {
+  function musicStart(seed) {
     if (!ac || mus.timer) return;
     mus.bus = ac.createGain(); mus.bus.gain.value = 0;
     mus.bus.gain.setTargetAtTime(0.42, ac.currentTime, 1.2);
     mus.filt = ac.createBiquadFilter(); mus.filt.type = "lowpass"; mus.filt.frequency.value = 1400; mus.filt.Q.value = 0.7;
     mus.filt.connect(mus.bus); mus.bus.connect(master);
     const send = ac.createGain(); send.gain.value = 0.5; mus.bus.connect(send); send.connect(verb);
-    mus.step = 0; mus.bar = 0; mus.next = ac.currentTime + 0.1; mus.bpm = BPM[0]; mus.mood = 0; mus.want = 0; mus.fightT = -1e9;
+    // this mission's version
+    const rng = mus.rng = seeded(hash(seed == null ? Math.random() : seed));
+    const pick = n => Math.floor(rng() * n);
+    mus.key = KEYS[pick(KEYS.length)];
+    mus.form = FORMS[pick(FORMS.length)];
+    mus.bassV = [pick(3), pick(3), pick(3)];
+    mus.arp = ARPS[pick(ARPS.length)];
+    mus.tempo = 0.97 + rng() * 0.06;
+    mus.step = 0; mus.bar = 0; mus.next = ac.currentTime + 0.1; mus.mood = 0; mus.want = 0; mus.fightT = -1e9;
+    mus.bpm = BPM[0] * mus.tempo;
     mus.timer = setInterval(musicTick, 25);
   }
   function musicStop() {
@@ -213,28 +246,79 @@ W.audio = (() => {
     const want = ac.currentTime - mus.fightT < 7 ? 2 : mus.want;
     while (mus.next < ac.currentTime + 0.12) {
       if (mus.step % 4 === 0) mus.mood = want;
-      musicStep(mus.next, mus.step, mus.bar);
+      if (mus.step === 0) newBar();
+      musicStep(mus.next, mus.step);
       // the tempo winds toward the mood's, a little each step
-      mus.bpm += (BPM[mus.mood] - mus.bpm) * 0.06;
+      mus.bpm += (BPM[mus.mood] * mus.tempo - mus.bpm) * 0.06;
       mus.next += 60 / mus.bpm / 4;
-      if (++mus.step === 16) { mus.step = 0; mus.bar = (mus.bar + 1) % 4; }
+      if (++mus.step === 16) { mus.step = 0; mus.bar = (mus.bar + 1) % 16; }
     }
   }
-  function musicStep(t, i, bar) {
-    const m = mus.mood, out = mus.filt, chord = PAD[bar], beat = 60 / mus.bpm;
+  // what this bar is: its section and chord, and the dice for it. The dice are
+  // thrown every bar whatever the mood, so a mission's sequence never drifts
+  function newBar() {
+    const r = mus.rng, b = mus.bar, inSec = b % 4, sec = SONG[mus.form[b >> 2]];
+    if (inSec === 0) mus.tuneOn = r() < 0.5;   // the tune plays in about half the sections
+    const keep = [r(), r()];
+    mus.cur = {
+      sec, inSec, root: sec.root[inSec] + mus.key, pad: sec.pad[inSec].map(n => n + mus.key),
+      tune: mus.tuneOn ? sec.tune[inSec].filter((_n, i) => keep[i] < 0.8).map(([st, n, len]) => [st, n + mus.key, len]) : [],
+      fill: inSec === 3,
+      drop: inSec !== 0 && inSec !== 3 && r() < 0.14,
+      bell: r() < 0.5,
+    };
+  }
+  function musicStep(t, i) {
+    const m = mus.mood, out = mus.filt, B = mus.cur, beat = 60 / mus.bpm, step = beat / 4;
     if (i === 0) {
       // the filter opens with the mood: murk on the walk, edge in a fight
       mus.filt.frequency.setTargetAtTime([1100, 2000, 4200][m], t, 0.4);
-      pad(t, chord, beat * 4, m);
-      if (m === 0 && bar % 2 === 0) bell(t + beat * 2, chord[2 - (bar >> 1)] + 24, out);
+      pad(t, B.pad, beat * 4, m);
+      if (m === 0 && B.bell && !B.tune.length) bell(t + beat * 2, B.pad[2 - (B.inSec >> 1)] + 24, out);
+      // the end of the piece, on the walk: a swell into the top again
+      if (m === 0 && mus.bar === 15) swell(t, beat * 4, out);
     }
-    const n = BASS[m][i];
-    if (n != null) bass(t, ROOT[bar] + n, beat / (m === 2 ? 4.5 : 2.5), m, out);
-    if (KICK[m].includes(i)) kick(t, out);
-    if (SNARE[m].includes(i)) snare(t, out);
-    if (HAT[m].includes(i)) noiseBurst(t, { dur: 0.03, f: 8000, type: "highpass", q: 0.5, vol: (m === 2 ? (i % 4 === 2 ? 0.07 : 0.035) : 0.04), out });
-    if (m === 2) arp(t, chord[ARP[i]] + 12 + (i >= 8 ? 12 : 0), beat / 4, out);
-    else if (m === 1 && i % 4 === 3) arp(t, chord[ARP[i]] + 24, beat / 3, out, 0.05);
+    if (m < 2) for (const [st, n, len] of B.tune) if (st === i) melody(t, n, len * step, m, out);
+    const fillNow = B.fill && m > 0 && i >= (m === 2 ? 12 : 14);
+    const n = BASS[m][mus.bassV[m]][i];
+    if (n != null && !(B.drop && m === 0)) bass(t, B.root + n, beat / (m === 2 ? 4.5 : 2.5), m, out);
+    const drums = !(B.drop && m > 0);
+    if (fillNow) fill(t, i, m, out);
+    else if (drums) {
+      if (KICK[m].includes(i)) kick(t, out);
+      if (SNARE[m].includes(i)) snare(t, out);
+    }
+    if (HAT[m].includes(i) && (drums || i % 2 === 0)) noiseBurst(t, { dur: 0.03, f: 8000, type: "highpass", q: 0.5, vol: (m === 2 ? (i % 4 === 2 ? 0.07 : 0.035) : 0.04) * (drums ? 1 : 0.6), out });
+    if (m === 2) arp(t, B.pad[mus.arp[i]] + 12 + (i >= 8 ? 12 : 0), step, out);
+    else if (m === 1 && i % 4 === 3) arp(t, B.pad[mus.arp[i]] + 24, beat / 3, out, 0.05);
+  }
+  // the fill into the next section: snare and toms, falling
+  function fill(t, i, m, out) {
+    const k = m === 2 ? i - 12 : i - 14, n = m === 2 ? 4 : 2;
+    snare(t, out, 0.5 + 0.5 * (k + 1) / n);
+    tone(t, { f: [230, 190, 155, 120][m === 2 ? k : k + 2], fEnd: 70, dur: 0.18, type: "sine", vol: 0.28, a: 0.002, out });
+  }
+  // the tune's voice: a soft triangle, slow to speak, with a little vibrato
+  function melody(t, note, len, m, out) {
+    const f = mtof(note), o = ac.createOscillator(); o.type = "triangle"; o.frequency.value = f;
+    const o2 = ac.createOscillator(); o2.type = "sine"; o2.frequency.value = f * 2;
+    const lfo = ac.createOscillator(); lfo.frequency.value = 5; const lg = ac.createGain();
+    lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * 0.006, t + len * 0.6);
+    lfo.connect(lg); lg.connect(o.frequency); lg.connect(o2.frequency);
+    const g = ac.createGain(), vol = m === 0 ? 0.045 : 0.03;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.12);
+    g.gain.setValueAtTime(vol, t + len * 0.55); g.gain.exponentialRampToValueAtTime(0.0001, t + len + 0.5);
+    const g2 = ac.createGain(); g2.gain.value = 0.25;
+    o.connect(g); o2.connect(g2); g2.connect(g); g.connect(out);
+    for (const x of [o, o2, lfo]) { x.start(t); x.stop(t + len + 0.6); }
+  }
+  // a breath of filtered noise rising over a bar
+  function swell(t, len, out) {
+    const s = ac.createBufferSource(); s.buffer = noise; s.loop = true;
+    const bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 2;
+    bp.frequency.setValueAtTime(300, t); bp.frequency.exponentialRampToValueAtTime(3500, t + len);
+    const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + len * 0.95); g.gain.linearRampToValueAtTime(0.0001, t + len + 0.1);
+    s.connect(bp); bp.connect(g); g.connect(out); s.start(t); s.stop(t + len + 0.2);
   }
   // two detuned saws a voice, slow to swell, through the score's filter
   function pad(t, chord, len, m) {
@@ -263,9 +347,9 @@ W.audio = (() => {
     tone(t, { f: 140, fEnd: 42, dur: 0.16, type: "sine", vol: 0.55, a: 0.002, out });
     noiseBurst(t, { dur: 0.012, f: 3000, q: 0.7, vol: 0.12, out });
   }
-  function snare(t, out) {
-    noiseBurst(t, { dur: 0.14, f: 1900, q: 0.6, vol: 0.22, out });
-    tone(t, { f: 210, fEnd: 150, dur: 0.07, type: "triangle", vol: 0.12, out });
+  function snare(t, out, v = 1) {
+    noiseBurst(t, { dur: 0.14, f: 1900, q: 0.6, vol: 0.22 * v, out });
+    tone(t, { f: 210, fEnd: 150, dur: 0.07, type: "triangle", vol: 0.12 * v, out });
   }
   function arp(t, note, len, out, vol = 0.07) {
     const o = ac.createOscillator(); o.type = "square"; o.frequency.value = mtof(note);
@@ -279,7 +363,7 @@ W.audio = (() => {
   }
 
   /* ---- the street under it: rain, and a siren far off now and then ---- */
-  function ambience(on) {
+  function ambience(on, seed) {
     if (!ac) return;
     if (on && !amb) {
       const s = ac.createBufferSource(); s.buffer = noise; s.loop = true;
@@ -290,7 +374,7 @@ W.audio = (() => {
       s.connect(hp); hp.connect(lp); lp.connect(g); g.connect(master); s.start();
       amb = { rain: { s, g } };
       amb.timer = setInterval(() => { if (!W.prefs.muted && Math.random() < 0.25) distantSiren(); }, 9000);
-      musicStart();
+      musicStart(seed);
     } else if (!on && amb) {
       try { amb.rain.s.stop(); } catch (e) { /* already */ }
       clearInterval(amb.timer); amb = null;

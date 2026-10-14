@@ -358,7 +358,7 @@ const Game = W.game = {
     this.hud.build(w);
     this.cursorMode = null; this.ui.aim = null; this.setCursor("move");
     this.bigScan = false; { const c = document.getElementById("bigscan"); if (c) c.hidden = true; }
-    W.audio.ambience(true);
+    W.audio.ambience(true, `${this.level.name}|${this.level.codename}`);
     for (const [t, col] of this.level.intro ? this.level.intro(w) : [["JOYEUSE: You're on, Watchers. Sly's at the cafe, north-east corner. Keep it quiet.", "#54f2ff"], ["Weapons are holstered. Plaza Security will warn anyone with a gun out.", "#94a0c4"]]) w.msg(t, col);
     // the title card names the job: the first objective, which follows the kind
     const job = w.objectives[0] ? w.objectives[0].text : `Eliminate ${w.names.target}`;

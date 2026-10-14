@@ -204,10 +204,10 @@ W.Command = class {
     const idle = !s.research.running.length;
     const tabs = [
       ["city", "CITY", "1", "Map, zones, missions", s.offers.length ? `<i class="n">${s.offers.length}</i>` : "", s.offers.length ? `${s.offers.length} mission${s.offers.length > 1 ? "s" : ""}` : ""],
-      ["lab", "LAB", "2", "Research and Take Control", idle ? `<i class="n warn">IDLE</i>` : "", idle ? "nothing running" : ""],
-      ["clinic", "CLINIC", "3", "The roster, and mods", `<i class="n soft">${M.squad(s).length}/${M.SQUAD}</i>`, `${M.squad(s).length} of ${M.SQUAD} in the squad`],
-      ["office", "OFFICE", "4", "What the Boss can buy", "", ""],
-      ["armoury", "ARMOURY", "5", "The squad's kit, the racks, the dealer", Object.keys(s.armoury).length ? `<i class="n soft">${Object.values(s.armoury).reduce((t, n) => t + n, 0)}</i>` : "", Object.keys(s.armoury).length ? `${Object.values(s.armoury).reduce((t, n) => t + n, 0)} on the racks` : ""],
+      ["office", "OFFICE", "2", "What the Boss can buy", "", ""],
+      ["armoury", "ARMOURY", "3", "The squad's kit, the racks, the dealer", Object.keys(s.armoury).length ? `<i class="n soft">${Object.values(s.armoury).reduce((t, n) => t + n, 0)}</i>` : "", Object.keys(s.armoury).length ? `${Object.values(s.armoury).reduce((t, n) => t + n, 0)} on the racks` : ""],
+      ["clinic", "CLINIC", "4", "The roster, and mods", `<i class="n soft">${M.squad(s).length}/${M.SQUAD}</i>`, `${M.squad(s).length} of ${M.SQUAD} in the squad`],
+      ["lab", "LAB", "5", "Research and Take Control", idle ? `<i class="n warn">IDLE</i>` : "", idle ? "nothing running" : ""],
     ];
     return `<div class="cx-bar"><nav class="cx-tabs" role="tablist" aria-label="Screens">${tabs.map(([id, label, key, sub, badge, say]) =>
       `<button role="tab" id="tab-${id}" title="${sub}" aria-label="${label[0] + label.slice(1).toLowerCase()}: ${sub[0].toLowerCase() + sub.slice(1)}${say ? `. ${say}` : ""}" aria-keyshortcuts="${key}" tabindex="${this.screen === id ? 0 : -1}" data-a="screen" data-screen="${id}" data-fk="screen-${id}" aria-selected="${this.screen === id}" aria-controls="cx-screen">
@@ -1114,4 +1114,4 @@ W.Command = class {
   }
 };
 // the screens, in the bar's order, and the number keys'
-W.Command.SCREENS = ["city", "lab", "clinic", "office", "armoury"];
+W.Command.SCREENS = ["city", "office", "armoury", "clinic", "lab"];

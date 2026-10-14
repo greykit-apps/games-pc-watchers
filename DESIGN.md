@@ -241,7 +241,7 @@ A cold steel-and-slate ground carrying four hot signal colors, each with exactly
 A fixed full-viewport console: top bar, screen bar, then one screen that fills the remaining height (`grid-template-rows: auto auto minmax(0,1fr)`). Screens do not scroll as a page at full desktop width; their columns scroll internally.
 
 - **Top bar:** brand, LCD cluster, the city split slider, and "Wait a day" plus the Until menu pushed to the right.
-- **Screen bar:** five equal tabs (City, Lab, Clinic, Office, Armoury; keys 1 to 5), each with a 9x9 pixel icon, a pixel label, an optional badge and its key; then HELP (key ?), a narrower segment outside the tablist.
+- **Screen bar:** five equal tabs (City, Office, Armoury, Clinic, Lab; keys 1 to 5, user 2026-10-13), each with a 9x9 pixel icon, a pixel label, an optional badge and its key; then HELP (key ?), a narrower segment outside the tablist.
 - **City:** three columns: the map (near square, full height, at most 50vw) over a two-row key (territory, then the map's own marks); the middle column, the dossier or the overview (led by NEXT MOVE, the mission B briefs and why) over the dispatch; and the missions column. The dossier stops 220px short of the column's foot and scrolls, and the dispatch takes whatever is left. Below 1180px the middle column sits over the missions: it takes what it needs up to 58% of the height and scrolls as one past that, and the missions always keep the rest.
 - **Help:** "How it works" floats over the right of whichever screen is open (the screen's grid cell, at most 460px or 42vw wide), with the floating-menu shadow. Esc or HELP closes it.
 - **Lab:** two columns, war footing and running research on top, the trees below in auto-fit columns of at least 420px.

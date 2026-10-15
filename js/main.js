@@ -95,7 +95,7 @@ const Game = W.game = {
           ["Weapon panel", "click a weapon to draw it"],
           "Orders",
           ["<kbd>E</kbd>", "go: stims full, guns out, the crew shot on sight"],
-          ["<kbd>C</kbd>", "calm: stims off, guns away, nobody shoots first"],
+          ["<kbd>C</kbd>", "calm: stims off, guns away, nobody shoots first; again, stims to the middle"],
           ["<kbd>R</kbd>", "guns out or away; <kbd>H</kbd> holsters"],
           ["<kbd>F</kbd>", "first aid for anyone at half health or worse"],
           ["<kbd>Q</kbd>", "the Purrsuader, out or away; then right click someone to talk them round"],
@@ -695,12 +695,14 @@ const Game = W.game = {
     this.hud.update(true);
   },
   /* C: calm. Stims to nothing, guns away, nobody shoots first: time to let the
-   * dependency wear off. */
+   * dependency wear off. Again, once they are at nothing: stims to the
+   * midpoint, where a dose neither builds a dependency nor burns off. */
   calmDown() {
     const sel = this.selectedAgents();
     if (!sel.length) return;
+    const lvl = sel.every(a => W.STIMS.every(s => a.ipa[s.id].lvl === 0)) ? 0.5 : 0;
     for (const a of sel) {
-      for (const s of W.STIMS) a.ipa[s.id].lvl = 0;
+      for (const s of W.STIMS) a.ipa[s.id].lvl = lvl;
       a.aggressive = false;
       a.cur = -1; a.weaponOut = false; a.manual = null; a.target = null; a.shootAt = null;
     }

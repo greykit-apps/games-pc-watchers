@@ -179,7 +179,8 @@ the map.
 - **Stims** (the bars on each card): Zoomers for speed and rate of fire, Red
   Dot for aim and sight, Silvervine for reflexes and initiative. A dose above
   the midpoint burns off slowly and builds a dependency that eats into the
-  effect.
+  effect. **C** (calm) drops every stim to nothing; press it again and they
+  go to the midpoint.
 - Bonuses: recruit 5 followers, and lose no more than 4 civilians. The
   debrief grades the run from S to D.
 - **Then get out.** With the target dead the job is not over: every Watcher

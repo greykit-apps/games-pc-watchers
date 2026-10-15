@@ -208,6 +208,12 @@ production can't give:
 | Hired guns | a mercenary crew fights beside the squad on its next mission (+4 squad power) | $50,000 |
 | An amnesty | a lost zone comes back at level 0 without a siege; not once the city is being taken | $150,000 |
 
+They are bought in Casey Benton's Office, for the zone picked there (the
+last one picked, else the zone whose dossier is open, else the weakest held
+zone). The amnesty is the exception: it can only go to a lost zone, so it
+goes to the picked zone if that one is lost, and otherwise to the first lost
+zone, the one Casey asks for.
+
 ## Research
 
 **Research costs money to start and research points to finish.** Research

@@ -412,19 +412,25 @@ W.tryFire = (world, u, tx, ty, victim) => {
 /* The following: everyone talked round and still with us. A persuade job's
  * subject and hired guns are not part of it. */
 W.squadFollowers = world => world.units.filter(o => o.alive && o.follower && !o.isAgent && !o.merc && !o.subject).length;
-/* How big a following the squad can hold: set by the best Purrsuader any
- * Watcher still in the field carries (MK1, the Purrsuader II as MK2, or its
- * mark when the campaign sends one). Nobody past it can be talked round. */
+/* How big a following the squad can hold: each Watcher still in the field
+ * brings the following of their own best Purrsuader (MK1, the Purrsuader II
+ * as MK2, or its mark when the campaign sends one), and the squad's is the
+ * sum, so four Purrsuaders hold four times what one does. Nobody past it can
+ * be talked round; a carrier lost or out takes their share with them. */
 W.FOLLOWING = { 1: 6, 2: 10, 3: 16 };
 W.followingCap = world => {
-  let mk = 0;
-  for (const a of world.agents) if (a.alive && !a.out) for (const w of a.weapons) {
-    const d = W.WEAPONS[w.type];
-    if (d && d.persuade) mk = Math.max(mk, Math.max(d.persuade, w.mk || 1));
+  let cap = 0;
+  for (const a of world.agents) if (a.alive && !a.out) {
+    let mk = 0;
+    for (const w of a.weapons) {
+      const d = W.WEAPONS[w.type];
+      if (d && d.persuade) mk = Math.max(mk, Math.max(d.persuade, w.mk || 1));
+    }
+    if (mk) cap += W.FOLLOWING[Math.min(3, mk)];
   }
   // Cal's enforcers on the streets: fewer will follow
   const CC = W.CAL_COUNTERS[world.level.mission && world.level.mission.counter];
-  return mk ? Math.max(1, W.FOLLOWING[Math.min(3, mk)] + (CC && CC.following || 0)) : 0;
+  return cap ? Math.max(1, cap + (CC && CC.following || 0)) : 0;
 };
 /* how many followers it takes to talk t round (before the brain mods count) */
 W.persuadeNeed = (world, agent, t) => {

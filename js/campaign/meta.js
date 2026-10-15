@@ -887,9 +887,15 @@ M.missionFor = (s, o) => {
 };
 
 /* ---------------- events ---------------- */
+/* The zone an event is bought for, given the zone picked in the Office. The
+ * picker opens on a held zone, so an event only a lost zone can take (the
+ * amnesty) goes to the picked zone if it's lost, else to the first lost one:
+ * the one Casey Benton asks for. Null when nothing is lost. */
+M.eventZone = (s, e, picked) => !e.zone ? null : !e.lost ? picked || null : picked && picked.lost ? picked : s.zones.find(q => q.lost) || null;
 M.canEvent = (s, e, z) => {
+  if (e.lost && !z) return "no zone is lost to Cal";
   if (e.zone && !z) return "choose a zone above";
-  if (e.lost && !(z && z.lost)) return "only for a zone lost to Cal";
+  if (e.lost && !z.lost) return "only for a zone lost to Cal";
   if (e.id === "amnesty" && s.war) return "not once the city is being taken: a siege takes it back";
   if (e.zone && !e.lost && z && (z.lost || z.locked)) return "not in a zone that's lost or locked down";
   if (e.id === "bribes" && s.cal.bribed) return "already paid for this push";

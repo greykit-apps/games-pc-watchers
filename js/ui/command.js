@@ -300,7 +300,7 @@ W.Command = class {
         <p>Six parts, three marks each, fitted here once the mark is researched, per Watcher. Legs for speed, arms for rate of fire and heavy guns, chest for armour and health, heart for healing and stims, eyes for aim and sight, brain for reflexes and the Purrsuader.</p>`],
       office: ["Casey's Office", `
         <h3 class="sub">What money buys</h3>
-        <p>Each event is bought once, for a zone or for the city, when production won't do: a festival for control, informants for Cal's next move, bribes to blunt his push, martial law to freeze a zone, hired guns for the next mission, an amnesty to get a lost zone back without a siege. Propaganda and mind control need research first. Anything over ${W.money(100000)} asks twice.</p>`],
+        <p>Each event is bought once, for a zone or for the city, when production won't do: a festival for control, informants for Cal's next move, bribes to blunt his push, martial law to freeze a zone, hired guns for the next mission, an amnesty to get a lost zone back without a siege, until the order to Take Control. Propaganda and mind control need research first. Anything over ${W.money(100000)} asks twice.</p>`],
       armoury: ["The Armoury", `
         <h3 class="sub">Kit</h3>
         <p>Each Watcher carries eight things: guns, the Purrsuader, up to 4 medikits; a BanHammer strike takes no slot. Ammunition is topped up free before every mission; medikits are not. The scanner is one piece of kit shared by all four, fitted a mark at a time.</p>
@@ -369,7 +369,7 @@ W.Command = class {
     const ready = s.research.worksReady || 0;
     const office = `${ready && !z.lost ? `<button data-a="works" data-z="${z.id}" data-fk="works-${z.id}">Build zone works here · ${ready} ready</button><small class="hint">A pip more here, for good.</small>` : ""}
       <button class="link" data-a="office" data-z="${z.id}" data-fk="office-${z.id}">Buy for ${W.esc(D.name)} in Casey's Office</button>`;
-    if (z.lost) return `<article class="panel dossier lost">${head}<p class="state bad">Lost to Cal. Nothing comes out of it until a siege takes it back, or an amnesty from the Office.</p>${missions}${office}</article>`;
+    if (z.lost) return `<article class="panel dossier lost">${head}<p class="state bad">Lost to Cal. Nothing comes out of it until a siege takes it back${s.war ? "" : ", or an amnesty from the Office"}.</p>${missions}${office}</article>`;
     if (z.locked) return `<article class="panel dossier locked">${head}<p class="state good">Locked down. It doesn't decay, and every pip it makes comes to the city.</p>${missions}</article>`;
     const f = M.forecast(s, z), net = M.netControl(s, z), P = M.fitPolicy(s, z), p = M.pips(s, z), hold = Math.min(p, M.holdPips(s, z)), y = M.yieldOf(z);
     const flags = [
@@ -905,8 +905,10 @@ W.Command = class {
       <section class="panel desk" data-scroll="desk">${this.hx("THE BOSS'S DESK", "sub-t", 2)}
         <p class="hint">Money buys what production can't.</p>
         <label class="zpick">For the zone <select data-a="ozone" data-fk="ozone">${s.zones.map(q => `<option value="${q.id}" ${q.id === zid ? "selected" : ""}>${W.esc(M.zoneDef(q.id).name)}${q.lost ? " (lost)" : q.locked ? " (locked)" : ` (L${M.level(q.C)})`}</option>`).join("")}</select></label>
-        <ul class="events">${M.EVENTS.map(e => { const why = M.canEvent(s, e, z), key = "event-" + e.id;
-          return `<li class="${e.floor ? "dark" : ""}"><span><b>${W.esc(e.name)}</b>${e.zone ? `<small class="for">in ${W.esc(M.zoneDef(zid).name)}</small>` : `<small class="for">city-wide</small>`}<small>${W.esc(e.what)}</small>${why ? `<small class="why">${W.esc(why)}</small>` : ""}</span>
+        <ul class="events">${M.EVENTS.map(e => { const ez = M.eventZone(s, e, z), why = M.canEvent(s, e, ez), key = "event-" + e.id;
+          // the amnesty goes to a lost zone even while the picker is on a held one
+          const where = !e.zone ? "city-wide" : ez ? `in ${M.zoneDef(ez.id).name}${ez !== z && s.zones.filter(q => q.lost).length > 1 ? " (or pick another lost zone above)" : ""}` : `in ${M.zoneDef(zid).name}`;
+          return `<li class="${e.floor ? "dark" : ""}"><span><b>${W.esc(e.name)}</b><small class="for">${W.esc(where)}</small><small>${W.esc(e.what)}</small>${why ? `<small class="why">${W.esc(why)}</small>` : ""}</span>
             <button data-a="event" data-e="${e.id}" data-fk="${key}" ${why ? "disabled" : ""} class="${this.armed === key ? "armed" : ""}">${this.armed === key ? `Confirm: pay ${W.money(e.price)}` : `Buy · ${W.money(e.price)}`}</button></li>`; }).join("")}</ul>
         <h3 class="sub">On Cal</h3>
         <p>${s.cal.zone ? `Pushing ${W.esc(M.zoneDef(s.cal.zone).name)}, ${s.cal.left} more day${s.cal.left === 1 ? "" : "s"}.` : s.cal.revealed && s.cal.next ? `Resting. Next: ${W.esc(M.zoneDef(s.cal.next).name)}, in ${s.cal.nextIn} day${s.cal.nextIn === 1 ? "" : "s"}.` : "Resting. Nobody knows where he goes next."}</p>
@@ -968,7 +970,7 @@ W.Command = class {
       case "armact": { const src = d.from === "slot" ? { from: "slot", key: d.k, agent: +d.agent, idx: +d.i } : { from: d.from, key: d.k }; this.armRun(this.armPlan(src, { drop: d.drop, id: String(this.agentId) })); return; }
       case "install": if (!M.install(s, a, d.part)) return W.audio.play("deny"); W.audio.play("heal"); break;
       case "scanner": if (!M.upgradeScanner(s)) return W.audio.play("deny"); W.audio.play("pickup"); break;
-      case "event": { const e = M.EVENTS.find(x => x.id === d.e), z = e.zone ? M.zone(s, this.officeZone) : null; if (!M.event(s, e, z)) return W.audio.play("deny"); W.audio.play("select"); break; }
+      case "event": { const e = M.EVENTS.find(x => x.id === d.e), z = M.eventZone(s, e, M.zone(s, this.officeZone)); if (!M.event(s, e, z)) return W.audio.play("deny"); W.audio.play("select"); break; }
       default: return;
     }
     this.commit();

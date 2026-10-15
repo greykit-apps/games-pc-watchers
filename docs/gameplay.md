@@ -225,5 +225,6 @@ are nearly four times as many. What they carry is what they drop (see `docs/miss
 
 An empty-handed Watcher close to the crew is only suspicious at first ("Hey.
 Who are you?"); linger about two seconds and they work it out. A gun, or an
-alarm near them, gives you away at once. The following the squad can hold is set by
-its best Purrsuader (6, 10 or 16); a persuade job's subject never counts.
+alarm near them, gives you away at once. Each Watcher in the field with a Purrsuader adds
+its following (6, 10 or 16 by mark) to the squad's, so four Purrsuaders hold
+four times what one does; a persuade job's subject never counts.

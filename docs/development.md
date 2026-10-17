@@ -9,7 +9,7 @@ carries. For playing it, see the [README](../README.md).
 index.html            the page: title host, HUD, two canvases
 css/gk-tokens.css     greykit.games Tactical palette (canon copy)
 css/watchers.css      this game's styles
-js/gk-title.js        the canon boot and title block, byte for byte
+js/gk-title.js        the canon boot and title block (v0.4)
 js/core/util.js       the W namespace, iso projection, RNG, storage
 js/core/audio.js      Web Audio synth: weapons, ambience, stingers
 js/core/map.js        grid, buildings, props, line of sight, A*
@@ -81,7 +81,9 @@ helps with balance.
 ## Standards
 
 Only one greykit.games canon piece is required here: the boot logo, the
-`@gk-title` block in `js/gk-title.js`, kept byte-identical with
-`games-meta/canon/gk-title.js`. The game also borrows the Tactical palette
-and the title screen, and carries the §1 credit on the title and in About.
+`@gk-title` block in `js/gk-title.js`, a copy of
+`games-meta/canon/gk-title.js` (v0.4) whose boot must match canon's. The game
+also borrows the Tactical palette and the block's default title, opened the
+first time by `introTitle` in `js/main.js`, and carries the §1 credit on the
+title and in About.
 Storage keys start with `pcwatchers_`, and Settings has *Forget everything*.

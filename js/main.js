@@ -3,6 +3,20 @@
  * the mission, the debrief. */
 "use strict";
 
+/* One element's text decoding out of noise, after a delay, the canon's
+ * decodeTitle one line at a time: by the clock, so a throttled tab still ends
+ * on time, and to the plain text the moment the signal aborts. */
+function decodeText(el, text, ms, delay = 0, signal) {
+  const glyphs = "▚▞▖▗▘▝#/\\<>=+", t0 = performance.now() + delay;
+  const done = () => { clearInterval(t); el.textContent = text; };
+  const t = setInterval(() => {
+    const p = (performance.now() - t0) / ms;
+    if (!el.isConnected || p >= 1 || (signal && signal.aborted)) return done();
+    const n = Math.max(0, Math.floor(text.length * p));
+    el.textContent = text.slice(0, n) + [...text.slice(n)].map(c => c === " " ? " " : glyphs[Math.random() * glyphs.length | 0]).join("");
+  }, 28);
+}
+
 const Game = W.game = {
   mode: "boot",
   world: null,
@@ -21,7 +35,8 @@ const Game = W.game = {
     window.addEventListener("resize", () => this.resize());
     const boot = runBoot({ lines: [bootReloadLine(), "plotting Market Plaza", "waking the Watchers"] });
     this.toTitle(false);
-    boot.finish(["four agents on standby", "Casey Benton is waiting"]).then(() => this.titleUI && this.titleUI.reveal());
+    const opening = this.introTitle();
+    boot.finish(["four agents on standby", "Casey Benton is waiting"]).then(opening);
     let last = performance.now();
     const loop = now => {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -32,16 +47,19 @@ const Game = W.game = {
   },
 
   toTitle(reveal = true) {
+    if (this.intro) this.intro.cancel();
     this.mode = "title";
     this.closeSheets();
     if (this.ow) { this.ow.close(); this.ow = null; }
     document.getElementById("game").hidden = true;
     W.audio.ambience(false);
+    W.audio.title(true);
     const host = document.getElementById("title-host");
     host.hidden = false;
     if (this.titleUI) this.titleUI.unmount();
     this.titleUI = mountTitle(host, {
-      name: "Watchers",
+      name: "PumaCity: Watchers",
+      lines: ["PumaCity", "Watchers"],
       primary: W.M.load() ? "resume" : "new",
       items: [
         (c => c && { act: "resume", label: "Resume campaign", key: "R", meta: `Day ${c.day} · ${W.money(c.cash)}${c.lost ? " · the city is lost" : c.won ? " · won" : c.stronghold ? " · in the stronghold" : c.war ? " · taking control" : ""}` })(W.M.load()),
@@ -63,10 +81,56 @@ const Game = W.game = {
         }
       },
     });
-    // a line under the name: whose city this is
-    const nm = host.querySelector(".gk-name");
-    if (nm && !nm.querySelector(".gk-tag")) nm.insertAdjacentHTML("afterbegin", '<div class="gk-tag">PumaCity</div>');
     if (reveal) this.titleUI.reveal();
+  },
+  /* The opening, the first time the title shows, timed like Puma Express's:
+   * the plaza alone, then the name a line at a time, each fading in as it
+   * decodes -- PumaCity, then Watchers -- a hold, then the menu printing in
+   * and decoding as the shade comes up down the left. A key or a click skips
+   * to the end. Hidden from the moment it is called, behind the boot; the
+   * function it returns starts it once the boot is done. */
+  introTitle() {
+    const INTRO = { lines: [1500, 2900], menu: 5800, done: 7000 };
+    const t = document.querySelector("#title-host .gk-title");
+    if (!t || reduced()) return () => this.titleUI && this.titleUI.reveal();
+    const lines = [...t.querySelectorAll("h1 span[data-t]")], later = [...t.querySelectorAll(".gk-menu, footer")];
+    const timers = [], ctl = new AbortController();
+    for (const n of later) n.inert = true;
+    t.classList.add("w-intro");
+    const end = () => {
+      timers.forEach(clearTimeout); ctl.abort(); this.intro = null;
+      for (const n of later) n.inert = false;
+    };
+    const focus = () => { const b = t.querySelector(".gk-primary") || t.querySelector(".gk-menu button"); if (b) b.focus({ preventScroll: true }); };
+    const menu = () => {
+      end();
+      t.classList.add("w-menu", "gk-rise");
+      t.querySelectorAll(".gk-menu .gk-lbl").forEach((l, i) => decodeText(l, l.textContent, 420, i * 45));
+      focus();
+      timers.push(setTimeout(() => t.classList.remove("w-intro", "w-menu"), INTRO.done - INTRO.menu));
+    };
+    const intro = this.intro = {
+      cancel: end,
+      skip: () => {
+        end();
+        for (const l of lines) l.textContent = l.dataset.t;
+        t.classList.remove("w-intro", "w-menu");
+        lines.forEach(l => l.classList.remove("w-in"));
+        focus();
+      },
+    };
+    // any key or click during the opening only ends it; it reaches nothing else
+    const skip = ev => {
+      if (this.intro !== intro || ["Shift", "Control", "Alt", "Meta"].includes(ev.key)) return;
+      ev.preventDefault(); ev.stopImmediatePropagation(); intro.skip();
+    };
+    window.addEventListener("keydown", skip, { capture: true, signal: ctl.signal });
+    window.addEventListener("pointerdown", skip, { capture: true, signal: ctl.signal });
+    return () => {
+      if (this.intro !== intro) return;
+      lines.forEach((l, i) => timers.push(setTimeout(() => { l.classList.add("w-in"); decodeText(l, l.dataset.t, 1100, 0, ctl.signal); }, INTRO.lines[i])));
+      timers.push(setTimeout(menu, INTRO.menu));
+    };
   },
   /* The title's backdrop is the real thing: Market Plaza at night, with its
    * crowd and its traffic, the camera drifting over it. */

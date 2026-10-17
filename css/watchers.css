@@ -171,9 +171,15 @@ table.keys kbd{margin-right:2px}
 .debrief li.done{color:var(--good)} .debrief li.failed{color:var(--dim)}
 .debrief .quote{border-left:2px solid var(--amber);padding:4px 0 4px 12px;color:var(--text);font-style:italic;margin:14px 0 0}
 
-/* the title's backdrop canvas */
+/* the title: the canon default (@gk-title v0.4) over the plaza. Its backdrop
+   canvas, and the name's first line, PumaCity, a size under Watchers */
 .gk-title>.scene canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
-.gk-title .gk-tag{margin-top:8px;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--dim)}
+.gk-title h1 span:first-child{font-size:.8em}
+/* the opening (main.js introTitle): the plaza alone, each line of the name
+   fading in on its turn, then the menu with the shade down the left */
+.gk-title.w-intro>.gk-shade,.gk-title.w-intro h1 span,.gk-title.w-intro .gk-menu,.gk-title.w-intro>footer{opacity:0}
+.gk-title.w-intro h1 span.w-in{opacity:1;transition:opacity 1.6s ease-in-out}
+.gk-title.w-intro.w-menu>.gk-shade,.gk-title.w-intro.w-menu .gk-menu,.gk-title.w-intro.w-menu>footer{opacity:1;transition:opacity 1s ease-out}
 
 /* ---- the debrief's objectives and payslip ---- */
 .done{color:var(--good);font-size:11px;margin:8px 0 0}

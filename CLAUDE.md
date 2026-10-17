@@ -30,5 +30,5 @@ product and visual direction.
 ## Remotes
 
 GitLab (`origin`, gitlab.com/greykit-app/games/pc-watchers) is the main remote.
-GitHub (`github`, github.com/shandower-421/watchers) is a copy for Claude cloud
+GitHub (`github`, github.com/greykit-apps/games-pc-watchers) is a copy for Claude cloud
 sessions. Work done in the cloud lands on GitHub; bring it back to GitLab.

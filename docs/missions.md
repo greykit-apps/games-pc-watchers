@@ -2,8 +2,7 @@
 
 The campaign (`js/campaign/meta.js`, on the `meta-game` branch) picks a
 mission and hands the engine a level from `W.missionLevel`, with two things
-attached. This is the contract between them; the engine side is still to
-build.
+attached. This is the contract between them.
 
 ## What arrives
 
@@ -115,15 +114,3 @@ of unit (or flag) that the Purrsuader can reach.
 The rewards are the campaign's business; the engine only has to say won or
 lost. A grade (as the debrief gives now) and whether a quiet mission stayed
 quiet could later scale the reward.
-
-## Later
-
-- The BanHammer (researched and bought in the campaign as `banhammer`, one
-  shot each): a long-range spotting laser, and a few seconds later an orbital
-  blast that kills everything in a wide radius. Made for sieges.
-- Weapon marks: MK2 and MK3 hitting harder and reaching further.
-- The scanner's marks (the campaign's `scannerMk`): MK1 range, MK2 armed
-  people marked apart from unarmed, MK3 people seen through roofs and walls,
-  Cal's gang in red.
-- The Purrsuader's marks: MK2 is today's Purrsuader II; MK3 a bigger
-  following that fights better.

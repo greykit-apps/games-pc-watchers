@@ -35,7 +35,8 @@ W.audio = (() => {
     const ws = ac.createGain(); ws.gain.value = 0.35; world.connect(ws); ws.connect(verb);
     return true;
   }
-  const wake = () => { if (init() && ac.state === "suspended") ac.resume(); };
+  // the title's theme, if it never got going, starts here too
+  const wake = () => { if (init()) { if (ac.state === "suspended") ac.resume(); if (mus.wantTitle && !mus.timer) musicStart("title", true); } };
   window.addEventListener("pointerdown", wake, true);
   window.addEventListener("keydown", wake, true);
 
@@ -170,8 +171,17 @@ W.audio = (() => {
    * the patterns, which notes of the tune), so the same mission always
    * sounds the same and no two sound quite alike.
    * Notes are scheduled a little ahead of the clock (the usual Web Audio
-   * look-ahead), from a timer the music owns. */
-  const BPM = [86, 104, 140];
+   * look-ahead), from a timer the music owns.
+   *
+   * The title has a theme of its own on the same machine, always the same:
+   * four bars of bass in 13/16, the limp of the Terminator's beat (a hit, a
+   * hit, a double, a hit), joined by a clank, then the kick, then a swell;
+   * then the piece above in trouble's patterns, A A B A, at TITLE_BPM; then
+   * the 13/16 again, with the pad under it this time, and round. */
+  const BPM = [86, 104, 140], TITLE_BPM = 100;
+  // the opening's bar: on these sixteenths, [semitones over the root, weight]
+  const OPEN = { 0: [0, 1], 3: [0, 0.7], 6: [0, 0.75], 7: [12, 0.9], 10: [0, 0.7] };
+  const OPEN_ROOT = [38, 38, 34, 33], OPEN_PAD = [[50, 53, 57], [50, 53, 57], [46, 50, 53], [49, 52, 57]];
   const _ = null;
   const SONG = {
     A: { root: [38, 34, 43, 45], pad: [[50, 53, 57], [46, 50, 53], [50, 55, 58], [49, 52, 57]],
@@ -214,7 +224,7 @@ W.audio = (() => {
 
   const mus = { bus: null, timer: null, step: 0, bar: 0, next: 0, bpm: BPM[0], mood: 0, want: 0, fightT: -1e9, filt: null };
 
-  function musicStart(seed) {
+  function musicStart(seed, title = false) {
     if (!ac || mus.timer) return;
     mus.bus = ac.createGain(); mus.bus.gain.value = 0;
     mus.bus.gain.setTargetAtTime(0.42, ac.currentTime, 1.2);
@@ -231,11 +241,18 @@ W.audio = (() => {
     mus.tempo = 0.97 + rng() * 0.06;
     mus.step = 0; mus.bar = 0; mus.next = ac.currentTime + 0.1; mus.mood = 0; mus.want = 0; mus.fightT = -1e9;
     mus.bpm = BPM[0] * mus.tempo;
+    mus.title = title;
+    if (title) {
+      mus.key = 0; mus.form = ["A", "A", "B", "A"]; mus.bassV = [0, 0, 0]; mus.arp = ARPS[0];
+      mus.tempo = 1; mus.bpm = TITLE_BPM; mus.want = 1;
+      mus.open = true; mus.obar = 0; mus.pass = 0;
+      mus.filt.frequency.value = 450;
+    }
     mus.timer = setInterval(musicTick, 25);
   }
   function musicStop() {
     if (!mus.timer) return;
-    clearInterval(mus.timer); mus.timer = null;
+    clearInterval(mus.timer); mus.timer = null; mus.title = false;
     const b = mus.bus, t = ac.currentTime;
     b.gain.cancelScheduledValues(t); b.gain.setValueAtTime(b.gain.value, t); b.gain.linearRampToValueAtTime(0, t + 0.6);
     setTimeout(() => b.disconnect(), 900);
@@ -243,22 +260,53 @@ W.audio = (() => {
   function musicTick() {
     if (W.prefs.muted) { mus.next = ac.currentTime + 0.05; return; }
     // a fight is over seven seconds after its last shot
-    const want = ac.currentTime - mus.fightT < 7 ? 2 : mus.want;
+    const want = !mus.title && ac.currentTime - mus.fightT < 7 ? 2 : mus.want;
     while (mus.next < ac.currentTime + 0.12) {
+      if (mus.title && mus.open) {
+        openStep(mus.next, mus.step);
+        mus.next += 60 / mus.bpm / 4;
+        if (++mus.step === 13) { mus.step = 0; if (++mus.obar === 4) mus.open = false; }
+        continue;
+      }
       if (mus.step % 4 === 0) mus.mood = want;
       if (mus.step === 0) newBar();
       musicStep(mus.next, mus.step);
       // the tempo winds toward the mood's, a little each step
-      mus.bpm += (BPM[mus.mood] * mus.tempo - mus.bpm) * 0.06;
+      mus.bpm += ((mus.title ? TITLE_BPM : BPM[mus.mood] * mus.tempo) - mus.bpm) * 0.06;
       mus.next += 60 / mus.bpm / 4;
-      if (++mus.step === 16) { mus.step = 0; mus.bar = (mus.bar + 1) % 16; }
+      if (++mus.step === 16) {
+        mus.step = 0; mus.bar = (mus.bar + 1) % 16;
+        if (mus.title && mus.bar === 0) { mus.open = true; mus.obar = 0; mus.pass++; }
+      }
     }
+  }
+  // a sixteenth of the title's opening: the bass on its five hits, the rest
+  // arriving a bar at a time; the pad only once it has come round again
+  function openStep(t, i) {
+    const b = mus.obar, out = mus.filt, step = 60 / mus.bpm / 4, h = OPEN[i];
+    if (i === 0) {
+      mus.filt.frequency.setTargetAtTime([450, 700, 1000, 1500][b], t, 0.4);
+      if (mus.pass > 0) pad(t, OPEN_PAD[b], step * 13, 0);
+      if (b === 3) swell(t, step * 13, out);
+    }
+    if (h) {
+      bass(t, OPEN_ROOT[b] + h[0], step * (i === 0 ? 2.6 : 1.7), 1, out, h[1]);
+      if (b >= 1) clank(t, out, h[1] * (b === 1 ? 0.6 : 1));
+      if (b >= 2 && (i === 0 || i === 7)) kick(t, out);
+    }
+    if (b === 3 && i >= 11) snare(t, out, i === 11 ? 0.6 : 1);
+    if (b >= 2 && i % 2 === 1) noiseBurst(t, { dur: 0.03, f: 8000, type: "highpass", q: 0.5, vol: b === 3 ? 0.04 : 0.025, out });
+  }
+  // metal struck: a ringing band of noise and a hard square blip
+  function clank(t, out, v) {
+    noiseBurst(t, { dur: 0.09, f: 3200, q: 9, vol: 0.2 * v, out });
+    tone(t, { f: 1250, fEnd: 1100, dur: 0.05, type: "square", vol: 0.025 * v, a: 0.001, out });
   }
   // what this bar is: its section and chord, and the dice for it. The dice are
   // thrown every bar whatever the mood, so a mission's sequence never drifts
   function newBar() {
     const r = mus.rng, b = mus.bar, inSec = b % 4, sec = SONG[mus.form[b >> 2]];
-    if (inSec === 0) mus.tuneOn = r() < 0.5;   // the tune plays in about half the sections
+    if (inSec === 0) { const r0 = r(); mus.tuneOn = mus.title ? b >= 4 : r0 < 0.5; }   // the tune plays in about half the sections; on the title, all but the first
     const keep = [r(), r()];
     mus.cur = {
       sec, inSec, root: sec.root[inSec] + mus.key, pad: sec.pad[inSec].map(n => n + mus.key),
@@ -334,12 +382,12 @@ W.audio = (() => {
       o.connect(lp); o.start(t); o.stop(t + len + 0.4);
     }
   }
-  function bass(t, note, len, m, out) {
+  function bass(t, note, len, m, out, v = 1) {
     const o = ac.createOscillator(); o.type = "sawtooth"; o.frequency.value = mtof(note);
     const s = ac.createOscillator(); s.type = "square"; s.frequency.value = mtof(note - 12);
     const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.Q.value = 6;
     lp.frequency.setValueAtTime([500, 900, 1600][m], t); lp.frequency.exponentialRampToValueAtTime(140, t + len);
-    const g = ac.createGain(); env(g, t, 0.005, [0.16, 0.17, 0.18][m], len);
+    const g = ac.createGain(); env(g, t, 0.005, [0.16, 0.17, 0.18][m] * v, len);
     o.connect(lp); s.connect(lp); lp.connect(g); g.connect(out);
     o.start(t); s.start(t); o.stop(t + len + 0.05); s.stop(t + len + 0.05);
   }
@@ -364,7 +412,9 @@ W.audio = (() => {
 
   /* ---- the street under it: rain, and a siren far off now and then ---- */
   function ambience(on, seed) {
+    mus.wantTitle = false;
     if (!ac) return;
+    if (mus.title) musicStop();
     if (on && !amb) {
       const s = ac.createBufferSource(); s.buffer = noise; s.loop = true;
       // rain is a soft wash, not hiss: a band, rolled off at the top
@@ -395,9 +445,22 @@ W.audio = (() => {
   function fight() { if (ac) mus.fightT = ac.currentTime; }
   function trouble(on) { mus.want = on ? 1 : 0; }
 
+  /* the title's theme: on as the title shows, from the page's load; off with
+   * any ambience() call. A browser that will not play before a key or click
+   * keeps the context suspended, and the sequencer, which runs on the
+   * context's clock, waits at its first note until wake() resumes it */
+  function title(on) {
+    mus.wantTitle = on;
+    if (on && !init()) return;
+    if (!ac) return;
+    if (on && ac.state === "suspended") ac.resume().catch(() => {});
+    if (on && !mus.timer) musicStart("title", true);
+    else if (!on && mus.title) musicStop();
+  }
+
   function setMuted(m) {
     W.prefs.muted = m; W.savePrefs();
     if (master) master.gain.setTargetAtTime(m ? 0 : 0.7, ac.currentTime, 0.02);
   }
-  return { play, at, ambience, setRain, setMuted, fight, trouble, get mood() { return mus.mood; }, get bpm() { return mus.bpm; }, listen(x, y) { listener.x = x; listener.y = y; }, get ready() { return !!ac; }, init: wake };
+  return { play, at, ambience, title, setRain, setMuted, fight, trouble, get mood() { return mus.mood; }, get bpm() { return mus.bpm; }, listen(x, y) { listener.x = x; listener.y = y; }, get ready() { return !!ac; }, init: wake };
 })();

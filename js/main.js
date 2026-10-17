@@ -53,6 +53,7 @@ const Game = W.game = {
     if (this.ow) { this.ow.close(); this.ow = null; }
     document.getElementById("game").hidden = true;
     W.audio.ambience(false);
+    W.audio.title(true);
     const host = document.getElementById("title-host");
     host.hidden = false;
     if (this.titleUI) this.titleUI.unmount();

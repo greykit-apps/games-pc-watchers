@@ -1,9 +1,14 @@
 Source/
-.claude/*
-!.claude/skills/
 .DS_Store
 # map renders saved by tools/serve.py for review
 screenshots/*-iso*.png
 # Impeccable scratch: review captures and the hook cache
 .impeccable/review/
 .impeccable/hook.cache.json
+# .claude/ is local, except the skills a cloud session needs (games-meta STANDARD.md §12).
+# Last in the file so no rule above can hide part of a skill.
+!.claude/
+.claude/*
+!.claude/skills/
+!.claude/skills/**
+.claude/skills/**/.DS_Store

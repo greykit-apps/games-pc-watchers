@@ -35,8 +35,10 @@ W.audio = (() => {
     const ws = ac.createGain(); ws.gain.value = 0.35; world.connect(ws); ws.connect(verb);
     return true;
   }
-  // the title's theme, if it never got going, starts here too
-  const wake = () => { if (init()) { if (ac.state === "suspended") ac.resume(); if (mus.wantTitle && !mus.timer) musicStart("title", true); } };
+  // the title's theme, if it never got going, starts here too. Anything but
+  // running is worth a resume: Safari marks a context it refused "interrupted",
+  // not "suspended", and waits for it to be asked again inside a key or click
+  const wake = () => { if (init()) { if (ac.state !== "running") ac.resume().catch(() => {}); if (mus.wantTitle && !mus.timer) musicStart("title", true); } };
   window.addEventListener("pointerdown", wake, true);
   window.addEventListener("keydown", wake, true);
 
@@ -447,13 +449,14 @@ W.audio = (() => {
 
   /* the title's theme: on as the title shows, from the page's load; off with
    * any ambience() call. A browser that will not play before a key or click
-   * keeps the context suspended, and the sequencer, which runs on the
-   * context's clock, waits at its first note until wake() resumes it */
+   * keeps the context suspended (Safari: interrupted), and the sequencer,
+   * which runs on the context's clock, waits at its first note until wake()
+   * resumes it */
   function title(on) {
     mus.wantTitle = on;
     if (on && !init()) return;
     if (!ac) return;
-    if (on && ac.state === "suspended") ac.resume().catch(() => {});
+    if (on && ac.state !== "running") ac.resume().catch(() => {});
     if (on && !mus.timer) musicStart("title", true);
     else if (!on && mus.title) musicStop();
   }

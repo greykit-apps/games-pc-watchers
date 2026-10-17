@@ -40,8 +40,7 @@ It is Syndicate's mechanics rebuilt for the browser and set in PumaCity's shared
 - Procedural art and Web Audio synthesis only. No image or audio assets ship.
 - The campaign saves to `localStorage` under the key `pcwatchers_campaign_v2`. Every storage key starts with `pcwatchers_`, and Settings has *Forget everything*.
 - Terms to use as written: Watchers, Casey Benton (the Boss), Watch-Captain Joyeuse, Cal, zones, pips, control levels 0 to 3, siege, war, lockdown, the Purrsuader, stims (Zoomers, Red Dot, Silvervine), the scanner, the Clinic, the BanHammer.
-- Districts: Downtown, the Suburbs, the Convention Center, the Ranch and the Starport. The Vault is planned.
-- Undecided: touch controls, enterable vehicles, and mission types beyond assassination (persuade, evacuate, retrieve). All are on the roadmap.
+- Districts: Downtown, the Suburbs, the Convention Center, the Ranch and the Starport.
 - Headless checks in `tools/` (`sim.js`, `campaign.js`, `metasim.js`, `maps.js`) are part of the workflow.
 
 ## Brand Commitments

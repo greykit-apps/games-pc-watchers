@@ -53,9 +53,8 @@ tools/serve.py        a dev server that never lets the browser cache
   file under `js/districts/` and its `<script>` tag.
 - **Big maps stay cheap.** The ground is drawn lazily in 512px chunks as it
   comes into view, and pathfinding scales its search to the map.
-- **The squad comes from a roster.** `W.defaultRoster()` stands in until the
-  overworld supplies one. `populate` takes `opts.roster`, which is where
-  persistent agents and their upgrades will plug in.
+- **The squad comes from a roster.** `populate` takes `opts.roster`, which the
+  campaign builds; `W.defaultRoster()` stands in without one.
 
 ## Checks
 
@@ -86,13 +85,3 @@ Only one greykit.games canon piece is required here: the boot logo, the
 `games-meta/canon/gk-title.js`. The game also borrows the Tactical palette
 and the title screen, and carries the §1 credit on the title and in About.
 Storage keys start with `pcwatchers_`, and Settings has *Forget everything*.
-
-## Roadmap
-
-1. ~~The campaign loop: contracts, research, Armoury, Clinic, roster.~~
-2. ~~Districts: Downtown, the Suburbs, the Convention Center, the Ranch,
-   the Starport.~~ Next: The Vault; bring the Starport up to the others;
-   campaign contracts in every district.
-3. Overworld depth: districts held pay tribute, rival syndicates, events.
-4. Engine: enterable vehicles, more weapons (minigun, laser, flamer, time
-   bomb), mission types (persuade, evacuate, retrieve), touch controls.

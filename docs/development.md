@@ -83,7 +83,13 @@ helps with balance.
 Only one greykit.games canon piece is required here: the boot logo, the
 `@gk-title` block in `js/gk-title.js`, a copy of
 `games-meta/canon/gk-title.js` (v0.4) whose boot must match canon's. The game
-also borrows the Tactical palette and the block's default title, opened the
-first time by `introTitle` in `js/main.js`, and carries the §1 credit on the
-title and in About.
+also borrows the Tactical palette and the block's default title, and takes
+games-meta's integrated intro (§14, a guideline): `js/gk-intro.js` is a whole
+copy of `canon/gk-intro.js` (v0.2). `Game.start` in `js/main.js` drives it: the
+boot with its meow, the hold for a press (only where the browser needs one;
+`?hold=always` holds every time), then the title over the plaza. `INTRO` at the
+top of `js/main.js` times the entrance by the title music's clock, so the
+theme's drums land just before the menu. The title carries the Sound and Music
+switches top right and the §1 credit under the menu; Music is saved apart from
+Sound, as `pcwatchers_music_v1`.
 Storage keys start with `pcwatchers_`, and Settings has *Forget everything*.

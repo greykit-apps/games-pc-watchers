@@ -3,7 +3,7 @@
 "use strict";
 
 W.audio = (() => {
-  let ac = null, master = null, noise = null, amb = null, verb = null, world = null;
+  let ac = null, master = null, noise = null, amb = null, verb = null, world = null, musOut = null;
   let out0 = null;   // where a sound goes unless told: the world bus while at() plays one
   const last = {};
   let listener = { x: 0, y: 0 };
@@ -33,6 +33,10 @@ W.audio = (() => {
     verb.connect(wet); wet.connect(master);
     world = ac.createGain(); world.connect(master);
     const ws = ac.createGain(); ws.gain.value = 0.35; world.connect(ws); ws.connect(verb);
+    // the score's own switch, under the master: Music off silences it alone
+    musOut = ac.createGain(); musOut.gain.value = W.prefs.music ? 1 : 0;
+    musOut.connect(master);
+    const ms = ac.createGain(); ms.gain.value = 0.5; musOut.connect(ms); ms.connect(verb);
     return true;
   }
   // the title's theme, if it never got going, starts here too. Anything but
@@ -231,8 +235,7 @@ W.audio = (() => {
     mus.bus = ac.createGain(); mus.bus.gain.value = 0;
     mus.bus.gain.setTargetAtTime(0.42, ac.currentTime, 1.2);
     mus.filt = ac.createBiquadFilter(); mus.filt.type = "lowpass"; mus.filt.frequency.value = 1400; mus.filt.Q.value = 0.7;
-    mus.filt.connect(mus.bus); mus.bus.connect(master);
-    const send = ac.createGain(); send.gain.value = 0.5; mus.bus.connect(send); send.connect(verb);
+    mus.filt.connect(mus.bus); mus.bus.connect(musOut);
     // this mission's version
     const rng = mus.rng = seeded(hash(seed == null ? Math.random() : seed));
     const pick = n => Math.floor(rng() * n);
@@ -465,5 +468,12 @@ W.audio = (() => {
     W.prefs.muted = m; W.savePrefs();
     if (master) master.gain.setTargetAtTime(m ? 0 : 0.7, ac.currentTime, 0.02);
   }
-  return { play, at, ambience, title, setRain, setMuted, fight, trouble, get mood() { return mus.mood; }, get bpm() { return mus.bpm; }, listen(x, y) { listener.x = x; listener.y = y; }, get ready() { return !!ac; }, init: wake };
+  function setMusic(on) {
+    W.prefs.music = on; W.store.set("music_v1", on ? 1 : 0);
+    if (musOut) musOut.gain.setTargetAtTime(on ? 1 : 0, ac.currentTime, 0.05);
+  }
+  /* the context, made if need be but not resumed (the intro asks the browser
+   * first), and the effects' way out, for the intro's boot sound and ticks */
+  const ctx = () => init() ? ac : null;
+  return { play, at, ambience, title, setRain, setMuted, setMusic, fight, trouble, ctx, get fx() { return master; }, get mood() { return mus.mood; }, get bpm() { return mus.bpm; }, listen(x, y) { listener.x = x; listener.y = y; }, get ready() { return !!ac; }, init: wake };
 })();

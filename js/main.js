@@ -17,6 +17,12 @@ function decodeText(el, text, ms, delay = 0, signal) {
   }, 28);
 }
 
+/* The title's entrance, in ms from the title's arrival, which is when its
+ * music starts: the name a line at a time, then the menu. The theme's 13/16
+ * opening runs 7.8 s; its drums land about a second before the menu, which
+ * is meant (a film's opening). Retime one, keep the other in step. */
+const INTRO = { name: 4500, step: 1400, menu: 8800, done: 10000 };
+
 const Game = W.game = {
   mode: "boot",
   world: null,
@@ -33,10 +39,31 @@ const Game = W.game = {
     this.hud = new W.HUD(document.getElementById("hud"), this);
     this.bindInput();
     window.addEventListener("resize", () => this.resize());
-    const boot = runBoot({ lines: [bootReloadLine(), "plotting Market Plaza", "waking the Watchers"] });
+    // the integrated intro (games-meta §14): the boot with its meow, the hold
+    // for a press that lets the music play, then the title over the plaza
+    const intro = this.intro = startIntro({
+      lines: [bootReloadLine(), "plotting Market Plaza", "waking the Watchers"],
+      audio: () => W.audio.ctx(),
+      bootSound: (ac, out, o) => { if (!W.prefs.muted) gkBootSound(ac, W.audio.fx, o); },
+    });
     this.toTitle(false);
-    const opening = this.introTitle();
-    boot.finish(["four agents on standby", "Casey Benton is waiting"]).then(opening);
+    intro.finish({
+      more: ["four agents on standby", "Casey Benton is waiting"],
+      title: document.querySelector("#title-host .gk-title"),
+      name: "decode",
+      timing: INTRO,
+      // ?hold=always holds even where sound may already play, as canon's demo does
+      hold: /[?&]hold=always\b/.test(location.search) ? "always" : "auto",
+      toggles: this.titleToggles(),
+      tick: () => gkTick(W.audio.ctx(), W.audio.fx),
+      onContinue: () => W.audio.init(),
+      onTitle: () => { this.intro = null; if (this.mode === "title") W.audio.title(true); },
+      onDone: () => {
+        // the menu printing in, unless the entrance was skipped to its end
+        const t = document.querySelector("#title-host .gk-title.gki-menu");
+        if (t) t.querySelectorAll(".gk-menu .gk-lbl").forEach((l, i) => decodeText(l, l.textContent, 420, i * 45));
+      },
+    }).then(r => { this.titleSw = r.toggles; });
     let last = performance.now();
     const loop = now => {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -47,13 +74,13 @@ const Game = W.game = {
   },
 
   toTitle(reveal = true) {
-    if (this.intro) this.intro.cancel();
     this.mode = "title";
     this.closeSheets();
     if (this.ow) { this.ow.close(); this.ow = null; }
     document.getElementById("game").hidden = true;
     W.audio.ambience(false);
-    W.audio.title(true);
+    // the first time, the intro starts the music as the title arrives
+    if (!this.intro) W.audio.title(true);
     const host = document.getElementById("title-host");
     host.hidden = false;
     if (this.titleUI) this.titleUI.unmount();
@@ -81,55 +108,17 @@ const Game = W.game = {
         }
       },
     });
-    if (reveal) this.titleUI.reveal();
+    if (reveal) {
+      const t = host.querySelector(".gk-title");
+      if (t) this.titleSw = gkIntegrate(t, { toggles: this.titleToggles(), tick: () => gkTick(W.audio.ctx(), W.audio.fx) });
+      this.titleUI.reveal();
+    }
   },
-  /* The opening, the first time the title shows, timed like Puma Express's:
-   * the plaza alone, then the name a line at a time, each fading in as it
-   * decodes -- PumaCity, then Watchers -- a hold, then the menu printing in
-   * and decoding as the shade comes up down the left. A key or a click skips
-   * to the end. Hidden from the moment it is called, behind the boot; the
-   * function it returns starts it once the boot is done. */
-  introTitle() {
-    const INTRO = { lines: [1500, 2900], menu: 5800, done: 7000 };
-    const t = document.querySelector("#title-host .gk-title");
-    if (!t || reduced()) return () => this.titleUI && this.titleUI.reveal();
-    const lines = [...t.querySelectorAll("h1 span[data-t]")], later = [...t.querySelectorAll(".gk-menu, footer")];
-    const timers = [], ctl = new AbortController();
-    for (const n of later) n.inert = true;
-    t.classList.add("w-intro");
-    const end = () => {
-      timers.forEach(clearTimeout); ctl.abort(); this.intro = null;
-      for (const n of later) n.inert = false;
-    };
-    const focus = () => { const b = t.querySelector(".gk-primary") || t.querySelector(".gk-menu button"); if (b) b.focus({ preventScroll: true }); };
-    const menu = () => {
-      end();
-      t.classList.add("w-menu", "gk-rise");
-      t.querySelectorAll(".gk-menu .gk-lbl").forEach((l, i) => decodeText(l, l.textContent, 420, i * 45));
-      focus();
-      timers.push(setTimeout(() => t.classList.remove("w-intro", "w-menu"), INTRO.done - INTRO.menu));
-    };
-    const intro = this.intro = {
-      cancel: end,
-      skip: () => {
-        end();
-        for (const l of lines) l.textContent = l.dataset.t;
-        t.classList.remove("w-intro", "w-menu");
-        lines.forEach(l => l.classList.remove("w-in"));
-        focus();
-      },
-    };
-    // any key or click during the opening only ends it; it reaches nothing else
-    const skip = ev => {
-      if (this.intro !== intro || ["Shift", "Control", "Alt", "Meta"].includes(ev.key)) return;
-      ev.preventDefault(); ev.stopImmediatePropagation(); intro.skip();
-    };
-    window.addEventListener("keydown", skip, { capture: true, signal: ctl.signal });
-    window.addEventListener("pointerdown", skip, { capture: true, signal: ctl.signal });
-    return () => {
-      if (this.intro !== intro) return;
-      lines.forEach((l, i) => timers.push(setTimeout(() => { l.classList.add("w-in"); decodeText(l, l.dataset.t, 1100, 0, ctl.signal); }, INTRO.lines[i])));
-      timers.push(setTimeout(menu, INTRO.menu));
+  /* the title's Sound and Music switches, top right: Sound is M, the master */
+  titleToggles() {
+    return {
+      sound: { get: () => !W.prefs.muted, set: on => { W.audio.setMuted(!on); this.hud.syncSound(); } },
+      music: { get: () => W.prefs.music, set: on => W.audio.setMusic(on) },
     };
   },
   /* The title's backdrop is the real thing: Market Plaza at night, with its
@@ -238,6 +227,7 @@ const Game = W.game = {
     const onOff = (key, val) => `<div class="gk-row"><button data-set="${key}" data-v="1" aria-pressed="${!!val}">On</button><button data-set="${key}" data-v="0" aria-pressed="${!val}">Off</button></div>`;
     return {
       html: () => `<h3>Sound</h3>${onOff("sound", !W.prefs.muted)}
+        <h3>Music</h3>${onOff("music", W.prefs.music)}
         <h3>Rain</h3>${onOff("rain", W.prefs.rain)}
         <h3>Edge scrolling</h3>${onOff("edge", W.prefs.edge)}
         <h3>Pixel size</h3><div class="gk-row">${[[0, "Auto"], [2, "2×"], [3, "3×"], [4, "4×"]].map(([v, l]) => `<button data-set="scale" data-v="${v}" aria-pressed="${W.prefs.scale === v}">${l}</button>`).join("")}</div>
@@ -251,11 +241,13 @@ const Game = W.game = {
         const k = b.dataset.set, v = +b.dataset.v;
         if (!k) return;
         if (k === "sound") W.audio.setMuted(!v);
+        if (k === "music") W.audio.setMusic(!!v);
         if (k === "rain") { W.prefs.rain = !!v; W.audio.setRain(!!v); }
         if (k === "edge") W.prefs.edge = !!v;
         if (k === "scale") { W.prefs.scale = v; this.resize(); }
         W.savePrefs();
         this.hud.syncSound();
+        if (this.titleSw) this.titleSw.refresh();
         sheet.refresh();
       },
     };
@@ -848,6 +840,7 @@ const Game = W.game = {
   toggleSound() {
     W.audio.setMuted(!W.prefs.muted);
     this.hud.syncSound();
+    if (this.titleSw) this.titleSw.refresh();
   },
 
   /* ---------------- input ---------------- */
@@ -914,6 +907,8 @@ const Game = W.game = {
 
     window.addEventListener("keydown", ev => {
       if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      // a key on the boot is the intro's: it continues, and does nothing else
+      if (document.querySelector(".gk-boot")) return;
       const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key.toLowerCase();
       if (k === "m" && (this.mode === "play" || this.mode === "title" || this.mode === "brief" || this.mode === "world")) {
         if (document.querySelector(".gk-sheet")) return;

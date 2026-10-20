@@ -81,4 +81,6 @@ W.store = {
 
 /* the player's preferences, read once */
 W.prefs = Object.assign({ muted: false, rain: true, edge: true, scale: 0 }, W.store.get("prefs_v1", {}));
-W.savePrefs = () => W.store.set("prefs_v1", W.prefs);
+// Music on or off, apart from Sound (games-meta §14): its own key, "1" or "0"
+W.prefs.music = W.store.get("music_v1", 1) !== 0;
+W.savePrefs = () => { const { music, ...p } = W.prefs; W.store.set("prefs_v1", p); };

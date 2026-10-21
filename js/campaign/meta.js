@@ -255,7 +255,7 @@ M.fresh = (seed = Date.now() % 100000) => {
   M.note(s, "Casey Benton has given the Watchers the city to hold. Set each zone's tax, start some research, and pick a mission.");
   return s;
 };
-M.KEY = "campaign_v2";
+M.KEY = "pcwatchers_campaign_v2";
 M.load = () => { const s = W.store.get(M.KEY, null); if (s && s.v === 2 && !s.armoury) s.armoury = {}; return s && s.v === 2 ? s : null; };
 M.save = s => W.store.set(M.KEY, s);
 M.note = (s, text, kind = "") => { s.log.unshift({ day: s.day, text, kind }); s.log.length = Math.min(s.log.length, 60); };

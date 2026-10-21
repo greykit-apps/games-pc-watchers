@@ -469,7 +469,7 @@ W.audio = (() => {
     if (master) master.gain.setTargetAtTime(m ? 0 : 0.7, ac.currentTime, 0.02);
   }
   function setMusic(on) {
-    W.prefs.music = on; W.store.set("music_v1", on ? 1 : 0);
+    W.prefs.music = on; W.store.set("pcwatchers_music_v1", on ? 1 : 0);
     if (musOut) musOut.gain.setTargetAtTime(on ? 1 : 0, ac.currentTime, 0.05);
   }
   /* the context, made if need be but not resumed (the intro asks the browser

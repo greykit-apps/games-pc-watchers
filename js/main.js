@@ -1048,12 +1048,12 @@ const Game = W.game = {
     if (won) {
       let pts = 100 - s.lost * 18 - Math.max(0, s.civ - 2) * 4 + bonus * 8 - Math.max(0, s.time - 240) / 12;
       grade = pts >= 105 ? "S" : pts >= 90 ? "A" : pts >= 72 ? "B" : pts >= 55 ? "C" : "D";
-      const best = W.store.get("best_v1", {});
+      const best = W.store.get("pcwatchers_best_v1", {});
       const prev = best[this.level.id];
       const rank = g => "SABCD".indexOf(g);
       if (!prev || rank(grade) < rank(prev.grade) || (grade === prev.grade && s.time < prev.time)) {
         best[this.level.id] = { grade, time: Math.round(s.time), at: new Date().toISOString().slice(0, 10) };
-        W.store.set("best_v1", best);
+        W.store.set("pcwatchers_best_v1", best);
       }
     }
     const mmss = t => String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(Math.floor(t % 60)).padStart(2, "0");

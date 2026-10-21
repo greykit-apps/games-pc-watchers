@@ -65,10 +65,11 @@ W.canvas = (w, h) => {
   return c;
 };
 
-/* ---- storage: every key starts pcwatchers_ ---- */
+/* ---- storage: every key is pcwatchers_<feature>_v<n>, spelled out in full
+ * (games-meta §5), so Forget everything finds them all by prefix ---- */
 W.store = {
-  get(k, d) { try { const v = localStorage.getItem("pcwatchers_" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem("pcwatchers_" + k, JSON.stringify(v)); } catch (e) { /* no storage */ } },
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* no storage */ } },
   forget() {
     for (const area of ["localStorage", "sessionStorage"]) {
       try {
@@ -80,7 +81,18 @@ W.store = {
 };
 
 /* the player's preferences, read once */
-W.prefs = Object.assign({ muted: false, rain: true, edge: true, scale: 0 }, W.store.get("prefs_v1", {}));
+W.prefs = Object.assign({ muted: false, rain: true, edge: true, scale: 0 }, W.store.get("pcwatchers_prefs_v1", {}));
+// Sound on or off (games-meta §8): its own key, "1" muted or "0". Until
+// 2026-10 it was prefs_v1's `muted`; a save without the key moves it over once.
 // Music on or off, apart from Sound (games-meta §14): its own key, "1" or "0"
-W.prefs.music = W.store.get("music_v1", 1) !== 0;
-W.savePrefs = () => { const { music, ...p } = W.prefs; W.store.set("prefs_v1", p); };
+W.prefs.music = W.store.get("pcwatchers_music_v1", 1) !== 0;
+W.savePrefs = () => {
+  const { music, muted, ...p } = W.prefs;
+  W.store.set("pcwatchers_prefs_v1", p);
+  W.store.set("pcwatchers_muted_v1", muted ? 1 : 0);
+};
+{
+  const muted = W.store.get("pcwatchers_muted_v1", null);
+  W.prefs.muted = muted == null ? !!W.prefs.muted : muted === 1;
+  if (muted == null && W.store.get("pcwatchers_prefs_v1", null)) W.savePrefs();
+}

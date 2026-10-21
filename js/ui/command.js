@@ -21,7 +21,7 @@
 W.Command = class {
   constructor(game) {
     this.game = game;
-    this.screen = W.store.get("cmdscreen_v1", "city");
+    this.screen = W.store.get("pcwatchers_cmdscreen_v1", "city");
     if (!W.Command.SCREENS.includes(this.screen)) this.screen = "city";
     // the dossier and list the player had open survive a briefing, for the same campaign
     const kept = W.Command.kept && W.Command.kept.s === game.campaign ? W.Command.kept : {};
@@ -65,11 +65,11 @@ W.Command = class {
       this.layer = document.createElement("div");
       this.layer.className = "cx-layer";
       this.layer.innerHTML = `<div class="cx-toast" role="status"></div><div class="cx-banner" hidden></div><div class="sr" aria-live="polite" data-live></div>
-        <div class="cx-ticker ${W.store.get("ticker_v1", true) ? "" : "paused"}" role="region" aria-label="PVN news"><b class="tk-tag">PVN</b><div class="tk-run"><div class="tk-text" data-ticker></div></div><button class="tk-pause" data-tk aria-pressed="${!W.store.get("ticker_v1", true)}" aria-label="Pause the news ticker" title="Pause or run the news">${W.store.get("ticker_v1", true) ? "❚❚" : "▶"}</button></div>`;
+        <div class="cx-ticker ${W.store.get("pcwatchers_ticker_v1", true) ? "" : "paused"}" role="region" aria-label="PVN news"><b class="tk-tag">PVN</b><div class="tk-run"><div class="tk-text" data-ticker></div></div><button class="tk-pause" data-tk aria-pressed="${!W.store.get("pcwatchers_ticker_v1", true)}" aria-label="Pause the news ticker" title="Pause or run the news">${W.store.get("pcwatchers_ticker_v1", true) ? "❚❚" : "▶"}</button></div>`;
       this.layer.addEventListener("click", ev => {
         if (ev.target.closest(".cx-banner")) this.hideBanner();
         const tk = ev.target.closest("[data-tk]");
-        if (tk) { const run = !!this.layer.querySelector(".cx-ticker.paused"); W.store.set("ticker_v1", run); this.layer.querySelector(".cx-ticker").classList.toggle("paused", !run); tk.setAttribute("aria-pressed", String(!run)); tk.textContent = run ? "❚❚" : "▶"; tk.setAttribute("aria-label", run ? "Pause the news ticker" : "Run the news ticker"); W.audio.play("click"); }
+        if (tk) { const run = !!this.layer.querySelector(".cx-ticker.paused"); W.store.set("pcwatchers_ticker_v1", run); this.layer.querySelector(".cx-ticker").classList.toggle("paused", !run); tk.setAttribute("aria-pressed", String(!run)); tk.textContent = run ? "❚❚" : "▶"; tk.setAttribute("aria-label", run ? "Pause the news ticker" : "Run the news ticker"); W.audio.play("click"); }
       });
       document.body.appendChild(this.layer);
       this.mapCv = document.createElement("canvas");
@@ -1062,7 +1062,7 @@ W.Command = class {
     const r = this.el.querySelector('[data-scroll="right"]'); if (r) r.scrollTop = 0;
   }
   go(screen) {
-    this.screen = screen; W.store.set("cmdscreen_v1", screen); this.armed = null; this.untilOpen = false;
+    this.screen = screen; W.store.set("pcwatchers_cmdscreen_v1", screen); this.armed = null; this.untilOpen = false;
     W.audio.play("click"); this.draw();
     const tab = this.el.querySelector(`#tab-${screen}`); if (tab) tab.focus({ preventScroll: true });
   }

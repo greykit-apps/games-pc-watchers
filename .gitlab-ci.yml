@@ -13,6 +13,7 @@ validate:
   image: node:20-alpine
   script:
     - node tools/check-assets.js
+    - node tools/check-ship.js
     - find js tools -name '*.js' -exec node --check {} \;
     - test -s index.html
     - node tools/sim.js 3

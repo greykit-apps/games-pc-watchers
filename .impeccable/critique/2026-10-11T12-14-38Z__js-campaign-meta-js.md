@@ -5,9 +5,9 @@ max_score: 40
 na_heuristics: 
 p0_count: 1
 p1_count: 3
-target_identity: "file:C:\\Users\\shand\\Claude\\Gitlab\\greykit-app\\games\\pc-watchers\\js\\campaign\\meta.js"
+target_identity: "file:js/campaign/meta.js"
 target_fingerprint: "sha256:b7d38f375cf1d934e29f69c9eb0d6c32acb1e3cb04ffaecb26d74eae7a72beb9"
-target_path: "C:\\Users\\shand\\Claude\\Gitlab\\greykit-app\\games\\pc-watchers\\js\\campaign\\meta.js"
+target_path: "js/campaign/meta.js"
 timestamp: 2026-10-11T12-14-38Z
 slug: js-campaign-meta-js
 ---

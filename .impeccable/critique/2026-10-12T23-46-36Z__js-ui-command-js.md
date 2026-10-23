@@ -5,9 +5,9 @@ max_score: 40
 na_heuristics: 
 p0_count: 0
 p1_count: 3
-target_identity: "file:/home/user/watchers/js/ui/command.js"
+target_identity: "file:js/ui/command.js"
 target_fingerprint: "sha256:6d86beba85da906e9977e9e2f1777c2e24e86b2f69686eb844bc2c363733ef40"
-target_path: /home/user/watchers/js/ui/command.js
+target_path: js/ui/command.js
 timestamp: 2026-10-12T23-46-36Z
 slug: js-ui-command-js
 ---

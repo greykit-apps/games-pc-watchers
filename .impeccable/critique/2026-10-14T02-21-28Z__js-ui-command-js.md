@@ -5,9 +5,9 @@ max_score: 40
 na_heuristics: 
 p0_count: 0
 p1_count: 2
-target_identity: "file:C:\\Users\\shand\\Claude\\Gitlab\\greykit-app\\games\\pc-watchers\\js\\ui\\command.js"
+target_identity: "file:js/ui/command.js"
 target_fingerprint: "sha256:7fe6abee2471b0a1934bea96d1b9f1bd9f0c1274bd2f4aec555f0a6595ec7730"
-target_path: "C:\\Users\\shand\\Claude\\Gitlab\\greykit-app\\games\\pc-watchers\\js\\ui\\command.js"
+target_path: "js/ui/command.js"
 timestamp: 2026-10-14T02-21-28Z
 slug: js-ui-command-js
 ---
